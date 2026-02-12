@@ -449,6 +449,7 @@ function updateSyncStatus(online, syncing = false) {
 }
 
 async function apiCall(endpoint, data) {
+  console.log('[API]', endpoint, data?.action || '', data);
   try {
     updateSyncStatus(isOnline, true); // Show syncing
     const res = await fetch(API_BASE + '/api/' + endpoint, {
@@ -457,10 +458,11 @@ async function apiCall(endpoint, data) {
       body: JSON.stringify(data)
     });
     const result = await res.json();
+    console.log('[API Response]', endpoint, result.success ? 'OK' : 'FAIL', result);
     updateSyncStatus(true); // Online
     return result;
   } catch (e) {
-    console.error('API error:', e);
+    console.error('[API Error]', endpoint, e);
     updateSyncStatus(false); // Offline
     return { success: false, error: e.message, offline: true };
   }
@@ -608,6 +610,7 @@ async function refreshDashboard() {
 
 // Generate PDF via API and upload to Drive
 async function generateAndUploadPDF(invData) {
+  console.log('[PDF/Drive] Generating #'+invData.num, invData.practice, '£'+invData.amount?.toFixed(2)||invData.gross?.toFixed(2));
   try {
     // Add logo to invoice data for PDF generation
     const dataWithLogo = { ...invData, logoBase64: LOGO[invData.logoType] || LOGO.self };
@@ -644,13 +647,14 @@ async function generateAndUploadPDF(invData) {
     });
 
     if (driveResult.success) {
+      console.log('[PDF/Drive] Uploaded to:', driveResult.folderPath);
       // Update invoice with drive link
       await apiCall('sheets-sync', {
         action: 'update_invoice',
         data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } }
       });
     } else {
-      console.error('Drive upload failed:', driveResult);
+      console.error('[PDF/Drive] Upload failed:', driveResult);
     }
 
     return { pdf: pdfResult, drive: driveResult };
@@ -969,6 +973,7 @@ c.innerHTML=h;}
 // ===== ENTITY =====
 // Unified entity switcher - updates ALL toggles across the entire app
 function switchEntity(t){
+  console.log('[Entity Switch]', t==='self'?'Self-Employed':'Ltd Company');
   S.ent=t;save();
 
   // Update ALL entity toggle buttons across all screens
@@ -1029,8 +1034,10 @@ function setInvEnt(t){S.iEnt=t;document.getElementById('iES').className='ebtn'+(
 // ===== PRACTICE LOGGING =====
 function openPractice(id){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid in openPractice');return;}
-if(id==='adhoc'){S.prac=null;showScreen('adhoc');popAh();return;}
-const p=S.practices[id];if(!p){console.warn('Practice not found:',id);return;}S.prac=id;S.svc=null;showScreen('practice');
+if(id==='adhoc'){console.log('[Screen] Ad Hoc');S.prac=null;showScreen('adhoc');popAh();return;}
+const p=S.practices[id];if(!p){console.warn('Practice not found:',id);return;}
+console.log('[Screen] Practice:', p.short);
+S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
@@ -1070,6 +1077,7 @@ if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null};
+console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
@@ -1151,6 +1159,7 @@ if(!pts)return;const gr=(pts*rate)+(airPts*air);
 const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent};
+console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();}
@@ -1303,6 +1312,7 @@ async function saveEntry(id){
   e.gross=(e.pts*e.uPrice)+e.aoAmt;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
+  console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
   save();closeMod2();refArc();showToast('Syncing...');
   // Sync to cloud (queues on failure)
   const result=await updateEntryInCloud(e.id, e, e.entity||S.ent);
@@ -1311,6 +1321,7 @@ async function saveEntry(id){
 async function delEntry(id){
   var e=S.entries.find(function(x){return x.id===id});
   var entity=e?e.entity||S.ent:S.ent;
+  console.log('[Entry Deleted]', e?.pName, e?.svc, e?.pts+'pts', 'id='+id);
   S.entries=S.entries.filter(function(e){return e.id!==id});
   save();closeMod2();refArc();showToast('Deleting...');
   // Sync deletion to cloud (queues on failure)
@@ -1548,6 +1559,7 @@ var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
 var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length};
+console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
 me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});});
@@ -1566,6 +1578,7 @@ var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:
 var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
 var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,isAdhoc:true};
+console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
 updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});
