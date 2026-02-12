@@ -581,12 +581,16 @@ async function loadPracticesFromCloud() {
         p.svcs = typeof p.services === 'string' ? JSON.parse(p.services) : p.services;
         delete p.services;
       }
+      // Parse days if it's a string
+      if (typeof p.days === 'string') {
+        try { p.days = JSON.parse(p.days); } catch(e) { p.days = []; }
+      }
       // Ensure all required properties have defaults
-      p.days = p.days || [];
+      p.days = Array.isArray(p.days) ? p.days : [];
       p.svcs = p.svcs || { Hygiene: { p: 70, d: 'per patient' } };
       p.comm = p.comm || 0.35;
       p.short = p.short || p.name || p.id;
-      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}));
+      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days);
       S.practices[p.id] = p;
     });
     save();
