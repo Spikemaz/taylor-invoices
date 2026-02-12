@@ -746,13 +746,16 @@ async function generateAndUploadPDF(invData) {
 
     if (driveResult.success) {
       console.log('[PDF/Drive] Uploaded to:', driveResult.folderPath);
+      showToast('PDF saved to Drive');
       // Update invoice with drive link
       await apiCall('sheets-sync', {
         action: 'update_invoice',
-        data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } }
+        data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } },
+        entity: invData.entity || invData.logoType
       });
     } else {
-      console.error('[PDF/Drive] Upload failed:', driveResult);
+      console.log('[PDF/Drive] Drive upload skipped/failed - PDF downloaded locally');
+      // Don't show error - PDF was already downloaded, Drive is optional
     }
 
     return { pdf: pdfResult, drive: driveResult };
