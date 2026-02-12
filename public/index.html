@@ -269,7 +269,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="sh">Data</div>
 <div class="ssec">
 <div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">↓</span></div>
-<div class="srow" onclick="clearAllData()"><span class="la" style="color:var(--err)">Clear All Data</span><span class="va" style="color:var(--err)">⚠</span></div>
 </div>
 <p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with ♥ by Marcus</p>
 </div>
@@ -1390,16 +1389,6 @@ document.getElementById('_ptC').onclick=function(){closeMod2()};
 document.getElementById('_ptS').onclick=function(){
 S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
 save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');};
-},50);
-}
-function clearAllData(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(--err)">Clear All Data</h3>';
-_h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete all entries and invoices. Settings will be kept.</p>';
-_h+='<div class="brow"><button class="btn btn-s" id="_cdC">Cancel</button><button class="btn btn-d" id="_cdD">Delete Everything</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_cdC').onclick=function(){closeMod2()};
-document.getElementById('_cdD').onclick=function(){S.entries=[];S.invoices=[];S.nextInv=1;save();closeMod2();refreshSettings();showToast('\u2713 All data cleared');};
 },50);
 }
 function refreshSettings(){
