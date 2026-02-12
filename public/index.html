@@ -139,6 +139,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 
 <!-- PRACTICE LOGGING -->
 <div class="scr" id="scr-practice">
+<div class="esw" id="pEntSw">
+<button class="ebtn act" onclick="setPracticeEntity('self')" id="pES">Self-Employed</button>
+<button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
+</div>
 <div class="banner" id="pBan"><h3 id="pBanT"></h3><div class="amt" id="pBanA">£0.00</div><div class="sub" id="pBanS"></div></div>
 <div id="pToday"></div>
 <div class="sh">Service Type</div>
@@ -574,11 +578,29 @@ c.innerHTML=h;}
 // ===== ENTITY =====
 function setEntity(t){S.ent=t;save();document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';upHome();}
 function setInvEnt(t){S.iEnt=t;document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');refInv();}
+function setPracticeEntity(t){
+  S.ent=t;save();
+  document.getElementById('pES').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('pEL').className='ebtn'+(t==='ltd'?' act':'');
+  document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');
+  document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
+  if(S.prac){const p=S.practices[S.prac];if(p){
+    const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&(!e.entity||e.entity===S.ent));
+    let tg=0;me.forEach(e=>tg+=e.gross);
+    document.getElementById('pBanA').textContent=fc(tg*p.comm);
+    document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(p.comm*100).toFixed(0)+'% commission';
+  }}
+}
 
 // ===== PRACTICE LOGGING =====
 function openPractice(id){
 if(id==='adhoc'){S.prac=null;showScreen('adhoc');popAh();return;}
 const p=S.practices[id];if(!p)return;S.prac=id;S.svc=null;showScreen('practice');
+// Sync entity toggle with current entity
+document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
+document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
 const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 document.getElementById('pBanT').textContent=p.short+' — '+mn;
 const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===id&&(!e.entity||e.entity===S.ent));
