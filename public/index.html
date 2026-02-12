@@ -303,7 +303,10 @@ async function apiCall(endpoint, data) {
 // Sync entry to cloud
 async function syncEntryToCloud(entry) {
   const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry });
-  if (!result.success) console.error('Failed to sync entry:', result);
+  if (!result.success) {
+    console.error('Failed to sync entry:', result);
+    showToast('Cloud sync failed: ' + (result.error || result.message || 'Unknown'), 'err');
+  }
   return result;
 }
 
@@ -330,44 +333,55 @@ async function updateEntryInCloud(id, updates) {
 
 // Generate PDF via API and upload to Drive
 async function generateAndUploadPDF(invData) {
-  // Generate PDF
-  const pdfResult = await apiCall('generate-pdf', invData);
-  if (!pdfResult.success) {
-    console.error('PDF generation failed:', pdfResult);
-    return pdfResult;
-  }
+  try {
+    // Generate PDF via API
+    const pdfResult = await apiCall('generate-pdf', invData);
+    if (!pdfResult.success) {
+      console.error('PDF generation failed:', pdfResult);
+      showToast('API error - using local PDF', 'err');
+      generatePDF(invData); // Fallback to local canvas method
+      return pdfResult;
+    }
 
-  // Download PDF locally
-  const pdfBytes = atob(pdfResult.pdfBase64);
-  const bytes = new Uint8Array(pdfBytes.length);
-  for (let i = 0; i < pdfBytes.length; i++) bytes[i] = pdfBytes.charCodeAt(i);
-  const blob = new Blob([bytes], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = pdfResult.fileName;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Download PDF locally
+    const pdfBytes = atob(pdfResult.pdfBase64);
+    const bytes = new Uint8Array(pdfBytes.length);
+    for (let i = 0; i < pdfBytes.length; i++) bytes[i] = pdfBytes.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pdfResult.fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  // Upload to Drive
-  const invoiceDate = new Date(invData.date);
-  const driveResult = await apiCall('drive-upload', {
-    fileName: pdfResult.fileName,
-    pdfBase64: pdfResult.pdfBase64,
-    entity: invData.logoType,
-    year: invoiceDate.getFullYear().toString(),
-    month: invoiceDate.toLocaleString('en-GB', { month: 'long' })
-  });
-
-  if (driveResult.success) {
-    // Update invoice with drive link
-    await apiCall('sheets-sync', {
-      action: 'update_invoice',
-      data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } }
+    // Upload to Drive
+    const invoiceDate = new Date(invData.date);
+    const driveResult = await apiCall('drive-upload', {
+      fileName: pdfResult.fileName,
+      pdfBase64: pdfResult.pdfBase64,
+      entity: invData.logoType,
+      year: invoiceDate.getFullYear().toString(),
+      month: invoiceDate.toLocaleString('en-GB', { month: 'long' })
     });
-  }
 
-  return { pdf: pdfResult, drive: driveResult };
+    if (driveResult.success) {
+      // Update invoice with drive link
+      await apiCall('sheets-sync', {
+        action: 'update_invoice',
+        data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } }
+      });
+    } else {
+      console.error('Drive upload failed:', driveResult);
+    }
+
+    return { pdf: pdfResult, drive: driveResult };
+  } catch (err) {
+    console.error('generateAndUploadPDF error:', err);
+    showToast('Error: ' + err.message, 'err');
+    generatePDF(invData); // Fallback to local canvas method
+    return { success: false, error: err.message };
+  }
 }
 
 // Load data from cloud (for sync)
