@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -30,6 +30,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .pcard.bupa{border-color:var(--bupa)}.pcard.bupa .ci{background:var(--bupa-lt);color:var(--bupa)}
 .pcard.grove{border-color:var(--grove)}.pcard.grove .ci{background:var(--grove-lt);color:var(--grove)}
 .pcard.adhoc{border-color:var(--adhoc)}.pcard.adhoc .ci{background:var(--adhoc-lt);color:var(--adhoc)}
+.pcard.add{border-style:dashed;border-color:var(--txt3)}.pcard.add .ci{background:#f3f4f6;color:var(--txt3)}
 .cn{font-size:15px;font-weight:600;margin-bottom:4px}.cm{font-size:12px;color:var(--txt2)}
 .cs{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--txt3)}.cs.on{background:var(--ok)}
 .banner{background:linear-gradient(135deg,var(--pri-dk),var(--pri));color:#fff;border-radius:var(--r);padding:16px 18px;margin-bottom:4px}
@@ -57,19 +58,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
 .alist{display:flex;flex-direction:column;gap:8px}
-.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);border-left:3px solid var(--bdr);border-right:3px solid var(--bdr);cursor:pointer;transition:all .15s}
+.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border:1px solid var(--bdr);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
 .aitem .db{min-width:44px;text-align:center}.aitem .db .dy{font-size:18px;font-weight:700;line-height:1}.aitem .db .mo{font-size:10px;color:var(--txt2);text-transform:uppercase;font-weight:500}
 .aitem .dt{flex:1}.aitem .dt .sv{font-size:14px;font-weight:600}.aitem .dt .pt{font-size:12px;color:var(--txt2)}
 .aitem .ac{text-align:right}.aitem .ac .gr{font-size:15px;font-weight:700}.aitem .ac .co{font-size:11px;color:var(--acc)}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:var(--adhoc-lt);color:var(--adhoc)}
-.ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-left:6px}
-.ent-badge.self{background:#E0F2FE;color:#0369A1}.ent-badge.ltd{background:#FEE2E2;color:#B91C1C}
-.aitem.ent-self{border-left:3px solid #0EA5E9}.aitem.ent-ltd{border-left:3px solid #EF4444}
-.arc-month{font-size:14px;font-weight:700;color:var(--txt);padding:12px 0 8px;margin-top:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px}
-.arc-month:first-child{margin-top:0}
-.arc-month .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
 .icard{background:var(--card);border-radius:var(--r);padding:18px;border:1px solid var(--bdr);margin-bottom:12px;box-shadow:var(--sh)}
 .icard .ih{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .icard .ip{font-size:16px;font-weight:700}.icard .iper{font-size:12px;color:var(--txt2)}
@@ -158,13 +153,14 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 </div>
 <div class="banner" id="hBan">
 <h3 id="hBanM">February 2026</h3>
-<div class="amt" id="hBanA">£0.00</div>
+<div class="amt" id="hBanA">Â£0.00</div>
 <div class="sub" id="hBanS">Total Net Revenue This Month</div>
 </div>
 <div class="pgrid">
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
 <div class="pcard grove" onclick="openPractice('grove')"><div class="cs" id="grSt"></div><div class="ci">G</div><div class="cn">The Grove</div><div class="cm" id="grM">Thursday</div></div>
-<div class="pcard adhoc" onclick="openPractice('adhoc')"><div class="cs" id="ahSt"></div><div class="ci">A</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div></div>
+<div class="pcard adhoc" onclick="openPractice('adhoc')"><div class="cs" id="ahSt"></div><div class="ci">+</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div></div>
+<div class="pcard add" onclick="showAddPractice()"><div class="ci">&#10010;</div><div class="cn">Add New</div><div class="cm">Practice</div></div>
 </div>
 <div id="hRecon" style="margin-top:16px"></div>
 </div>
@@ -175,17 +171,17 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="ebtn act" onclick="setPracticeEntity('self')" id="pES">Self-Employed</button>
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
+<div class="banner" id="pBan"><h3 id="pBanT"></h3><div class="amt" id="pBanA">Â£0.00</div><div class="sub" id="pBanS"></div></div>
 <div id="pToday"></div>
 <div class="sh">Service Type</div>
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
-<div class="stg"><div class="sl"><span>Patients</span><span id="ptH"></span></div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
-<div class="stg"><div class="sl"><span>Price per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
-<button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
-<div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
-<div class="stg" id="aoG" style="margin-top:12px"><div class="sl"><span>Airflow Add-on</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
-<div class="fg" style="margin-top:12px"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()"></div>
-<div class="banner" id="pBan" style="margin-top:12px"><h3 id="pBanT"></h3><div class="amt" id="pBanA">£0.00</div><div class="sub" id="pBanS"></div></div>
+<div class="stg"><div class="sl"><span>Patients</span><span id="ptH"></span></div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">âˆ’</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
+<div class="stg"><div class="sl"><span>Price per Patient</span><span>Â± Â£5</span></div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">âˆ’</button><input class="stpv" id="pr" value="Â£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
+<div class="stg" id="aoG"><div class="sl"><span>Airflow Add-on</span><span>Â± Â£1</span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">âˆ’</button><input class="stpv" id="ao" value="Â£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
+<div class="amtd"><div class="lb">Total Amount</div><div class="vl" id="totA">Â£0.00</div><div class="cl" id="comL"></div></div>
+<div class="fg"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()"></div>
+<button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive â€” Save to Sheet</button>
 </div>
 </div>
 
@@ -197,29 +193,25 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 </div>
 <div class="sh">Select Practice</div>
 <select class="asel" id="ahSel" onchange="onAhChange()"><option value="">Choose a practice...</option></select>
+<button class="ibtn pv" style="width:100%;margin-bottom:16px" onclick="showAddAhPractice()">+ Add New Ad Hoc Practice</button>
 <div id="ahForm" style="display:none">
 <div class="sh">Service Type</div>
 <div class="sgrid" id="ahSGrid">
-<button class="sbtn sel" onclick="selAhSvc('Hygiene')" data-s="Hygiene">Hygiene<span class="ph" id="ahHH">£25/pt</span></button>
-<button class="sbtn" onclick="selAhSvc('Perio')" data-s="Perio">Perio<span class="ph">£160/pt</span></button>
+<button class="sbtn sel" onclick="selAhSvc('Hygiene')" data-s="Hygiene">Hygiene<span class="ph" id="ahHH">Â£25/pt</span></button>
+<button class="sbtn" onclick="selAhSvc('Perio')" data-s="Perio">Perio<span class="ph">Â£160/pt</span></button>
 </div>
-<div class="stg"><div class="sl"><span>Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">−</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
-<div class="stg"><div class="sl"><span>Rate per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
-<button class="abtn" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
-<div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
-<div class="stg" style="margin-top:12px"><div class="sl"><span>Airflow (per patient)</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
-<div class="stg" id="ahApG"><div class="sl"><span>Airflow Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
-<div class="fg" style="margin-top:12px"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt"></div>
+<div class="stg"><div class="sl"><span>Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">âˆ’</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
+<div class="stg"><div class="sl"><span>Rate per Patient</span><span>Â± Â£5</span></div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">âˆ’</button><input class="stpv" id="arv" value="Â£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
+<div class="stg"><div class="sl"><span>Airflow (per patient)</span><span>Â± Â£1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">âˆ’</button><input class="stpv" id="aao" value="Â£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
+<div class="stg" id="ahApG"><div class="sl"><span>Airflow Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">âˆ’</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+<div class="amtd"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">Â£0.00</div></div>
+<div class="fg"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt"></div>
+<button class="abtn" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive & Generate Invoice</button>
 </div>
 </div>
 
 <!-- ARCHIVE -->
 <div class="scr" id="scr-archive">
-<div class="esw" id="arcEntSw">
-<button class="ebtn act" onclick="filtArcEnt('all')" id="arcEAll">All</button>
-<button class="ebtn" onclick="filtArcEnt('self')" id="arcES">Self-Employed</button>
-<button class="ebtn" onclick="filtArcEnt('ltd')" id="arcEL">Ltd Company</button>
-</div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
 <button class="fc" onclick="filtArc('bupa')">Bupa</button>
@@ -227,7 +219,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="fc" onclick="filtArc('adhoc')">Ad Hoc</button>
 </div>
 <div class="alist" id="arcList"><div class="empty"><div class="emo">&#128203;</div><p>No entries yet.</p></div></div>
-<div style="padding:16px;margin-top:8px"><button class="btn btn-d" style="width:100%" onclick="showClearTodayModal()">Clear Today's Entries</button></div>
 </div>
 
 <!-- INVOICES -->
@@ -260,28 +251,28 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
 </div>
 <div class="sh">Practice Configuration</div>
-<div class="ssec" id="pracSettings"></div>
-<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
+<div class="ssec" id="pracSettings">
+<div class="srow" onclick="editPrac('bupa')"><span class="la">Bupa</span><span class="va" id="sBupa">35% Â· Mon/Fri</span></div>
+<div class="srow" onclick="editPrac('grove')"><span class="la">The Grove</span><span class="va" id="sGrove">40% Â· Thu</span></div>
+</div>
 <div class="sh">Day Mapping</div>
 <div class="ssec" id="dayMap"></div>
-<div class="sh">Ad Hoc Practices</div>
-<div class="ssec" id="ahPracSettings"></div>
 <div class="sh">Invoice &amp; Payment</div>
 <div class="ssec">
-<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
+<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">00001</span></div>
 <div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
 </div>
 <div class="sh">Cloud Sync</div>
 <div class="ssec">
-<div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
-<div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
-<div class="srow" onclick="initDriveFoldersManual()"><span class="la">Setup Drive Folders</span><span class="va">📁</span></div>
+<div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">â˜â†‘</span></div>
+<div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">â˜â†“</span></div>
+<div class="srow" onclick="initDriveFoldersManual()"><span class="la">Setup Drive Folders</span><span class="va">ðŸ“</span></div>
 </div>
 <div class="sh">Data</div>
 <div class="ssec">
-<div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">↓</span></div>
+<div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">â†“</span></div>
 </div>
-<p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with ♥ by Marcus</p>
+<p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with â™¥ by Marcus</p>
 </div>
 
 </div>
@@ -311,14 +302,11 @@ self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingha
 ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08'}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
-nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days'
+nextInv:1,payTerms:'5 working days'
 };
-// Helper to get/set nextInv for current entity
-function getNextInv(){return S.ent==='ltd'?S.nextInvLtd:S.nextInvSelf;}
-function setNextInv(n){if(S.ent==='ltd')S.nextInvLtd=n;else S.nextInvSelf=n;}
 
 // ===== HELPERS =====
-const fc=v=>'£'+Math.abs(v).toFixed(2);
+const fc=v=>'Â£'+Math.abs(v).toFixed(2);
 const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
@@ -339,10 +327,6 @@ function loadSettings(){
     if (d.dayMap) S.dayMap = d.dayMap;
     if (d.ahPrac) S.ahPrac = d.ahPrac;
     if (d.payTerms) S.payTerms = d.payTerms;
-    if (d.nextInvSelf) S.nextInvSelf = d.nextInvSelf;
-    if (d.nextInvLtd) S.nextInvLtd = d.nextInvLtd;
-    // Backwards compatibility: migrate old single nextInv to both
-    if (d.nextInv && !d.nextInvSelf) { S.nextInvSelf = d.nextInv; S.nextInvLtd = 1; }
     if (d.ents) {
       if (d.ents.self) Object.assign(S.ents.self, d.ents.self);
       if (d.ents.ltd) Object.assign(S.ents.ltd, d.ents.ltd);
@@ -380,7 +364,7 @@ function save() {
       pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract' };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
-      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInv: S.nextInv
     }));
     localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
   } catch(e) { console.error('Save error:', e); }
@@ -409,53 +393,7 @@ function updatePendingBar() {
 async function retryPending() {
   if (!pendingOps.length) return;
   showToast('Retrying ' + pendingOps.length + ' pending changes...');
-
-  // Validate and fix pending operations before retrying
-  const validatedOps = [];
-  let fixed = 0, removed = 0;
-
-  for (const op of pendingOps) {
-    const d = op.data;
-
-    // Validate update_entry operations
-    if (d.action === 'update_entry' && d.entryId) {
-      const localEntry = S.entries.find(e => e.id === d.entryId);
-      if (!localEntry) {
-        // Entry doesn't exist locally - remove this pending op
-        console.log('Removing pending op - entry not found:', d.entryId);
-        removed++;
-        continue;
-      }
-      // Fix entity mismatch - use entry's actual entity
-      if (localEntry.entity && d.entity !== localEntry.entity) {
-        console.log('Fixing pending op entity mismatch:', d.entryId, 'was:', d.entity, 'now:', localEntry.entity);
-        d.entity = localEntry.entity;
-        fixed++;
-      }
-    }
-
-    // Validate update_invoice operations
-    if (d.action === 'update_invoice' && d.invoiceNum) {
-      const localInv = S.invoices.find(i => i.num === d.invoiceNum);
-      if (!localInv) {
-        console.log('Removing pending op - invoice not found:', d.invoiceNum);
-        removed++;
-        continue;
-      }
-      if (localInv.entity && d.entity !== localInv.entity) {
-        console.log('Fixing pending op entity mismatch:', d.invoiceNum, 'was:', d.entity, 'now:', localInv.entity);
-        d.entity = localInv.entity;
-        fixed++;
-      }
-    }
-
-    validatedOps.push(op);
-  }
-
-  if (removed > 0) console.log('Removed', removed, 'invalid pending operations');
-  if (fixed > 0) console.log('Fixed', fixed, 'entity mismatches');
-
-  const toRetry = [...validatedOps];
+  const toRetry = [...pendingOps];
   pendingOps = [];
   updatePendingBar();
 
@@ -622,18 +560,12 @@ async function deleteInvoiceFromCloud(num, entity) {
   return result;
 }
 
-// Sync practices to cloud (includes both contract and ad hoc practices)
+// Sync practices to cloud
 async function syncPracticesToCloud() {
-  // Contract practices
-  const contractPractices = Object.entries(S.practices).map(([id, p]) => ({
-    id, short: p.short, name: p.name, type: 'contract', addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
+  const practices = Object.entries(S.practices).map(([id, p]) => ({
+    id, short: p.short, name: p.name, type: p.type, addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
   }));
-  // Ad Hoc practices
-  const adhocPractices = (S.ahPrac || []).map(p => ({
-    id: p.id, short: p.name.split(' ')[0], name: p.name, type: 'adhoc', addr: p.addr, comm: 0, services: {}, days: [], rate: p.rate, air: p.air, active: p.active
-  }));
-  const practices = [...contractPractices, ...adhocPractices];
-  console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
+  console.log('[Practices Sync]', practices.map(p => p.short + ': ' + Object.keys(p.services || {}).join(',')));
   const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync practices:', result);
   return result;
@@ -668,32 +600,16 @@ async function loadPracticesFromCloud() {
   return result;
 }
 
-// Sync settings to cloud (syncs to BOTH sheets - entity-specific and shared)
+// Sync settings to cloud
 async function syncSettingsToCloud() {
-  // Sync Self-Employed settings
-  const selfSettings = {
-    entities: S.ents,
+  const settings = {
+    entities: S.entities,
     payTerms: S.payTerms,
-    nextInv: S.nextInvSelf,
-    dayMap: S.dayMap,
-    ahPrac: S.ahPrac
+    iEnt: S.iEnt
   };
-  // Sync Ltd settings
-  const ltdSettings = {
-    entities: S.ents,
-    payTerms: S.payTerms,
-    nextInv: S.nextInvLtd,
-    dayMap: S.dayMap,
-    ahPrac: S.ahPrac
-  };
-  console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
-  const [selfResult, ltdResult] = await Promise.all([
-    apiCall('sheets-sync', { action: 'sync_settings', data: { settings: selfSettings }, entity: 'self' }),
-    apiCall('sheets-sync', { action: 'sync_settings', data: { settings: ltdSettings }, entity: 'ltd' })
-  ]);
-  if (!selfResult.success) console.error('Failed to sync self settings:', selfResult);
-  if (!ltdResult.success) console.error('Failed to sync ltd settings:', ltdResult);
-  return selfResult.success && ltdResult.success ? { success: true } : { success: false };
+  const result = await apiCall('sheets-sync', { action: 'sync_settings', data: { settings }, entity: S.iEnt });
+  if (!result.success) console.error('Failed to sync settings:', result);
+  return result;
 }
 
 // Refresh dashboard
@@ -707,7 +623,7 @@ async function refreshDashboard() {
 
 // Generate PDF via API and upload to Drive
 async function generateAndUploadPDF(invData) {
-  console.log('[PDF/Drive] Generating #'+invData.num, invData.practice, '£'+invData.amount?.toFixed(2)||invData.gross?.toFixed(2));
+  console.log('[PDF/Drive] Generating #'+invData.num, invData.practice, 'Â£'+invData.amount?.toFixed(2)||invData.gross?.toFixed(2));
   try {
     // Add logo to invoice data for PDF generation
     const dataWithLogo = { ...invData, logoBase64: LOGO[invData.logoType] || LOGO.self };
@@ -740,8 +656,7 @@ async function generateAndUploadPDF(invData) {
       pdfBase64: pdfResult.pdfBase64,
       entity: invData.logoType,
       year: invoiceDate.getFullYear().toString(),
-      month: invoiceDate.toLocaleString('en-GB', { month: 'long' }),
-      isAdhoc: invData.isAdhoc || false
+      month: invoiceDate.toLocaleString('en-GB', { month: 'long' })
     });
 
     if (driveResult.success) {
@@ -797,9 +712,8 @@ async function loadFromCloudUI() {
   showToast('Loading from cloud...');
   const result = await loadFromCloudSimple();
   if (result.success) {
-    // Normalize numeric fields when loading from cloud
-    S.entries = (result.entries || []).map(normalizeEntry);
-    S.invoices = (result.invoices || []).map(normalizeInvoice);
+    S.entries = result.entries || [];
+    S.invoices = result.invoices || [];
     save();
     showToast('\u2713 Loaded ' + result.entriesCount + ' entries, ' + result.invoicesCount + ' invoices');
     upHome();
@@ -835,30 +749,15 @@ function mergeCloudData(selfData, ltdData) {
   return updates;
 }
 
-// Normalize entry numeric fields (cloud data comes as strings)
-function normalizeEntry(e) {
-  return {
-    ...e,
-    pts: parseInt(e.pts) || 0,
-    uPrice: parseFloat(e.uPrice) || 0,
-    gross: parseFloat(e.gross) || 0,
-    comm: parseFloat(e.comm) || 0,
-    commAmt: parseFloat(e.commAmt) || 0,
-    aoAmt: parseFloat(e.aoAmt) || 0,
-    aoPatients: parseInt(e.aoPatients) || 0
-  };
-}
-
 function mergeEntries(cloudEntries, entity) {
   let updates = 0;
   if (!cloudEntries || !Array.isArray(cloudEntries)) return 0;
   cloudEntries.forEach(ce => {
     if (ce.entity && ce.entity !== entity) return;
-    const normalized = normalizeEntry(ce);
     const localIdx = S.entries.findIndex(e => e.id === ce.id);
     if (localIdx === -1) {
       // New from cloud - add it
-      S.entries.push(normalized);
+      S.entries.push(ce);
       updates++;
     } else {
       // Compare timestamps - cloud wins if newer
@@ -866,7 +765,7 @@ function mergeEntries(cloudEntries, entity) {
       const cloudTime = new Date(ce.createdAt || 0).getTime();
       const localTime = new Date(local.createdAt || 0).getTime();
       if (cloudTime > localTime) {
-        S.entries[localIdx] = normalized;
+        S.entries[localIdx] = ce;
         updates++;
       }
     }
@@ -874,32 +773,22 @@ function mergeEntries(cloudEntries, entity) {
   return updates;
 }
 
-// Normalize invoice numeric fields (cloud data comes as strings)
-function normalizeInvoice(inv) {
-  return {
-    ...inv,
-    total: parseFloat(inv.total) || 0,
-    pts: parseInt(inv.pts) || 0
-  };
-}
-
 function mergeInvoices(cloudInvoices, entity) {
   let updates = 0;
   if (!cloudInvoices || !Array.isArray(cloudInvoices)) return 0;
   cloudInvoices.forEach(ci => {
     if (ci.entity && ci.entity !== entity) return;
-    const normalized = normalizeInvoice(ci);
     const localIdx = S.invoices.findIndex(i => i.num === ci.num);
     if (localIdx === -1) {
       // New from cloud
-      S.invoices.push(normalized);
+      S.invoices.push(ci);
       updates++;
     } else {
       const local = S.invoices[localIdx];
       const cloudTime = new Date(ci.createdAt || 0).getTime();
       const localTime = new Date(local.createdAt || 0).getTime();
       if (cloudTime > localTime) {
-        S.invoices[localIdx] = normalized;
+        S.invoices[localIdx] = ci;
         updates++;
       }
     }
@@ -972,40 +861,32 @@ async function loadFromCloud() {
     S.entries = [];
     S.invoices = [];
 
-    // Stamp entity and normalize numeric fields on all loaded entries/invoices
+    // Stamp entity on all loaded entries/invoices to ensure proper separation
     if (selfData.success) {
       if (selfData.entries) {
         selfData.entries.forEach(e => { e.entity = 'self'; });
-        S.entries.push(...selfData.entries.map(normalizeEntry));
+        S.entries.push(...selfData.entries);
       }
       if (selfData.invoices) {
         selfData.invoices.forEach(i => { i.entity = 'self'; i.logoType = i.logoType || 'self'; });
-        S.invoices.push(...selfData.invoices.map(normalizeInvoice));
+        S.invoices.push(...selfData.invoices);
       }
     }
     if (ltdData.success) {
       if (ltdData.entries) {
         ltdData.entries.forEach(e => { e.entity = 'ltd'; });
-        S.entries.push(...ltdData.entries.map(normalizeEntry));
+        S.entries.push(...ltdData.entries);
       }
       if (ltdData.invoices) {
         ltdData.invoices.forEach(i => { i.entity = 'ltd'; i.logoType = i.logoType || 'ltd'; });
-        S.invoices.push(...ltdData.invoices.map(normalizeInvoice));
+        S.invoices.push(...ltdData.invoices);
       }
     }
 
-    // Update nextInv from cloud data (per entity)
+    // Update nextInv from cloud data
     if (S.invoices.length > 0) {
-      const selfInvoices = S.invoices.filter(i => i.entity === 'self');
-      const ltdInvoices = S.invoices.filter(i => i.entity === 'ltd');
-      if (selfInvoices.length > 0) {
-        const maxSelf = Math.max(...selfInvoices.map(i => parseInt(i.num) || 0));
-        if (maxSelf >= S.nextInvSelf) S.nextInvSelf = maxSelf + 1;
-      }
-      if (ltdInvoices.length > 0) {
-        const maxLtd = Math.max(...ltdInvoices.map(i => parseInt(i.num) || 0));
-        if (maxLtd >= S.nextInvLtd) S.nextInvLtd = maxLtd + 1;
-      }
+      const maxInv = Math.max(...S.invoices.map(i => parseInt(i.num) || 0));
+      if (maxInv >= S.nextInv) S.nextInv = maxInv + 1;
     }
 
     save(); // Save settings (not data)
@@ -1018,29 +899,14 @@ async function loadFromCloud() {
   }
 }
 
-// Load settings from cloud (load from BOTH sheets)
+// Load settings from cloud
 async function loadSettingsFromCloudFn() {
-  const [selfResult, ltdResult] = await Promise.all([
-    apiCall('sheets-sync', { action: 'load_settings', entity: 'self' }),
-    apiCall('sheets-sync', { action: 'load_settings', entity: 'ltd' })
-  ]);
-  // Load shared settings from self (they're mirrored, so either works)
-  if (selfResult.success && selfResult.settings) {
-    if (selfResult.settings.entities) S.ents = selfResult.settings.entities;
-    if (selfResult.settings.payTerms) S.payTerms = selfResult.settings.payTerms;
-    if (selfResult.settings.dayMap) S.dayMap = selfResult.settings.dayMap;
-    if (selfResult.settings.ahPrac) {
-      S.ahPrac = selfResult.settings.ahPrac;
-      console.log('[Settings Loaded] ahPrac=', S.ahPrac.length, 'practices');
-    }
-    if (selfResult.settings.nextInv) S.nextInvSelf = selfResult.settings.nextInv;
+  const result = await apiCall('sheets-sync', { action: 'load_settings', entity: 'self' });
+  if (result.success && result.settings) {
+    if (result.settings.entities) S.ents = result.settings.entities;
+    if (result.settings.payTerms) S.payTerms = result.settings.payTerms;
   }
-  // Load entity-specific nextInv from ltd
-  if (ltdResult.success && ltdResult.settings) {
-    if (ltdResult.settings.nextInv) S.nextInvLtd = ltdResult.settings.nextInv;
-  }
-  console.log('[Settings Loaded] nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
-  return selfResult;
+  return result;
 }
 function scheduleMidnightReset(){
 const now=new Date();
@@ -1091,7 +957,7 @@ var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
 var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')[0];
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wc=0;weekEntries.forEach(function(e){wc+=e.pType==='contract'?e.gross*e.comm:e.gross});
-document.getElementById('hBanS').textContent='This week: '+fc(wc)+' · This month: '+fc(tc);
+document.getElementById('hBanS').textContent='This week: '+fc(wc)+' Â· This month: '+fc(tc);
 const td=today(),te=S.entries.filter(e=>e.date===td);
 var _st;
 _st=document.getElementById('buSt')||document.getElementById('bupaSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='bupa')?' on':'');
@@ -1112,9 +978,9 @@ const me=getMonth(y,m);let be=0,ge=0;
 for(let d=1;d<=ld;d++){const dt=new Date(y,m,d),dw=dt.getDay();if(S.dayMap[dw]==='bupa')be++;if(S.dayMap[dw]==='grove')ge++;}
 const ba=new Set(me.filter(e=>e.pId==='bupa').map(e=>e.date)).size;
 const ga=new Set(me.filter(e=>e.pId==='grove').map(e=>e.date)).size;
-let h='';if(be>ba)h+='<div class="rb">⚠️ Bupa: '+be+' sessions expected, '+ba+' logged</div>';
-if(ge>ga)h+='<div class="rb">⚠️ Grove: '+ge+' sessions expected, '+ga+' logged</div>';
-if(!h&&(be>0||ge>0))h='<div class="rb ok">✓ All sessions logged this month</div>';
+let h='';if(be>ba)h+='<div class="rb">âš ï¸ Bupa: '+be+' sessions expected, '+ba+' logged</div>';
+if(ge>ga)h+='<div class="rb">âš ï¸ Grove: '+ge+' sessions expected, '+ga+' logged</div>';
+if(!h&&(be>0||ge>0))h='<div class="rb ok">âœ“ All sessions logged this month</div>';
 c.innerHTML=h;}
 
 // ===== ENTITY =====
@@ -1155,12 +1021,13 @@ function switchEntity(t){
     let tg=0;me.forEach(e=>tg+=e.gross);
     const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
     if(pBanA)pBanA.textContent=fc(tg*pComm);
-    if(pBanS)pBanS.textContent=fc(tg)+' gross · '+(pComm*100).toFixed(0)+'% commission';
+    if(pBanS)pBanS.textContent=fc(tg)+' gross Â· '+(pComm*100).toFixed(0)+'% commission';
     // Update "already logged today" indicator
     const tEl=document.getElementById('pToday'),td2=today();
     if(tEl){
       const logged=S.entries.some(e=>e.date===td2&&e.pId===S.prac&&e.entity===S.ent);
-      if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
+      if(logged)tEl.innerHTML='<div class="rb ok">âœ“ Already logged today</div>';
+      else if(p.days&&p.days.includes(new Date().getDay()))tEl.innerHTML='<div style="display:flex;align-items:center;margin-bottom:8px"><span class="td"><span class="tdot"></span> Today is a '+p.short+' day</span></div>';
       else tEl.innerHTML='';
     }
   }
@@ -1188,15 +1055,16 @@ S.prac=id;S.svc=null;showScreen('practice');
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
 const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-document.getElementById('pBanT').textContent=p.short+' — '+mn;
+document.getElementById('pBanT').textContent=p.short+' â€” '+mn;
 const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===id&&e.entity===S.ent);
 let tg=0;me.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
 document.getElementById('pBanA').textContent=fc(tg*comm);
-document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
+document.getElementById('pBanS').textContent=fc(tg)+' gross Â· '+(comm*100).toFixed(0)+'% commission';
 const tEl=document.getElementById('pToday'),td2=today();
 const logged=S.entries.some(e=>e.date===td2&&e.pId===id&&e.entity===S.ent);
-if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
+if(logged)tEl.innerHTML='<div class="rb ok">âœ“ Already logged today</div>';
+else if(p.days&&p.days.includes(new Date().getDay()))tEl.innerHTML='<div style="display:flex;align-items:center;margin-bottom:8px"><span class="td"><span class="tdot"></span> Today is a '+p.short+' day</span></div>';
 else tEl.innerHTML='';
 const g=document.getElementById('sGrid');g.innerHTML='';
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn';b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
@@ -1205,25 +1073,13 @@ document.getElementById('logForm').style.display='none';initDt();
 function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
 document.querySelectorAll('#sGrid .sbtn').forEach(b=>b.classList.toggle('sel',b.getAttribute('data-s')===nm));
 document.getElementById('logForm').style.display='block';
-document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';upAmt();}
+document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='Â£0.00';upAmt();}
 function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
 function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value);
 const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Commission @'+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdd(el.value);}
-function refreshPracticeBanner(){
-const p=S.practices[S.prac];if(!p)return;
-const n=new Date(),me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&e.entity===S.ent);
-let tg=0;me.forEach(e=>tg+=e.gross);
-const comm=p.comm||0.35;
-document.getElementById('pBanA').textContent=fc(tg*comm);
-document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
-const tEl=document.getElementById('pToday'),td2=today();
-const logged=S.entries.some(e=>e.date===td2&&e.pId===S.prac&&e.entity===S.ent);
-if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
-else tEl.innerHTML='';
-}
 
 // ===== ARCHIVE ENTRY =====
 function doArchive(){
@@ -1234,12 +1090,11 @@ if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null};
-console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
+console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', 'Â£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
-document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
-// Refresh banner and today indicator without collapsing form
-setTimeout(()=>refreshPracticeBanner(),300);
+document.getElementById('pt').value='0';document.getElementById('ao').value='Â£0.00';upAmt();
+setTimeout(()=>openPractice(S.prac),300);
 }
 function showDupMod(ex,pts,ao){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
@@ -1257,25 +1112,21 @@ var r=document.getElementById('_dupReplace');if(r)r.onclick=function(){replaceDu
 async function addToDup(id,pts,ao){
   const e=S.entries.find(x=>x.id===id);
   if(e){
-    // Ensure numeric fields are numbers (cloud data may be strings)
-    e.pts=(parseInt(e.pts)||0)+pts;
-    e.uPrice=parseFloat(e.uPrice)||0;
-    e.aoAmt=(parseFloat(e.aoAmt)||0)+ao;
-    e.comm=parseFloat(e.comm)||0;
+    e.pts+=pts;
+    e.aoAmt+=ao;
     e.gross=(e.pts*e.uPrice)+e.aoAmt;
     e.commAmt=e.gross*e.comm;
     e.updatedAt=new Date().toISOString();
     save();
     closeMod2();
-    document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
-    refreshPracticeBanner();
+    openPractice(S.prac);
     showToast('Syncing...');
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
-    if(result.success){ showToast('Updated — '+e.pts+' patients'); }
+    if(result.success){ showToast('Updated â€” '+e.pts+' patients'); }
   } else {
     closeMod2();
-    refreshPracticeBanner();
+    openPractice(S.prac);
   }
 }
 async function replaceDup(id){
@@ -1291,10 +1142,10 @@ async function replaceDup(id){
 
 // ===== UNDO =====
 function showUndo(entry){clearTimeout(S.undoT);S.undoE=entry;const t=document.getElementById('toast');
-t.className='toast ok';t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
+t.className='toast ok';t.innerHTML='<span>âœ“ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('â†© Entry removed');if(S.prac)openPractice(S.prac);}}
 function showToast(msg,cls){const t=document.getElementById('toast');t.className='toast ok';t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -1308,7 +1159,7 @@ document.getElementById('ahHH').textContent=fc(p.rate)+'/pt';
 document.getElementById('ahApG').style.display=p.air>0?'block':'none';
 upAhAmt();initDt();}
 function selAhSvc(nm){ahSvc=nm;document.querySelectorAll('#ahSGrid .sbtn').forEach(b=>b.classList.toggle('sel',b.getAttribute('data-s')===nm));
-if(nm==='Perio')document.getElementById('arv').value='£160.00';
+if(nm==='Perio')document.getElementById('arv').value='Â£160.00';
 else{const id=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===id);if(p)document.getElementById('arv').value=fc(p.rate);}
 upAhAmt();}
 function adjAh(id,d){const el=document.getElementById(id);if(id==='ap'||id==='aap'){const mx=id==='aap'?parseInt(document.getElementById('ap').value)||0:999;el.value=Math.max(0,Math.min(mx,(parseInt(el.value)||0)+d));}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAhAmt();}
@@ -1321,7 +1172,7 @@ if(!pts)return;const gr=(pts*rate)+(airPts*air);
 const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent};
-console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
+console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', 'Â£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();}
@@ -1342,20 +1193,15 @@ var r=document.getElementById('_ahDupReplace');if(r)r.onclick=function(){replace
 async function addToAhDup(id,pts,air,airPts){
 const e=S.entries.find(x=>x.id===id);
 if(e){
-  // Ensure numeric fields are numbers (cloud data may be strings)
-  e.pts=(parseInt(e.pts)||0)+pts;
-  e.uPrice=parseFloat(e.uPrice)||0;
-  e.aoPatients=(parseInt(e.aoPatients)||0)+airPts;
-  e.aoAmt=parseFloat(e.aoAmt)||0;
-  e.gross=(e.pts*e.uPrice)+(e.aoPatients*e.aoAmt);
+  e.pts+=pts;
+  e.aoPatients=(e.aoPatients||0)+airPts;
+  e.gross=(e.pts*e.uPrice)+((e.aoPatients||0)*(e.aoAmt||0));
   e.updatedAt=new Date().toISOString();
-  save();closeMod2();
-  // Reset form
-  document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();
+  save();closeMod2();nav('adhoc');
   showToast('Syncing...');
   const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
-  if(result.success){showToast('Updated — '+e.pts+' patients');}
-}else{closeMod2();}
+  if(result.success){showToast('Updated â€” '+e.pts+' patients');}
+}else{closeMod2();nav('adhoc');}
 }
 
 async function replaceAhDup(id){
@@ -1370,73 +1216,52 @@ function showAddAhPractice(){
 showModal('<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>'+
 '<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="nAhName" placeholder="e.g. Haddenham Dental"></div>'+
 '<div class="fg"><label class="fl">Address</label><textarea class="fi" id="nAhAddr" rows="3" placeholder="Full address"></textarea></div>'+
-'<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate/Patient (£)</label><input class="fi" id="nAhRate" type="number" value="25" step="0.01"></div>'+
-'<div class="fg" style="flex:1"><label class="fl">Airflow Rate (£)</label><input class="fi" id="nAhAir" type="number" value="0" step="0.01"></div></div>'+
+'<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate/Patient (Â£)</label><input class="fi" id="nAhRate" type="number" value="25" step="0.01"></div>'+
+'<div class="fg" style="flex:1"><label class="fl">Airflow Rate (Â£)</label><input class="fi" id="nAhAir" type="number" value="0" step="0.01"></div></div>'+
 '<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="saveAhPrac()">Save</button></div>');
 }
 function saveAhPrac(){const nm=document.getElementById('nAhName').value.trim();if(!nm){alert('Please enter a name');return;}
 S.ahPrac.push({id:'ah'+Date.now(),name:nm,addr:document.getElementById('nAhAddr').value.trim().replace(/\n/g,'\n'),rate:parseFloat(document.getElementById('nAhRate').value)||25,air:parseFloat(document.getElementById('nAhAir').value)||0,active:true});
-save();closeMod2();popAh();showToast('✓ '+nm+' added');
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);});}
+save();closeMod2();popAh();showToast('âœ“ '+nm+' added');}
 
 function showAddPractice(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add New Practice</h3>';
-// Practice type selector
-_h+='<div class="fg"><label class="fl">Practice Type</label><div class="esw" style="margin-top:4px">';
-_h+='<button class="ebtn act" id="npTypeC" onclick="setPracticeType(\'contract\')">Contracted</button>';
-_h+='<button class="ebtn" id="npTypeA" onclick="setPracticeType(\'adhoc\')">Ad Hoc</button></div></div>';
-// Common fields
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Contracted Practice</h3>';
+// Check if any adhoc practices exist to port over
+var ahOpts=S.ahPrac.filter(function(p){return p.active}).map(function(p){return '<option value="'+p.id+'">'+p.name+' (from Ad Hoc)</option>'}).join('');
+if(ahOpts)_h+='<div class="fg"><label class="fl">Import from Ad Hoc</label><select class="asel" id="npImport" onchange="importAhToContract()"><option value="">Start fresh...</option>'+ahOpts+'</select></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="npName" placeholder="e.g. Smile Dental"></div>';
-_h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="npShort" placeholder="e.g. Smile"></div>';
-_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="npAddr" rows="2" placeholder="Full address"></textarea></div>';
-// Contracted-only fields
-_h+='<div id="npContractFields">';
+_h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="npShort" placeholder="e.g. Smile"></div>';
+_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="npAddr" rows="3" placeholder="Full address"></textarea></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="npComm" type="number" value="35" min="0" max="100"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="npDays" placeholder="e.g. 1,4"></div></div>';
-_h+='<div class="fg"><label class="fl">Services (name:price)</label><input class="fi" id="npSvcs" placeholder="Hygiene:70,Perio:160"></div>';
-_h+='</div>';
-// Ad Hoc-only fields
-_h+='<div id="npAdhocFields" style="display:none">';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per patient</label><input class="fi" id="npRate" type="number" value="25" min="0"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Airflow rate</label><input class="fi" id="npAir" type="number" value="0" min="0"></div></div>';
-_h+='</div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Days (e.g. 1,4)</label><input class="fi" id="npDays" placeholder="1=Mon,4=Thu"></div></div>';
+_h+='<div class="fg"><label class="fl">Services (name:price, comma separated)</label><input class="fi" id="npSvcs" placeholder="Hygiene:70,Perio:160"></div>';
 _h+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="saveNewPractice()">Add Practice</button></div>';
 showModal(_h);
 }
-function setPracticeType(t){
-document.getElementById('npTypeC').className='ebtn'+(t==='contract'?' act':'');
-document.getElementById('npTypeA').className='ebtn'+(t==='adhoc'?' act':'');
-document.getElementById('npContractFields').style.display=t==='contract'?'block':'none';
-document.getElementById('npAdhocFields').style.display=t==='adhoc'?'block':'none';
+function importAhToContract(){
+var sel=document.getElementById('npImport');if(!sel)return;
+var p=S.ahPrac.find(function(x){return x.id===sel.value});if(!p)return;
+document.getElementById('npName').value=p.name;
+document.getElementById('npShort').value=p.name.split(' ')[0];
+document.getElementById('npAddr').value=(p.addr||'').replace(/\\n/g,'\n');
 }
 function saveNewPractice(){
 var nm=document.getElementById('npName').value.trim();if(!nm){alert('Enter a name');return;}
 var short=document.getElementById('npShort').value.trim()||nm.substring(0,8);
 var addr=document.getElementById('npAddr').value.trim().replace(/\n/g,'\\n');
-// Check which type is selected
-var isAdhoc=document.getElementById('npTypeA').classList.contains('act');
-if(isAdhoc){
-  // Save as Ad Hoc practice
-  var rate=parseFloat(document.getElementById('npRate').value)||25;
-  var air=parseFloat(document.getElementById('npAir').value)||0;
-  S.ahPrac.push({id:'ah'+Date.now(),name:nm,addr:addr,rate:rate,air:air,active:true});
-  save();closeMod2();popAh();showToast('✓ '+nm+' added (Ad Hoc)');
-  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);});
-}else{
-  // Save as Contracted practice
-  var comm=(parseFloat(document.getElementById('npComm').value)||35)/100;
-  var daysStr=document.getElementById('npDays').value.trim();
-  var days=daysStr?daysStr.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)}):[];
-  var svcsStr=document.getElementById('npSvcs').value.trim();
-  var svcs={};if(svcsStr){svcsStr.split(',').forEach(function(s){var parts=s.trim().split(':');if(parts.length===2)svcs[parts[0].trim()]={p:parseFloat(parts[1])||70,d:'per patient'};});}
-  if(!Object.keys(svcs).length)svcs={Hygiene:{p:70,d:'per patient hygiene'}};
-  var id='p'+Date.now();
-  S.practices[id]={id:id,name:nm,short:short,addr:addr,days:days,comm:comm,type:'contract',color:'grove',svcs:svcs};
-  days.forEach(function(d){S.dayMap[d]=id;});
-  save();closeMod2();showToast('✓ '+nm+' added (Contracted)');
-  rebuildHomeCards();
-  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Contract Practice Synced]',nm);});
-}
+var comm=(parseFloat(document.getElementById('npComm').value)||35)/100;
+var daysStr=document.getElementById('npDays').value.trim();
+var days=daysStr?daysStr.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)}):[];
+var svcsStr=document.getElementById('npSvcs').value.trim();
+var svcs={};if(svcsStr){svcsStr.split(',').forEach(function(s){var parts=s.trim().split(':');if(parts.length===2)svcs[parts[0].trim()]={p:parseFloat(parts[1])||70,d:'per patient'};});}
+if(!Object.keys(svcs).length)svcs={Hygiene:{p:70,d:'per patient hygiene'}};
+var id='p'+Date.now();
+S.practices[id]={id:id,name:nm,short:short,addr:addr,days:days,comm:comm,type:'contract',color:'grove',svcs:svcs};
+// Update day mapping
+days.forEach(function(d){S.dayMap[d]=id;});
+save();closeMod2();showToast('âœ“ '+nm+' added');
+// Refresh home - need to rebuild practice cards
+rebuildHomeCards();
 }
 function rebuildHomeCards(){
 var grid=document.querySelector('.pgrid');if(!grid)return;
@@ -1449,88 +1274,37 @@ grid.appendChild(card);
 });
 // Ad hoc card
 var ah=document.createElement('div');ah.className='pcard adhoc';ah.onclick=function(){openPractice('adhoc')};
-ah.innerHTML='<div class="cs" id="ahSt"></div><div class="ci">A</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div>';
+ah.innerHTML='<div class="cs" id="ahSt"></div><div class="ci">+</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div>';
 grid.appendChild(ah);
+// Add new card
+var add=document.createElement('div');add.className='pcard add';add.onclick=showAddPractice;
+add.innerHTML='<div class="ci">&#10010;</div><div class="cn">Add New</div><div class="cm">Practice</div>';
+grid.appendChild(add);
 upHome();
 }
 
 // ===== ARCHIVE SCREEN =====
 let arcFilter='all';
-let arcEntFilter='all';
-function filtArcEnt(f){
-  arcEntFilter=f;
-  document.getElementById('arcEAll').className='ebtn'+(f==='all'?' act':'');
-  document.getElementById('arcES').className='ebtn'+(f==='self'?' act':'');
-  document.getElementById('arcEL').className='ebtn'+(f==='ltd'?' act':'');
-  refArc();
-}
 function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(c=>c.classList.toggle('act',c.textContent.toLowerCase()===f||f==='all'&&c.textContent==='All'));refArc();}
-function refArc(){
-  const c=document.getElementById('arcList');
-  const now=new Date();
-  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-
-  // Sort by date desc, then by createdAt desc (most recent first)
-  let entries=[...S.entries].sort((a,b)=>{
-    const dateComp=b.date.localeCompare(a.date);
-    if(dateComp!==0)return dateComp;
-    return (b.createdAt||'').localeCompare(a.createdAt||'');
-  });
-
-  // Apply practice filter
-  if(arcFilter!=='all')entries=entries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
-  // Apply entity filter
-  if(arcEntFilter!=='all')entries=entries.filter(e=>(e.entity||'self')===arcEntFilter);
-
-  if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
-
-  // Group by month
-  const byMonth={};
-  entries.forEach(e=>{
-    const monthKey=e.date.substring(0,7); // YYYY-MM
-    if(!byMonth[monthKey])byMonth[monthKey]=[];
-    byMonth[monthKey].push(e);
-  });
-
-  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const dayColors=['#EF4444','#2196F3','#EAB308','#7C3AED','#22C55E','#F97316','#1A1A1A'];
-
-  let html='';
-  Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-    const monthEntries=byMonth[monthKey];
-    const isCurrentMonth=monthKey===curMonth;
-    const d=new Date(monthKey+'-01');
-    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-
-    // Show month header for past months, or "This Month" for current
-    html+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthEntries.length+' entries</span></div>';
-
-    // Render entries for this month
-    html+=monthEntries.map(e=>{
-      const ed=new Date(e.date);
-      const col=e.pType==='adhoc'?'adhoc':e.pId;
-      const dow=ed.getDay();
-      const dayName=dayNames[dow];
-      const dayBorder='border-right:3px solid '+dayColors[dow];
-      const entBorder=e.entity==='ltd'?'border-left:3px solid #EF4444':'border-left:3px solid #0EA5E9';
-      const entLabel=e.entity==='ltd'?'Ltd':'Self';
-      const entBadgeClass=e.entity==='ltd'?'ltd':'self';
-      return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem" data-id="'+e.id+'" data-eid="'+e.id+'" style="'+entBorder+';'+dayBorder+'">'+
-        '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+dayName+' '+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
-        '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
-        '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
-    }).join('');
-  });
-  c.innerHTML=html;
-}
+function refArc(){const c=document.getElementById('arcList');
+let entries=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+if(arcFilter!=='all')entries=entries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
+if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">ðŸ“‹</div><p>No entries found.</p></div>';return;}
+c.innerHTML=entries.map(e=>{const d=new Date(e.date);const col=e.pType==='adhoc'?'adhoc':e.pId;
+var dow=d.getDay();var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var dayName=dayNames[dow];
+var dayColors=['#EF4444','#2196F3','#EAB308','#7C3AED','#22C55E','#F97316','#1A1A1A'];var dbColor='border:2.5px solid '+dayColors[dow]+'!important';
+return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem" data-id="'+e.id+'" data-eid="'+e.id+'" style="'+dbColor+'">'+
+'<div class="db"><div class="dy">'+d.getDate()+'</div><div class="mo">'+dayName+' '+d.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
+'<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
+'<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';}).join('');}
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
 _h+='<div class="fg"><label class="fl">Service</label><input class="fi" id="edSvc" value="'+e.svc+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Patients</label><input class="fi" id="edPts" type="number" value="'+e.pts+'"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
-_h+='<div class="fg"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Price (Â£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
+_h+='<div class="fg"><label class="fl">Airflow Add-on (Â£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div>';
 _h+='<div class="brow"><button class="btn btn-d" id="_edDel">Delete</button><button class="btn btn-s" id="_edCancel">Cancel</button><button class="btn btn-p" id="_edSave">Save</button></div>';
 showModal(_h);
 setTimeout(function(){
@@ -1549,10 +1323,9 @@ async function saveEntry(id){
   e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;
   e.aoType=e.aoAmt>0?'Airflow':null;
   e.gross=(e.pts*e.uPrice)+e.aoAmt;
-  e.comm=parseFloat(e.comm)||0;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
-  console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
+  console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', 'Â£'+e.gross.toFixed(2), 'id='+e.id);
   save();closeMod2();refArc();showToast('Syncing...');
   // Sync to cloud (queues on failure)
   const result=await updateEntryInCloud(e.id, e, e.entity||S.ent);
@@ -1569,118 +1342,6 @@ async function delEntry(id){
   if(result.success){showToast('Entry deleted');}
 }
 
-// ===== CLEAR TODAY'S ENTRIES =====
-function showClearTodayModal(){
-  const td=today();
-  // Split by entity AND type (contract vs adhoc)
-  const selfContract=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='contract');
-  const selfAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='adhoc');
-  const ltdContract=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='contract');
-  const ltdAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='adhoc');
-
-  const hasAny=selfContract.length||selfAdhoc.length||ltdContract.length||ltdAdhoc.length;
-  if(!hasAny){
-    showToast('No entries for today');
-    return;
-  }
-
-  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear Today\'s Entries</h3>';
-  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Select which entries to clear for '+fdd(td)+':</p>';
-  _h+='<div style="display:flex;flex-direction:column;gap:12px">';
-
-  // Self-Employed Contract
-  _h+=renderClearOption('Self-Employed','Contract',selfContract,'#0EA5E9','_clearSelfContract');
-  // Self-Employed Ad Hoc
-  _h+=renderClearOption('Self-Employed','Ad Hoc',selfAdhoc,'#0EA5E9','_clearSelfAdhoc');
-  // Ltd Company Contract
-  _h+=renderClearOption('Ltd Company','Contract',ltdContract,'#EF4444','_clearLtdContract');
-  // Ltd Company Ad Hoc
-  _h+=renderClearOption('Ltd Company','Ad Hoc',ltdAdhoc,'#EF4444','_clearLtdAdhoc');
-
-  _h+='</div>';
-  _h+='<button class="btn btn-s" style="width:100%;margin-top:16px" id="_clearCancel">Cancel</button>';
-  showModal(_h);
-
-  setTimeout(()=>{
-    document.getElementById('_clearCancel').onclick=()=>closeMod2();
-    if(selfContract.length>0) document.getElementById('_clearSelfContract').onclick=()=>showClearConfirmModal('self','contract');
-    if(selfAdhoc.length>0) document.getElementById('_clearSelfAdhoc').onclick=()=>showClearConfirmModal('self','adhoc');
-    if(ltdContract.length>0) document.getElementById('_clearLtdContract').onclick=()=>showClearConfirmModal('ltd','contract');
-    if(ltdAdhoc.length>0) document.getElementById('_clearLtdAdhoc').onclick=()=>showClearConfirmModal('ltd','adhoc');
-  },50);
-}
-
-function renderClearOption(entLabel,typeLabel,entries,color,btnId){
-  const gross=entries.reduce((s,e)=>s+(parseFloat(e.gross)||0),0);
-  if(entries.length>0){
-    return '<button class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px" id="'+btnId+'">'+
-      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
-      '<div style="font-size:12px;color:var(--txt2)">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+fc(gross)+' gross</div>'+
-      '</button>';
-  }else{
-    return '<div class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px;opacity:0.5;cursor:not-allowed">'+
-      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
-      '<div style="font-size:12px;color:var(--txt2)">No entries today</div>'+
-      '</div>';
-  }
-}
-
-function showClearConfirmModal(entity,pType){
-  const td=today();
-  const entries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
-  const entLabel=entity==='self'?'Self-Employed':'Ltd Company';
-  const typeLabel=pType==='adhoc'?'Ad Hoc':'Contract';
-  const entColor=entity==='self'?'#0EA5E9':'#EF4444';
-
-  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear '+entLabel+' '+typeLabel+'</h3>';
-  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete <b>'+entries.length+' entr'+(entries.length===1?'y':'ies')+'</b> from today ('+fdd(td)+').</p>';
-  _h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;border-left:3px solid '+entColor+'">';
-  entries.forEach(e=>{
-    _h+='<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)">'+e.pName+' · '+e.svc+' · '+e.pts+' pts · '+fc(parseFloat(e.gross)||0)+'</div>';
-  });
-  _h+='</div>';
-  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:8px">Type <b>11</b> to confirm deletion:</p>';
-  _h+='<input class="fi" id="clearConfirmInput" type="text" placeholder="Type 11" style="margin-bottom:16px">';
-  _h+='<div class="brow"><button class="btn btn-s" id="_clearBack">Back</button><button class="btn btn-d" id="_clearConfirm" disabled>Delete All</button></div>';
-  showModal(_h);
-
-  setTimeout(()=>{
-    const inp=document.getElementById('clearConfirmInput');
-    const btn=document.getElementById('_clearConfirm');
-    inp.focus();
-    inp.oninput=()=>{
-      btn.disabled=inp.value!=='11';
-    };
-    document.getElementById('_clearBack').onclick=()=>showClearTodayModal();
-    btn.onclick=()=>clearTodayEntries(entity,pType);
-  },50);
-}
-
-async function clearTodayEntries(entity,pType){
-  const td=today();
-  const todayEntries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
-  if(todayEntries.length===0){closeMod2();return;}
-
-  closeMod2();
-  showToast('Clearing '+todayEntries.length+' entries...');
-
-  // Delete from cloud first
-  let deleted=0;
-  for(const entry of todayEntries){
-    const result=await deleteEntryFromCloud(entry.id,entity);
-    if(result.success)deleted++;
-    console.log('[Clear Today] Deleted', entry.pName, entry.svc, entry.id, result.success?'OK':'FAIL');
-  }
-
-  // Remove from local state (only for selected entity and type)
-  S.entries=S.entries.filter(e=>!(e.date===td&&e.entity===entity&&e.pType===pType));
-  save();
-  refArc();
-  upHome();
-
-  showToast('Cleared '+deleted+'/'+todayEntries.length+' entries');
-}
-
 // ===== INVOICES =====
 function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
@@ -1693,7 +1354,7 @@ var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity==
 if(!pe.length){mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+mn+'</div></div></div><p style="color:var(--txt2);font-size:13px">No pending entries.</p></div>';return;}
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
-mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
+mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' Â· '+dateRange+'</div></div></div>'+
 '<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Commission<strong>'+fc(cm)+'</strong></div></div>'+
 '<div class="ia">';
 if(pe.length>1){
@@ -1716,7 +1377,7 @@ else{
     const totalPts=entries.reduce((s,e)=>s+e.pts,0);const totalGross=entries.reduce((s,e)=>s+e.gross,0);
     const dates=entries.map(e=>e.date);const minDate=dates[0];const maxDate=dates[dates.length-1];
     const dateRange=minDate===maxDate?fdd(minDate):fdd(minDate)+' - '+fdd(maxDate);
-    ahHtml+='<div class="icard"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
+    ahHtml+='<div class="icard"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' Â· '+dateRange+'</div></div></div>';
     ahHtml+='<div class="is"><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Total<strong>'+fc(totalGross)+'</strong></div></div>';
     ahHtml+='<div class="ia">';
     if(entries.length===1){
@@ -1731,37 +1392,12 @@ else{
   ac.innerHTML=ahHtml;
 }
 
-// Past invoices - grouped by month with entity badges
+// Past invoices
 const pc2=document.getElementById('pInv');
-// Filter by current entity view
-const filtInv=S.invoices.filter(inv=>(inv.logoType||inv.entity)===(S.iEnt==='self'?'self':'ltd')||(inv.logoType||inv.entity)===(S.iEnt==='self'?'Self-Employed':'Ltd Company'));
-if(!filtInv.length){pc2.innerHTML='<div class="empty"><div class="emo">📄</div><p>No invoices for this entity yet.</p></div>';}
-else{
-  // Group by month
-  const invByMonth={};
-  const now=new Date();
-  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  filtInv.sort((a,b)=>b.date.localeCompare(a.date)).forEach(inv=>{
-    const monthKey=inv.date.substring(0,7);
-    if(!invByMonth[monthKey])invByMonth[monthKey]=[];
-    invByMonth[monthKey].push(inv);
-  });
-  let invHtml='';
-  Object.keys(invByMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-    const monthInvs=invByMonth[monthKey];
-    const isCurrentMonth=monthKey===curMonth;
-    const d=new Date(monthKey+'-01');
-    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-    invHtml+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
-    invHtml+=monthInvs.map(inv=>{
-      const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
-      const entClass='ent-'+entType;
-      const entLabel=entType==='ltd'?'Ltd':'Self';
-      return '<div class="aitem '+entClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
-    }).join('');
-  });
-  pc2.innerHTML=invHtml;
-}
+if(!S.invoices.length){pc2.innerHTML='<div class="empty"><div class="emo">ðŸ“„</div><p>Generated invoices will appear here.</p></div>';}
+else{pc2.innerHTML=S.invoices.sort((a,b)=>b.date.localeCompare(a.date)).map(inv=>
+'<div class="aitem"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+'</div><div class="pt">'+inv.period+' Â· '+inv.entity+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>'
+).join('');}
 }
 
 // ===== INVOICE PREVIEW =====
@@ -1786,7 +1422,7 @@ html+='<div style="text-align:right"><div style="font-size:18px;font-weight:700"
 html+='<div style="font-size:20px;font-weight:700;color:var(--pri)">Invoice</div></div>';
 html+='<div style="border-top:3px solid var(--pri-dk);padding-top:12px;display:flex;justify-content:space-between;margin-bottom:16px">';
 html+='<div><div style="font-size:11px;font-weight:600;color:var(--txt2)">Bill To:</div><div style="font-size:13px;font-weight:600">'+p.name+'</div><div style="font-size:11px;white-space:pre-line;color:var(--txt2)">'+p.addr.replace(/\n/g,'\n')+'</div></div>';
-html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2)">Invoice No: <b>'+pad(getNextInv())+'</b></div><div style="font-size:11px;color:var(--txt2)">Date: <b>'+fdd(today())+'</b></div><div style="font-size:11px;color:var(--txt2)">Period: <b>'+mn+'</b></div></div></div>';
+html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2)">Invoice No: <b>'+pad(S.nextInv)+'</b></div><div style="font-size:11px;color:var(--txt2)">Date: <b>'+fdd(today())+'</b></div><div style="font-size:11px;color:var(--txt2)">Period: <b>'+mn+'</b></div></div></div>';
 html+='<table style="width:100%;border-collapse:collapse;margin:12px 0"><tr style="border-bottom:2px solid var(--txt)"><th style="text-align:left;padding:6px 4px;font-size:11px">Item</th><th style="text-align:left;padding:6px 4px;font-size:11px">Description</th><th style="text-align:right;padding:6px 4px;font-size:11px">Price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Subtotal</th></tr>';
 Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
@@ -1807,7 +1443,7 @@ var gb=document.getElementById('_pvGen');if(gb)gb.onclick=function(){closeMod2()
 },50);
 }
 
-function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;showToast('Ad hoc preview — coming soon');}
+function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;showToast('Ad hoc preview â€” coming soon');}
 
 // Show entry selection modal for contract practice invoice
 function showCpSelect(pid){
@@ -1821,7 +1457,7 @@ html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
 pe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
   html+='<input type="checkbox" class="cpsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
-  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' Â· '+e.pts+' pts Â· '+fc(e.gross)+'</div></div>';
   html+='</label>';
 });
 html+='</div>';
@@ -1845,7 +1481,7 @@ async function genCpInvMulti(pid,entries){
 const p=S.practices[pid];if(!p)return;
 const pComm=p.comm||0.35;
 const ent=S.ents[S.iEnt];
-const invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+const invNum=pad(S.nextInv);S.nextInv++;
 
 // Mark all entries as invoiced
 entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
@@ -1900,7 +1536,7 @@ for(const e of entries){
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
 // ===== GENERATE PDF (uses jsPDF-like approach via canvas) =====
@@ -1910,7 +1546,7 @@ var pComm=p.comm||0.35;
 var ent=S.ents[S.iEnt];
 var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
 if(!me.length){showToast('No entries to invoice');return;}
-var invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+var invNum=pad(S.nextInv);S.nextInv++;
 me.forEach(function(e){e.invSt='invoiced';e.invNo=invNum;});save();
 
 // Determine period based on dates
@@ -1936,37 +1572,33 @@ var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
 var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length};
-console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
+console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=Â£'+tg.toFixed(2), 'comm=Â£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
-me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);});
+me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});});
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
 refInv();
-document.getElementById('nInv').textContent=pad(getNextInv());
+document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
 async function genAhInv(id){
 var e=S.entries.find(function(x){return x.id===id});if(!e)return;
-// Use entry's entity, not current entity
-var entKey=e.entity||S.ent;
-var ent=S.ents[entKey];
-var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
-if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
-e.invSt='invoiced';e.invNo=invNum;
+var ent=S.ents[S.iEnt];
+var invNum=pad(S.nextInv);S.nextInv++;e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
 var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true};
-console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,isAdhoc:true};
+console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, 'Â£'+tg.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData, entKey);
-updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
+syncInvoiceToCloud(invData);
+updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
 // Show entry selection modal for multi-entry ad hoc invoice
@@ -1980,7 +1612,7 @@ html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
 ahe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
   html+='<input type="checkbox" class="ahsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
-  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' Â· '+e.pts+' pts Â· '+fc(e.gross)+'</div></div>';
   html+='</label>';
 });
 html+='</div>';
@@ -2010,7 +1642,7 @@ await genAhInvMulti(entries);
 async function genAhInvMulti(entries){
 if(!entries.length)return;
 const ent=S.ents[S.iEnt];
-const invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+const invNum=pad(S.nextInv);S.nextInv++;
 const pName=entries[0].pName;
 const pAddr=entries[0].adhocAddr||'';
 
@@ -2074,7 +1706,7 @@ for(const e of entries){
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
 // ===== SETTINGS =====
@@ -2090,100 +1722,25 @@ _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label cl
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" value="'+svcsStr+'"></div>';
-_h+='<div class="brow"><button class="btn" style="background:var(--err);color:#fff" id="_epDel">Delete</button><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
+_h+='<div class="brow"><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
 showModal(_h);
 setTimeout(function(){
 document.getElementById('_epCancel').onclick=function(){closeMod2()};
-document.getElementById('_epSave').onclick=function(){savePrac(id,false)};
-document.getElementById('_epDel').onclick=function(){deletePrac(id)};
+document.getElementById('_epSave').onclick=function(){savePrac(id)};
 },50);
 }
-function addPrac(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add New Practice</h3>';
-// Practice type selector
-_h+='<div class="fg"><label class="fl">Practice Type</label><div class="esw" style="margin-top:4px">';
-_h+='<button class="ebtn act" id="ePTypeC" onclick="setAddPracType(\'contract\')">Contracted</button>';
-_h+='<button class="ebtn" id="ePTypeA" onclick="setAddPracType(\'adhoc\')">Ad Hoc</button></div></div>';
-// Common fields
-_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" placeholder="e.g. Smile Dental"></div>';
-_h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="ePShort" placeholder="e.g. Smile"></div>';
-_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="2" placeholder="Full address..."></textarea></div>';
-// Contracted-only fields
-_h+='<div id="ePContractFields">';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" placeholder="e.g. 1,3,5"></div></div>';
-_h+='<div class="fg"><label class="fl">Services (Name:Price)</label><input class="fi" id="ePSvcs" placeholder="e.g. Hygiene:70, Perio:160"></div>';
-_h+='</div>';
-// Ad Hoc-only fields
-_h+='<div id="ePAdhocFields" style="display:none">';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per patient</label><input class="fi" id="ePRate" type="number" value="25" min="0"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Airflow rate</label><input class="fi" id="ePAir" type="number" value="0" min="0"></div></div>';
-_h+='</div>';
-_h+='<div class="brow"><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Add Practice</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_epCancel').onclick=function(){closeMod2()};
-document.getElementById('_epSave').onclick=function(){savePrac(null,true)};
-},50);
-}
-function setAddPracType(t){
-document.getElementById('ePTypeC').className='ebtn'+(t==='contract'?' act':'');
-document.getElementById('ePTypeA').className='ebtn'+(t==='adhoc'?' act':'');
-document.getElementById('ePContractFields').style.display=t==='contract'?'block':'none';
-document.getElementById('ePAdhocFields').style.display=t==='adhoc'?'block':'none';
-}
-function savePrac(id,isNew){
-var name=document.getElementById('ePName').value.trim();
-var short=document.getElementById('ePShort').value.trim();
-if(!name){showToast('Please enter a practice name');return;}
-if(!short)short=name;
-var addr=document.getElementById('ePAddr').value.trim().replace(/\n/g,'\\n');
-// Check if Ad Hoc type is selected (only for new practices)
-var typeABtn=document.getElementById('ePTypeA');
-var isAdhoc=isNew&&typeABtn&&typeABtn.classList.contains('act');
-if(isAdhoc){
-  // Save as Ad Hoc practice
-  var rate=parseFloat(document.getElementById('ePRate').value)||25;
-  var air=parseFloat(document.getElementById('ePAir').value)||0;
-  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true});
-  save();closeMod2();refreshSettings();
-  showToast('\u2713 '+name+' added (Ad Hoc)');
-  syncPracticesToCloud().then(function(r){if(r.success)console.log('[Ad Hoc Practice Synced]',name);});
-  return;
-}
-// Save as Contracted practice
-var newId=isNew?(short.toLowerCase().replace(/[^a-z0-9]/g,'')||'prac'+Date.now()):id;
-var p=isNew?{}:S.practices[id];
-p.id=newId;
-p.name=name;
-p.short=short;
-p.addr=addr;
+function savePrac(id){var p=S.practices[id];
+p.name=document.getElementById('ePName').value.trim()||p.name;
+p.short=document.getElementById('ePShort').value.trim()||p.short;
+p.addr=document.getElementById('ePAddr').value.trim().replace(/\n/g,'\\n');
 p.comm=(parseFloat(document.getElementById('ePComm').value)||35)/100;
 var daysVal=document.getElementById('ePDays').value.trim();
-p.days=daysVal?daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6}):[];
+if(daysVal)p.days=daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6});
 var svcsVal=document.getElementById('ePSvcs').value.trim();
 if(svcsVal){var newSvcs={};svcsVal.split(',').forEach(function(s){var parts=s.trim().split(':');if(parts.length===2){newSvcs[parts[0].trim()]={p:parseFloat(parts[1])||70,d:'per patient'};}});if(Object.keys(newSvcs).length)p.svcs=newSvcs;}
-else if(isNew)p.svcs={Hygiene:{p:70,d:'per patient'}};
-p.type='contract';
-p.createdAt=p.createdAt||new Date().toISOString();
-Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===newId)S.dayMap[k]='home';});
-if(p.days)p.days.forEach(function(d){S.dayMap[d]=newId;});
-S.practices[newId]=p;
-save();closeMod2();refreshSettings();buildDayMap();
-console.log('[Practice '+(isNew?'Added':'Updated')+']',p.short,'svcs=',Object.keys(p.svcs||{}),'days=',p.days);
-showToast('\u2713 '+(isNew?'Added':'Updated')+' '+p.short);
-syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Synced to Cloud]',p.short);else console.error('[Practice Sync Failed]',r);});
-}
-function deletePrac(id){
-var p=S.practices[id];if(!p)return;
-if(!confirm('Delete '+p.short+'? This cannot be undone.')){return;}
 Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===id)S.dayMap[k]='home';});
-delete S.practices[id];
-save();closeMod2();refreshSettings();buildDayMap();
-console.log('[Practice Deleted]',p.short);
-showToast('\u2713 Deleted '+p.short);
-syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Delete Synced to Cloud]');else console.error('[Practice Delete Sync Failed]',r);});
-}
+if(p.days)p.days.forEach(function(d){S.dayMap[d]=id;});
+save();closeMod2();refreshSettings();buildDayMap();showToast('\u2713 '+p.short+' updated');}
 function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementById('sEnt').textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 
 function editField(entType,field){
@@ -2239,18 +1796,15 @@ save();closeMod2();buildDayMap();refreshSettings();showToast('\u2713 Updated');}
 }
 function editInvNum(){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Invoice Numbering</h3>';
-_h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Each entity has its own invoice sequence.</p>';
-_h+='<div class="fg"><label class="fl">Self-Employed Next #</label><input class="fi" id="_inValSelf" type="number" value="'+S.nextInvSelf+'" min="1"></div>';
-_h+='<div class="fg"><label class="fl">Ltd Company Next #</label><input class="fi" id="_inValLtd" type="number" value="'+S.nextInvLtd+'" min="1"></div>';
-_h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:16px">Self: '+pad(S.nextInvSelf)+' | Ltd: '+pad(S.nextInvLtd)+'</p>';
+_h+='<div class="fg"><label class="fl">Next Invoice Number</label><input class="fi" id="_inVal" type="number" value="'+S.nextInv+'" min="1"></div>';
+_h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:16px">Formatted as '+pad(S.nextInv)+' on invoices.</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_inC">Cancel</button><button class="btn btn-p" id="_inS">Save</button></div>';
 showModal(_h);
 setTimeout(function(){
 document.getElementById('_inC').onclick=function(){closeMod2()};
 document.getElementById('_inS').onclick=function(){
-S.nextInvSelf=parseInt(document.getElementById('_inValSelf').value)||1;
-S.nextInvLtd=parseInt(document.getElementById('_inValLtd').value)||1;
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Invoice numbers updated');};
+S.nextInv=parseInt(document.getElementById('_inVal').value)||1;
+save();closeMod2();refreshSettings();showToast('\u2713 Next invoice: '+pad(S.nextInv));};
 },50);
 }
 function editPayTerms(){
@@ -2265,71 +1819,6 @@ S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
 save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');};
 },50);
 }
-function addAhPracSettings(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>';
-_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" placeholder="e.g. Smile Dental"></div>';
-_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3" placeholder="Full invoice address..."></textarea></div>';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per Patient (£)</label><input class="fi" id="ahsRate" type="number" value="25" step="0.01"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="ahsAir" type="number" value="9" step="0.01"></div></div>';
-_h+='<div class="brow"><button class="btn btn-s" id="_ahsC">Cancel</button><button class="btn btn-p" id="_ahsS">Add Practice</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_ahsC').onclick=function(){closeMod2()};
-document.getElementById('_ahsS').onclick=function(){saveAhPracSettings(null)};
-},50);
-}
-function editAhPracSettings(idx){
-var p=S.ahPrac[idx];if(!p)return;
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit '+p.name+'</h3>';
-_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" value="'+p.name+'"></div>';
-_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per Patient (£)</label><input class="fi" id="ahsRate" type="number" value="'+p.rate+'" step="0.01"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="ahsAir" type="number" value="'+(p.air||0)+'" step="0.01"></div></div>';
-_h+='<div class="fg"><label class="fl">Status</label><select class="asel" id="ahsActive"><option value="1"'+(p.active?' selected':'')+'>Active</option><option value="0"'+(!p.active?' selected':'')+'>Inactive</option></select></div>';
-_h+='<div class="brow"><button class="btn" style="background:var(--err);color:#fff" id="_ahsDel">Delete</button><button class="btn btn-s" id="_ahsC">Cancel</button><button class="btn btn-p" id="_ahsS">Save</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_ahsC').onclick=function(){closeMod2()};
-document.getElementById('_ahsS').onclick=function(){saveAhPracSettings(idx)};
-document.getElementById('_ahsDel').onclick=function(){deleteAhPracSettings(idx)};
-},50);
-}
-function saveAhPracSettings(idx){
-var name=document.getElementById('ahsName').value.trim();
-if(!name){showToast('Please enter a practice name');return;}
-var addr=document.getElementById('ahsAddr').value.trim().replace(/\n/g,'\\n');
-var rate=parseFloat(document.getElementById('ahsRate').value)||25;
-var air=parseFloat(document.getElementById('ahsAir').value)||0;
-var activeEl=document.getElementById('ahsActive');
-var active=activeEl?activeEl.value==='1':true;
-if(idx===null){
-  // Add new
-  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true});
-  console.log('[Ad Hoc Practice Added]',name);
-}else{
-  // Edit existing
-  S.ahPrac[idx].name=name;
-  S.ahPrac[idx].addr=addr;
-  S.ahPrac[idx].rate=rate;
-  S.ahPrac[idx].air=air;
-  S.ahPrac[idx].active=active;
-  console.log('[Ad Hoc Practice Updated]',name,'active=',active);
-}
-save();closeMod2();refreshSettings();popAh();
-showToast('\u2713 '+(idx===null?'Added':'Updated')+' '+name);
-syncSettingsToCloud();
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced to Practices]',name);});
-}
-function deleteAhPracSettings(idx){
-var p=S.ahPrac[idx];if(!p)return;
-if(!confirm('Delete '+p.name+'? This cannot be undone.')){return;}
-console.log('[Ad Hoc Practice Deleted]',p.name);
-S.ahPrac.splice(idx,1);
-save();closeMod2();refreshSettings();popAh();
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Delete Synced]');});
-showToast('\u2713 Deleted '+p.name);
-syncSettingsToCloud();
-}
 function refreshSettings(){
 var se=S.ents.self,lt=S.ents.ltd;var el;
 el=document.getElementById('se_name');if(el)el.textContent=se.name||'-';
@@ -2341,7 +1830,7 @@ el=document.getElementById('ltd_addr');if(el){var a2=(lt.addr||'').replace(/\\n/
 el=document.getElementById('ltd_phone');if(el)el.textContent=lt.phone||'-';
 el=document.getElementById('ltd_bank');if(el)el.textContent=(lt.bank||'Bank')+' ****'+(lt.acc||'').slice(-4);
 el=document.getElementById('sEnt');if(el)el.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
-el=document.getElementById('nInv');if(el)el.textContent='S:'+pad(S.nextInvSelf)+' L:'+pad(S.nextInvLtd);
+el=document.getElementById('nInv');if(el)el.textContent=pad(S.nextInv);
 el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'5 working days';
 var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var psec=document.getElementById('pracSettings');
@@ -2352,23 +1841,13 @@ row.innerHTML='<span class="la">'+(p.short||k)+'</span><span class="va">'+((p.co
 row.onclick=function(){editPrac(k)};
 psec.appendChild(row);
 });}
-// Ad Hoc practices
-var ahsec=document.getElementById('ahPracSettings');
-if(ahsec){ahsec.innerHTML='';(S.ahPrac||[]).forEach(function(p,idx){
-var row=document.createElement('div');row.className='srow';
-var statusBadge=p.active?'':'<span style="color:var(--txt3);font-size:10px"> (inactive)</span>';
-row.innerHTML='<span class="la">'+p.name+statusBadge+'</span><span class="va">\u00a3'+p.rate+'/pt'+(p.air>0?' +\u00a3'+p.air+' air':'')+'</span>';
-row.onclick=function(){editAhPracSettings(idx)};
-ahsec.appendChild(row);
-});
-if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);font-size:13px;padding:8px 0">No ad hoc practices. Add one above.</p>';}}
 }
 
 function exportCSV(){
 if(!S.entries.length){showToast('No data to export');return;}
 let csv='Date,Practice,Service,Patients,Price,Addon,Gross,Commission%,CommissionAmt,Status,InvoiceNo\n';
 S.entries.forEach(e=>{csv+=e.date+','+e.pName+','+e.svc+','+e.pts+','+e.uPrice+','+(e.aoAmt||0)+','+e.gross+','+(e.comm*100).toFixed(0)+'%,'+e.commAmt+','+e.invSt+','+(e.invNo||'')+' \n';});
-const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taylor_invoices_backup.csv';a.click();showToast('✓ CSV downloaded');}
+const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taylor_invoices_backup.csv';a.click();showToast('âœ“ CSV downloaded');}
 
 // ===== MODAL =====
 function showModal(html){document.getElementById('modC').innerHTML=html;document.getElementById('modOv').classList.add('show');}
