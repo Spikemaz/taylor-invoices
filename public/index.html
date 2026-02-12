@@ -226,6 +226,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">00001</span></div>
 <div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
 </div>
+<div class="sh">Cloud Sync</div>
+<div class="ssec">
+<div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
+<div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
+</div>
 <div class="sh">Data</div>
 <div class="ssec">
 <div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">↓</span></div>
@@ -277,6 +282,132 @@ const today=()=>new Date().toISOString().split('T')[0];
 // ===== PERSISTENCE =====
 function load(){try{var d=JSON.parse(localStorage.getItem('tm_inv')||'{}');if(d.entries)S.entries=d.entries;if(d.invoices)S.invoices=d.invoices;if(d.nextInv)S.nextInv=d.nextInv;if(d.ent)S.ent=d.ent;if(d.dayMap)S.dayMap=d.dayMap;if(d.ahPrac)S.ahPrac=d.ahPrac;if(d.payTerms)S.payTerms=d.payTerms;if(d.ents){if(d.ents.self)Object.assign(S.ents.self,d.ents.self);if(d.ents.ltd)Object.assign(S.ents.ltd,d.ents.ltd);}if(d.practices){Object.keys(d.practices).forEach(function(k){if(S.practices[k]){var saved=d.practices[k];if(saved){if(saved.comm!=null)S.practices[k].comm=saved.comm;if(saved.name)S.practices[k].name=saved.name;if(saved.short)S.practices[k].short=saved.short;if(saved.addr)S.practices[k].addr=saved.addr;if(saved.days)S.practices[k].days=saved.days;if(saved.svcs)S.practices[k].svcs=saved.svcs;}}else if(saved&&saved.short&&saved.name){S.practices[k]={id:k,name:saved.name,short:saved.short,addr:saved.addr||'',days:saved.days||[],comm:saved.comm||0.35,type:'contract',color:saved.color||'grove',svcs:saved.svcs||{Hygiene:{p:70,d:'per patient'}}};}});};}catch(e){}}
 function save(){try{var pData={};Object.keys(S.practices).forEach(function(k){var p=S.practices[k];pData[k]={name:p.name,short:p.short,addr:p.addr,comm:p.comm,days:p.days,svcs:p.svcs,color:p.color||'grove',type:p.type||'contract'};});localStorage.setItem('tm_inv',JSON.stringify({entries:S.entries,invoices:S.invoices,nextInv:S.nextInv,ent:S.ent,dayMap:S.dayMap,ahPrac:S.ahPrac,practices:pData,ents:S.ents,payTerms:S.payTerms}));}catch(e){}}
+
+// ===== CLOUD API =====
+const API_BASE = '';  // Empty for same-origin, or set to your Vercel URL
+
+async function apiCall(endpoint, data) {
+  try {
+    const res = await fetch(API_BASE + '/api/' + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('API error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// Sync entry to cloud
+async function syncEntryToCloud(entry) {
+  const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry });
+  if (!result.success) console.error('Failed to sync entry:', result);
+  return result;
+}
+
+// Sync invoice to cloud
+async function syncInvoiceToCloud(invoice) {
+  const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice });
+  if (!result.success) console.error('Failed to sync invoice:', result);
+  return result;
+}
+
+// Delete entry from cloud
+async function deleteEntryFromCloud(id) {
+  const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id } });
+  if (!result.success) console.error('Failed to delete entry:', result);
+  return result;
+}
+
+// Update entry in cloud
+async function updateEntryInCloud(id, updates) {
+  const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates } });
+  if (!result.success) console.error('Failed to update entry:', result);
+  return result;
+}
+
+// Generate PDF via API and upload to Drive
+async function generateAndUploadPDF(invData) {
+  // Generate PDF
+  const pdfResult = await apiCall('generate-pdf', invData);
+  if (!pdfResult.success) {
+    console.error('PDF generation failed:', pdfResult);
+    return pdfResult;
+  }
+
+  // Download PDF locally
+  const pdfBytes = atob(pdfResult.pdfBase64);
+  const bytes = new Uint8Array(pdfBytes.length);
+  for (let i = 0; i < pdfBytes.length; i++) bytes[i] = pdfBytes.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = pdfResult.fileName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  // Upload to Drive
+  const invoiceDate = new Date(invData.date);
+  const driveResult = await apiCall('drive-upload', {
+    fileName: pdfResult.fileName,
+    pdfBase64: pdfResult.pdfBase64,
+    entity: invData.logoType,
+    year: invoiceDate.getFullYear().toString(),
+    month: invoiceDate.toLocaleString('en-GB', { month: 'long' })
+  });
+
+  if (driveResult.success) {
+    // Update invoice with drive link
+    await apiCall('sheets-sync', {
+      action: 'update_invoice',
+      data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } }
+    });
+  }
+
+  return { pdf: pdfResult, drive: driveResult };
+}
+
+// Load data from cloud (for sync)
+async function loadFromCloud() {
+  const result = await apiCall('sheets-sync', { action: 'load_all' });
+  if (result.success) {
+    console.log('Loaded from cloud:', result.entriesCount, 'entries,', result.invoicesCount, 'invoices');
+  }
+  return result;
+}
+
+// Sync all local data to cloud
+async function syncAllToCloud() {
+  showToast('Syncing to cloud...');
+  const entriesResult = await apiCall('sheets-sync', { action: 'sync_entries', data: { entries: S.entries } });
+  const invoicesResult = await apiCall('sheets-sync', { action: 'sync_invoices', data: { invoices: S.invoices } });
+  if (entriesResult.success && invoicesResult.success) {
+    showToast('\u2713 Synced to cloud');
+  } else {
+    showToast('Sync failed', 'err');
+  }
+  return { entries: entriesResult, invoices: invoicesResult };
+}
+
+// Load data from cloud and replace local data
+async function loadFromCloudUI() {
+  if (!confirm('This will replace your local data with cloud data. Continue?')) return;
+  showToast('Loading from cloud...');
+  const result = await loadFromCloud();
+  if (result.success) {
+    S.entries = result.entries || [];
+    S.invoices = result.invoices || [];
+    save();
+    showToast('\u2713 Loaded ' + result.entriesCount + ' entries, ' + result.invoicesCount + ' invoices');
+    upHome();
+    refInv();
+  } else {
+    showToast('Load failed: ' + (result.error || 'Unknown error'), 'err');
+  }
+}
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded',()=>{
@@ -407,6 +538,7 @@ const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice
 if(dup){showDupMod(dup,pts,ao);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:p.comm,commAmt:gr*p.comm,entity:S.ent,invSt:'pending',invNo:null,entity:S.ent};
 S.entries.push(entry);save();showUndo(entry);
+syncEntryToCloud(entry);
 document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
 setTimeout(()=>openPractice(S.prac),300);
 }
@@ -431,7 +563,7 @@ function showUndo(entry){clearTimeout(S.undoT);S.undoE=entry;const t=document.ge
 t.className='toast ok';t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){S.entries=S.entries.filter(e=>e.id!==S.undoE.id);save();S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
 function showToast(msg,cls){const t=document.getElementById('toast');t.className='toast ok';t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -456,6 +588,7 @@ const pts=parseInt(document.getElementById('ap').value)||0,rate=pc(document.getE
 if(!pts)return;const gr=(pts*rate)+(airPts*air);
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent};
 S.entries.push(entry);save();showUndo(entry);
+syncEntryToCloud(entry);
 document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();}
 
 function showAddAhPractice(){
@@ -642,7 +775,7 @@ var gb=document.getElementById('_pvGen');if(gb)gb.onclick=function(){closeMod2()
 function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;showToast('Ad hoc preview — coming soon');}
 
 // ===== GENERATE PDF (uses jsPDF-like approach via canvas) =====
-function genInv(pid,y,m){
+async function genInv(pid,y,m){
 var p=S.practices[pid];if(!p)return;
 var ent=S.ents[S.iEnt];
 var me=getMonth(y,m).filter(function(e){return e.pId===pid&&(!e.entity||e.entity===S.iEnt)});
@@ -656,13 +789,16 @@ var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*p.comm;
 var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:mn,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(p.comm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms};
 S.invoices.push(invData);save();
-generatePDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & downloaded');
+syncInvoiceToCloud(invData);
+me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});});
+showToast('Generating invoice...');
+await generateAndUploadPDF(invData);
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
 refInv();
 document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
-function genAhInv(id){
+async function genAhInv(id){
 var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 var ent=S.ents[S.iEnt];
 var invNum=pad(S.nextInv);S.nextInv++;e.invSt='invoiced';e.invNo=invNum;
@@ -671,8 +807,11 @@ var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
 var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,isAdhoc:true};
 S.invoices.push(invData);save();
-generatePDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & downloaded');
+syncInvoiceToCloud(invData);
+updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});
+showToast('Generating invoice...');
+await generateAndUploadPDF(invData);
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
 refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
