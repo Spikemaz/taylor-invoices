@@ -961,8 +961,9 @@ async function loadFromCloud() {
       loadSettingsFromCloudFn()
     ]);
 
-    // Initialize Drive folder structure (runs in background, non-blocking)
-    initDriveFolders();
+    // Drive folders are now created by Google Apps Script when saving PDFs
+    // (Apps Script uses your personal Drive quota instead of service account)
+    // initDriveFolders(); // Disabled - service account has no Drive quota
 
     showLoading('Loading entries & invoices...');
     // Load entries/invoices for both entities in parallel
