@@ -926,13 +926,20 @@ var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){save
 },50);
 }
 
-function saveEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
+async function saveEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 e.date=document.getElementById('edDt').value;e.svc=document.getElementById('edSvc').value;
 e.pts=parseInt(document.getElementById('edPts').value)||0;e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
 e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;e.aoType=e.aoAmt>0?'Airflow':null;
 e.gross=(e.pts*e.uPrice)+e.aoAmt;if(e.pType==='contract')e.commAmt=e.gross*e.comm;
-save();closeMod2();refArc();showToast('\u2713 Entry updated');}
-function delEntry(id){S.entries=S.entries.filter(function(e){return e.id!==id});save();closeMod2();refArc();showToast('✓ Entry deleted');}
+e.updatedAt=new Date().toISOString();
+save();closeMod2();refArc();showToast('Syncing...');
+// Sync to cloud
+const result=await apiCall('sheets-sync',{action:'update_entry',data:{id:e.id,updates:e},entity:e.entity||S.ent});
+if(result.success){showToast('\u2713 Entry updated & synced');}else{showToast('Updated locally, cloud sync failed','err');}}
+async function delEntry(id){var e=S.entries.find(function(x){return x.id===id});var entity=e?e.entity||S.ent:S.ent;S.entries=S.entries.filter(function(e){return e.id!==id});save();closeMod2();refArc();showToast('Deleting...');
+// Sync deletion to cloud
+const result=await apiCall('sheets-sync',{action:'delete_entry',data:{id:id},entity:entity});
+if(result.success){showToast('✓ Entry deleted & synced');}else{showToast('Deleted locally, cloud sync failed','err');}}
 
 // ===== INVOICES =====
 function refInv(){
