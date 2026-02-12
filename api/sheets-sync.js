@@ -66,6 +66,7 @@ module.exports = async (req, res) => {
       case 'sync_settings': return await syncSettings(sheets, sheetId, data, res);
       case 'load_settings': return await loadSettings(sheets, sheetId, res);
       case 'get_dashboard': return await getDashboard(sheets, sheetId, res);
+      case 'rename_sheet': return await renameSheet(sheets, sheetId, data, res);
       default: return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (error) {
@@ -579,4 +580,25 @@ async function getDashboard(sheets, sheetId, res) {
       totalInvoices: invoices.length
     }
   });
+}
+
+// ===== RENAME SHEET =====
+async function renameSheet(sheets, sheetId, { title }, res) {
+  if (!title) {
+    return res.status(400).json({ error: 'Missing title' });
+  }
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: sheetId,
+    requestBody: {
+      requests: [{
+        updateSpreadsheetProperties: {
+          properties: { title },
+          fields: 'title'
+        }
+      }]
+    }
+  });
+
+  return res.status(200).json({ success: true, message: `Sheet renamed to: ${title}` });
 }
