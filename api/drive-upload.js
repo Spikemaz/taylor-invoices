@@ -86,7 +86,8 @@ module.exports = async (req, res) => {
     const file = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id, name, webViewLink, webContentLink'
+      fields: 'id, name, webViewLink, webContentLink',
+      supportsAllDrives: true
     });
 
     // Make the file viewable by anyone with the link
@@ -95,13 +96,15 @@ module.exports = async (req, res) => {
       requestBody: {
         role: 'reader',
         type: 'anyone'
-      }
+      },
+      supportsAllDrives: true
     });
 
     // Get updated file info with sharing links
     const updatedFile = await drive.files.get({
       fileId: file.data.id,
-      fields: 'id, name, webViewLink, webContentLink'
+      fields: 'id, name, webViewLink, webContentLink',
+      supportsAllDrives: true
     });
 
     return res.status(200).json({
@@ -132,7 +135,9 @@ async function getOrCreateFolder(drive, folderName, parentId) {
   const response = await drive.files.list({
     q: query,
     fields: 'files(id, name)',
-    spaces: 'drive'
+    spaces: 'drive',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true
   });
 
   if (response.data.files && response.data.files.length > 0) {
@@ -149,7 +154,8 @@ async function getOrCreateFolder(drive, folderName, parentId) {
 
   const folder = await drive.files.create({
     requestBody: fileMetadata,
-    fields: 'id'
+    fields: 'id',
+    supportsAllDrives: true
   });
 
   return folder.data.id;
