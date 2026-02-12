@@ -1893,7 +1893,7 @@ var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practi
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
-me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});});
+me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);});
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
@@ -1903,16 +1903,20 @@ document.getElementById('nInv').textContent=pad(getNextInv());
 
 async function genAhInv(id){
 var e=S.entries.find(function(x){return x.id===id});if(!e)return;
-var ent=S.ents[S.iEnt];
-var invNum=pad(getNextInv());setNextInv(getNextInv()+1);e.invSt='invoiced';e.invNo=invNum;
+// Use entry's entity, not current entity
+var entKey=e.entity||S.ent;
+var ent=S.ents[entKey];
+var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
+if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
+e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
 var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,isAdhoc:true};
-console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+S.iEnt);
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true};
+console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData);
-updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});
+syncInvoiceToCloud(invData, entKey);
+updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
