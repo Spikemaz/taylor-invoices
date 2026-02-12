@@ -572,12 +572,18 @@ async function deleteInvoiceFromCloud(num, entity) {
   return result;
 }
 
-// Sync practices to cloud
+// Sync practices to cloud (includes both contract and ad hoc practices)
 async function syncPracticesToCloud() {
-  const practices = Object.entries(S.practices).map(([id, p]) => ({
-    id, short: p.short, name: p.name, type: p.type, addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
+  // Contract practices
+  const contractPractices = Object.entries(S.practices).map(([id, p]) => ({
+    id, short: p.short, name: p.name, type: 'contract', addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
   }));
-  console.log('[Practices Sync]', practices.map(p => p.short + ': ' + Object.keys(p.services || {}).join(',')));
+  // Ad Hoc practices
+  const adhocPractices = (S.ahPrac || []).map(p => ({
+    id: p.id, short: p.name.split(' ')[0], name: p.name, type: 'adhoc', addr: p.addr, comm: 0, services: {}, days: [], rate: p.rate, air: p.air, active: p.active
+  }));
+  const practices = [...contractPractices, ...adhocPractices];
+  console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
   const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync practices:', result);
   return result;
@@ -1289,7 +1295,8 @@ showModal('<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad 
 }
 function saveAhPrac(){const nm=document.getElementById('nAhName').value.trim();if(!nm){alert('Please enter a name');return;}
 S.ahPrac.push({id:'ah'+Date.now(),name:nm,addr:document.getElementById('nAhAddr').value.trim().replace(/\n/g,'\n'),rate:parseFloat(document.getElementById('nAhRate').value)||25,air:parseFloat(document.getElementById('nAhAir').value)||0,active:true});
-save();closeMod2();popAh();showToast('✓ '+nm+' added');}
+save();closeMod2();popAh();showToast('✓ '+nm+' added');
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);});}
 
 function showAddPractice(){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Contracted Practice</h3>';
@@ -2173,6 +2180,7 @@ if(idx===null){
 save();closeMod2();refreshSettings();popAh();
 showToast('\u2713 '+(idx===null?'Added':'Updated')+' '+name);
 syncSettingsToCloud();
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced to Practices]',name);});
 }
 function deleteAhPracSettings(idx){
 var p=S.ahPrac[idx];if(!p)return;
@@ -2180,6 +2188,7 @@ if(!confirm('Delete '+p.name+'? This cannot be undone.')){return;}
 console.log('[Ad Hoc Practice Deleted]',p.name);
 S.ahPrac.splice(idx,1);
 save();closeMod2();refreshSettings();popAh();
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Delete Synced]');});
 showToast('\u2713 Deleted '+p.name);
 syncSettingsToCloud();
 }
