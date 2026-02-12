@@ -781,8 +781,10 @@ function mergeInvoices(cloudInvoices, entity) {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async ()=>{
+  console.log('DOMContentLoaded: Starting, S.practices=', S.practices);
   // Load settings from localStorage (quick - entity preference, day map, etc)
   loadSettings();
+  console.log('After loadSettings: S.practices=', S.practices);
   initDt();
   buildDayMap();
   updatePendingBar();
@@ -791,15 +793,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   showLoading('Connecting to cloud...');
   try {
     const success = await loadFromCloud();
+    console.log('After loadFromCloud: success=', success, 'S.practices=', S.practices);
     if (success) {
       hideLoading();
       // Show home screen
       document.getElementById('scr-home').classList.add('act');
       S.scr='home'; upHdr('home');
+      console.log('Before upHome: S.practices=', S.practices, 'typeof=', typeof S.practices);
       upHome();
       // Smart auto-open based on day
       const day = new Date().getDay();
       const t = S.dayMap[day];
+      console.log('Auto-open check: day=', day, 't=', t, 'S.practices[t]=', S.practices[t]);
       if (t && t !== 'home' && S.practices && S.practices[t]) { openPractice(t); }
       // Retry any pending operations
       if (pendingOps.length > 0) {
