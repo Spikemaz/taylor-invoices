@@ -100,6 +100,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .aitem-wrap{position:relative;overflow:hidden;border-radius:var(--rs)}
 .aitem-wrap .aitem{position:relative;z-index:2;transition:transform 0.2s}
 .swipe-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--err);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;z-index:1;cursor:pointer;border-radius:0 var(--rs) var(--rs) 0;opacity:0;transition:opacity 0.2s}
+.sync-status{display:flex;align-items:center;margin-left:8px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--txt3);transition:background .3s}
+.sync-dot.online{background:var(--ok)}
+.sync-dot.offline{background:var(--err)}
+.sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
 </style>
 </head>
 <body>
@@ -107,11 +112,12 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="hdr">
 <button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
 <div><div class="hdr-t" id="hdrT">Taylor Invoice Manager</div><span class="hdr-e" id="hdrE"></span></div>
-<div style="display:flex;gap:4px">
+<div style="display:flex;gap:4px;align-items:center">
 <button class="hdr-btn" onclick="goHome()">Home</button>
 <button class="hdr-btn" onclick="showScreen('archive')">Archive</button>
 <button class="hdr-btn" onclick="showScreen('invoices')">Invoices</button>
 <button class="hdr-btn" onclick="showScreen('settings')">&#9881;</button>
+<div class="sync-status" id="syncStatus" title="Cloud sync status"><span class="sync-dot" id="syncDot"></span></div>
 </div>
 </div>
 
@@ -159,6 +165,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 
 <!-- AD HOC -->
 <div class="scr" id="scr-adhoc">
+<div class="esw" id="ahEntSw">
+<button class="ebtn act" onclick="setAhEntity('self')" id="ahES">Self-Employed</button>
+<button class="ebtn" onclick="setAhEntity('ltd')" id="ahEL">Ltd Company</button>
+</div>
 <div class="sh">Select Practice</div>
 <select class="asel" id="ahSel" onchange="onAhChange()"><option value="">Choose a practice...</option></select>
 <button class="ibtn pv" style="width:100%;margin-bottom:16px" onclick="showAddAhPractice()">+ Add New Ad Hoc Practice</button>
@@ -289,18 +299,35 @@ function save(){try{var pData={};Object.keys(S.practices).forEach(function(k){va
 
 // ===== CLOUD API =====
 const API_BASE = '';  // Empty for same-origin, or set to your Vercel URL
+let isOnline = true;
+let lastSyncTime = null;
+
+function updateSyncStatus(online, syncing = false) {
+  isOnline = online;
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + (syncing ? 'syncing' : (online ? 'online' : 'offline'));
+  document.getElementById('syncStatus').title = online
+    ? 'Connected' + (lastSyncTime ? ' - Last sync: ' + new Date(lastSyncTime).toLocaleTimeString() : '')
+    : 'Offline - Changes saved locally';
+  if (online && !syncing) lastSyncTime = Date.now();
+}
 
 async function apiCall(endpoint, data) {
   try {
+    updateSyncStatus(isOnline, true); // Show syncing
     const res = await fetch(API_BASE + '/api/' + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    return await res.json();
+    const result = await res.json();
+    updateSyncStatus(true); // Online
+    return result;
   } catch (e) {
     console.error('API error:', e);
-    return { success: false, error: e.message };
+    updateSyncStatus(false); // Offline
+    return { success: false, error: e.message, offline: true };
   }
 }
 
@@ -489,6 +516,104 @@ async function loadFromCloudUI() {
   }
 }
 
+// ===== CONFLICT RESOLUTION =====
+function mergeCloudData(selfData, ltdData) {
+  let updates = 0;
+  // Process Self-Employed data
+  if (selfData.success && selfData.entries) {
+    updates += mergeEntries(selfData.entries, 'self');
+  }
+  if (selfData.success && selfData.invoices) {
+    updates += mergeInvoices(selfData.invoices, 'self');
+  }
+  // Process Ltd data
+  if (ltdData.success && ltdData.entries) {
+    updates += mergeEntries(ltdData.entries, 'ltd');
+  }
+  if (ltdData.success && ltdData.invoices) {
+    updates += mergeInvoices(ltdData.invoices, 'ltd');
+  }
+  if (updates > 0) {
+    save();
+    upHome();
+    refInv();
+    showToast('Synced ' + updates + ' updates from cloud');
+  }
+  return updates;
+}
+
+function mergeEntries(cloudEntries, entity) {
+  let updates = 0;
+  if (!cloudEntries || !Array.isArray(cloudEntries)) return 0;
+  cloudEntries.forEach(ce => {
+    if (ce.entity && ce.entity !== entity) return;
+    const localIdx = S.entries.findIndex(e => e.id === ce.id);
+    if (localIdx === -1) {
+      // New from cloud - add it
+      S.entries.push(ce);
+      updates++;
+    } else {
+      // Compare timestamps - cloud wins if newer
+      const local = S.entries[localIdx];
+      const cloudTime = new Date(ce.createdAt || 0).getTime();
+      const localTime = new Date(local.createdAt || 0).getTime();
+      if (cloudTime > localTime) {
+        S.entries[localIdx] = ce;
+        updates++;
+      }
+    }
+  });
+  return updates;
+}
+
+function mergeInvoices(cloudInvoices, entity) {
+  let updates = 0;
+  if (!cloudInvoices || !Array.isArray(cloudInvoices)) return 0;
+  cloudInvoices.forEach(ci => {
+    if (ci.entity && ci.entity !== entity) return;
+    const localIdx = S.invoices.findIndex(i => i.num === ci.num);
+    if (localIdx === -1) {
+      // New from cloud
+      S.invoices.push(ci);
+      updates++;
+    } else {
+      const local = S.invoices[localIdx];
+      const cloudTime = new Date(ci.createdAt || 0).getTime();
+      const localTime = new Date(local.createdAt || 0).getTime();
+      if (cloudTime > localTime) {
+        S.invoices[localIdx] = ci;
+        updates++;
+      }
+    }
+  });
+  return updates;
+}
+
+// ===== STARTUP CLOUD SYNC =====
+async function syncFromCloudOnStartup() {
+  try {
+    // Load practices and settings first
+    await Promise.all([
+      loadPracticesFromCloud(),
+      loadSettingsFromCloud()
+    ]);
+    // Then load entries/invoices for both entities
+    const [selfData, ltdData] = await Promise.all([
+      apiCall('sheets-sync', { action: 'load_all', entity: 'self' }),
+      apiCall('sheets-sync', { action: 'load_all', entity: 'ltd' })
+    ]);
+    if (selfData.success || ltdData.success) {
+      mergeCloudData(selfData, ltdData);
+      updateSyncStatus(true);
+    } else {
+      updateSyncStatus(false);
+    }
+  } catch (e) {
+    console.error('Startup sync failed:', e);
+    updateSyncStatus(false);
+  }
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded',()=>{
 load();initDt();buildDayMap();
@@ -500,6 +625,8 @@ const day=new Date().getDay();const t=S.dayMap[day];
 if(t&&t!=='home'&&S.practices[t]){openPractice(t);}
 // Schedule midnight reset
 scheduleMidnightReset();
+// Background cloud sync (non-blocking)
+syncFromCloudOnStartup();
 });
 function scheduleMidnightReset(){
 const now=new Date();
@@ -593,6 +720,14 @@ function setPracticeEntity(t){
     document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(p.comm*100).toFixed(0)+'% commission';
   }}
 }
+function setAhEntity(t){
+  S.ent=t;save();
+  document.getElementById('ahES').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('ahEL').className='ebtn'+(t==='ltd'?' act':'');
+  document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');
+  document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
+}
 
 // ===== PRACTICE LOGGING =====
 function openPractice(id){
@@ -666,7 +801,7 @@ function showToast(msg,cls){const t=document.getElementById('toast');t.className
 
 // ===== AD HOC =====
 let ahSvc='Hygiene';
-function popAh(){const s=document.getElementById('ahSel');s.innerHTML='<option value="">Choose a practice...</option>';S.ahPrac.filter(p=>p.active).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.appendChild(o);});document.getElementById('ahForm').style.display='none';}
+function popAh(){const s=document.getElementById('ahSel');s.innerHTML='<option value="">Choose a practice...</option>';S.ahPrac.filter(p=>p.active).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.appendChild(o);});document.getElementById('ahForm').style.display='none';document.getElementById('ahES').className='ebtn'+(S.ent==='self'?' act':'');document.getElementById('ahEL').className='ebtn'+(S.ent==='ltd'?' act':'');}
 function onAhChange(){const id=document.getElementById('ahSel').value;if(!id){document.getElementById('ahForm').style.display='none';return;}
 const p=S.ahPrac.find(x=>x.id===id);if(!p)return;document.getElementById('ahForm').style.display='block';
 document.getElementById('arv').value=fc(p.rate);document.getElementById('aao').value=fc(p.air||0);
