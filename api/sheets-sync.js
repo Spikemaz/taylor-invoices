@@ -40,6 +40,7 @@ const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 
 // ===== AUDIT LOG =====
+// Writes to the entity-specific sheet only (log is per-entity)
 async function writeLog(sheets, sheetId, logEntry) {
   try {
     const row = [
@@ -493,6 +494,7 @@ async function loadAll(sheets, sheetId, res) {
 }
 
 // ===== PRACTICES =====
+// Syncs practices to BOTH sheets (practices are shared across entities)
 async function syncPractices(sheets, sheetId, { practices }, res) {
   if (!practices || !practices.length) {
     return res.status(200).json({ success: true, message: 'No practices to sync', count: 0 });
@@ -508,22 +510,33 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     })
   );
 
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId: sheetId,
-    range: 'Practices!A2:L',
-  });
-
-  if (rows.length > 0) {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'Practices!A:L',
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: rows }
+  // Helper to sync to a single sheet
+  async function syncToSheet(targetSheetId) {
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: targetSheetId,
+      range: 'Practices!A2:L',
     });
+
+    if (rows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: targetSheetId,
+        range: 'Practices!A:L',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: rows }
+      });
+    }
   }
 
-  return res.status(200).json({ success: true, message: 'Practices synced', count: rows.length });
+  // Sync to both sheets in parallel
+  const syncPromises = [syncToSheet(SHEET_IDS.self)];
+  if (SHEET_IDS.ltd && SHEET_IDS.ltd !== SHEET_IDS.self) {
+    syncPromises.push(syncToSheet(SHEET_IDS.ltd));
+  }
+
+  await Promise.all(syncPromises);
+
+  return res.status(200).json({ success: true, message: 'Practices synced to both sheets', count: rows.length });
 }
 
 async function loadPractices(sheets, sheetId, res) {
@@ -553,33 +566,102 @@ async function loadPractices(sheets, sheetId, res) {
 }
 
 // ===== SETTINGS =====
-async function syncSettings(sheets, sheetId, { settings }, res) {
+// Settings are split: entity-specific (nextInv, entities) vs shared (dayMap, ahPrac, payTerms)
+// Shared settings are mirrored to both sheets
+const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms'];
+const ENTITY_SPECIFIC_KEYS = ['nextInv', 'entities'];
+
+async function syncSettings(sheets, sheetId, { settings, entity }, res) {
   if (!settings || Object.keys(settings).length === 0) {
     return res.status(200).json({ success: true, message: 'No settings to sync', count: 0 });
   }
 
-  const rows = Object.entries(settings).map(([key, value]) => [
+  // Separate entity-specific vs shared settings
+  const entitySpecificSettings = {};
+  const sharedSettings = {};
+
+  Object.entries(settings).forEach(([key, value]) => {
+    if (ENTITY_SPECIFIC_KEYS.includes(key)) {
+      entitySpecificSettings[key] = value;
+    } else if (SHARED_SETTINGS_KEYS.includes(key)) {
+      sharedSettings[key] = value;
+    } else {
+      // Default to entity-specific for unknown keys
+      entitySpecificSettings[key] = value;
+    }
+  });
+
+  // Helper to build rows from settings object
+  const buildRows = (settingsObj) => Object.entries(settingsObj).map(([key, value]) => [
     key,
     typeof value === 'object' ? JSON.stringify(value) : String(value),
     new Date().toISOString()
   ]);
 
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId: sheetId,
-    range: 'Settings!A2:C',
-  });
+  // Helper to sync settings to a sheet (merge, don't replace all)
+  async function syncToSheet(targetSheetId, settingsToSync) {
+    if (Object.keys(settingsToSync).length === 0) return;
 
-  if (rows.length > 0) {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
+    // First, load existing settings
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: targetSheetId,
       range: 'Settings!A:C',
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: rows }
     });
+
+    const existingRows = response.data.values || [];
+    const existingSettings = {};
+    existingRows
+      .filter(row => row[0] && row[0] !== 'key')
+      .forEach(row => {
+        existingSettings[row[0]] = row[1];
+      });
+
+    // Merge new settings into existing
+    Object.entries(settingsToSync).forEach(([key, value]) => {
+      existingSettings[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    });
+
+    // Write back all settings
+    const rows = Object.entries(existingSettings).map(([key, value]) => [
+      key,
+      value,
+      new Date().toISOString()
+    ]);
+
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: targetSheetId,
+      range: 'Settings!A2:C',
+    });
+
+    if (rows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: targetSheetId,
+        range: 'Settings!A:C',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: rows }
+      });
+    }
   }
 
-  return res.status(200).json({ success: true, message: 'Settings synced', count: rows.length });
+  // Sync entity-specific settings to the current entity's sheet only
+  await syncToSheet(sheetId, entitySpecificSettings);
+
+  // Sync shared settings to BOTH sheets
+  if (Object.keys(sharedSettings).length > 0) {
+    const syncPromises = [syncToSheet(SHEET_IDS.self, sharedSettings)];
+    if (SHEET_IDS.ltd && SHEET_IDS.ltd !== SHEET_IDS.self) {
+      syncPromises.push(syncToSheet(SHEET_IDS.ltd, sharedSettings));
+    }
+    await Promise.all(syncPromises);
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Settings synced',
+    entitySpecificCount: Object.keys(entitySpecificSettings).length,
+    sharedCount: Object.keys(sharedSettings).length
+  });
 }
 
 async function loadSettings(sheets, sheetId, res) {
