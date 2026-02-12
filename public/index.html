@@ -58,13 +58,19 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
 .alist{display:flex;flex-direction:column;gap:8px}
-.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border:1px solid var(--bdr);cursor:pointer;transition:all .15s}
+.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);border-left:3px solid var(--bdr);border-right:3px solid var(--bdr);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
 .aitem .db{min-width:44px;text-align:center}.aitem .db .dy{font-size:18px;font-weight:700;line-height:1}.aitem .db .mo{font-size:10px;color:var(--txt2);text-transform:uppercase;font-weight:500}
 .aitem .dt{flex:1}.aitem .dt .sv{font-size:14px;font-weight:600}.aitem .dt .pt{font-size:12px;color:var(--txt2)}
 .aitem .ac{text-align:right}.aitem .ac .gr{font-size:15px;font-weight:700}.aitem .ac .co{font-size:11px;color:var(--acc)}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:var(--adhoc-lt);color:var(--adhoc)}
+.ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-left:6px}
+.ent-badge.self{background:#E0F2FE;color:#0369A1}.ent-badge.ltd{background:#FEE2E2;color:#B91C1C}
+.aitem.ent-self{border-left:3px solid #0EA5E9}.aitem.ent-ltd{border-left:3px solid #EF4444}
+.arc-month{font-size:14px;font-weight:700;color:var(--txt);padding:12px 0 8px;margin-top:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px}
+.arc-month:first-child{margin-top:0}
+.arc-month .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
 .icard{background:var(--card);border-radius:var(--r);padding:18px;border:1px solid var(--bdr);margin-bottom:12px;box-shadow:var(--sh)}
 .icard .ih{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .icard .ip{font-size:16px;font-weight:700}.icard .iper{font-size:12px;color:var(--txt2)}
@@ -193,7 +199,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 </div>
 <div class="sh">Select Practice</div>
 <select class="asel" id="ahSel" onchange="onAhChange()"><option value="">Choose a practice...</option></select>
-<button class="ibtn pv" style="width:100%;margin-bottom:16px" onclick="showAddAhPractice()">+ Add New Ad Hoc Practice</button>
 <div id="ahForm" style="display:none">
 <div class="sh">Service Type</div>
 <div class="sgrid" id="ahSGrid">
@@ -212,6 +217,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 
 <!-- ARCHIVE -->
 <div class="scr" id="scr-archive">
+<div class="esw" id="arcEntSw">
+<button class="ebtn act" onclick="filtArcEnt('all')" id="arcEAll">All</button>
+<button class="ebtn" onclick="filtArcEnt('self')" id="arcES">Self-Employed</button>
+<button class="ebtn" onclick="filtArcEnt('ltd')" id="arcEL">Ltd Company</button>
+</div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
 <button class="fc" onclick="filtArc('bupa')">Bupa</button>
@@ -219,6 +229,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="fc" onclick="filtArc('adhoc')">Ad Hoc</button>
 </div>
 <div class="alist" id="arcList"><div class="empty"><div class="emo">&#128203;</div><p>No entries yet.</p></div></div>
+<div style="padding:16px;margin-top:8px"><button class="btn btn-d" style="width:100%" onclick="showClearTodayModal()">Clear Today's Entries</button></div>
 </div>
 
 <!-- INVOICES -->
@@ -251,12 +262,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
 </div>
 <div class="sh">Practice Configuration</div>
-<div class="ssec" id="pracSettings">
-<div class="srow" onclick="editPrac('bupa')"><span class="la">Bupa</span><span class="va" id="sBupa">35% · Mon/Fri</span></div>
-<div class="srow" onclick="editPrac('grove')"><span class="la">The Grove</span><span class="va" id="sGrove">40% · Thu</span></div>
-</div>
+<div class="ssec" id="pracSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
 <div class="sh">Day Mapping</div>
 <div class="ssec" id="dayMap"></div>
+<div class="sh">Ad Hoc Practices</div>
+<div class="ssec" id="ahPracSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addAhPracSettings()">+ Add Ad Hoc Practice</button></div>
 <div class="sh">Invoice &amp; Payment</div>
 <div class="ssec">
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">00001</span></div>
@@ -603,10 +615,14 @@ async function loadPracticesFromCloud() {
 // Sync settings to cloud
 async function syncSettingsToCloud() {
   const settings = {
-    entities: S.entities,
+    entities: S.ents,
     payTerms: S.payTerms,
+    nextInv: S.nextInv,
+    dayMap: S.dayMap,
+    ahPrac: S.ahPrac,
     iEnt: S.iEnt
   };
+  console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'practices');
   const result = await apiCall('sheets-sync', { action: 'sync_settings', data: { settings }, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync settings:', result);
   return result;
@@ -656,7 +672,8 @@ async function generateAndUploadPDF(invData) {
       pdfBase64: pdfResult.pdfBase64,
       entity: invData.logoType,
       year: invoiceDate.getFullYear().toString(),
-      month: invoiceDate.toLocaleString('en-GB', { month: 'long' })
+      month: invoiceDate.toLocaleString('en-GB', { month: 'long' }),
+      isAdhoc: invData.isAdhoc || false
     });
 
     if (driveResult.success) {
@@ -712,8 +729,9 @@ async function loadFromCloudUI() {
   showToast('Loading from cloud...');
   const result = await loadFromCloudSimple();
   if (result.success) {
-    S.entries = result.entries || [];
-    S.invoices = result.invoices || [];
+    // Normalize numeric fields when loading from cloud
+    S.entries = (result.entries || []).map(normalizeEntry);
+    S.invoices = (result.invoices || []).map(normalizeInvoice);
     save();
     showToast('\u2713 Loaded ' + result.entriesCount + ' entries, ' + result.invoicesCount + ' invoices');
     upHome();
@@ -749,15 +767,30 @@ function mergeCloudData(selfData, ltdData) {
   return updates;
 }
 
+// Normalize entry numeric fields (cloud data comes as strings)
+function normalizeEntry(e) {
+  return {
+    ...e,
+    pts: parseInt(e.pts) || 0,
+    uPrice: parseFloat(e.uPrice) || 0,
+    gross: parseFloat(e.gross) || 0,
+    comm: parseFloat(e.comm) || 0,
+    commAmt: parseFloat(e.commAmt) || 0,
+    aoAmt: parseFloat(e.aoAmt) || 0,
+    aoPatients: parseInt(e.aoPatients) || 0
+  };
+}
+
 function mergeEntries(cloudEntries, entity) {
   let updates = 0;
   if (!cloudEntries || !Array.isArray(cloudEntries)) return 0;
   cloudEntries.forEach(ce => {
     if (ce.entity && ce.entity !== entity) return;
+    const normalized = normalizeEntry(ce);
     const localIdx = S.entries.findIndex(e => e.id === ce.id);
     if (localIdx === -1) {
       // New from cloud - add it
-      S.entries.push(ce);
+      S.entries.push(normalized);
       updates++;
     } else {
       // Compare timestamps - cloud wins if newer
@@ -765,7 +798,7 @@ function mergeEntries(cloudEntries, entity) {
       const cloudTime = new Date(ce.createdAt || 0).getTime();
       const localTime = new Date(local.createdAt || 0).getTime();
       if (cloudTime > localTime) {
-        S.entries[localIdx] = ce;
+        S.entries[localIdx] = normalized;
         updates++;
       }
     }
@@ -773,22 +806,32 @@ function mergeEntries(cloudEntries, entity) {
   return updates;
 }
 
+// Normalize invoice numeric fields (cloud data comes as strings)
+function normalizeInvoice(inv) {
+  return {
+    ...inv,
+    total: parseFloat(inv.total) || 0,
+    pts: parseInt(inv.pts) || 0
+  };
+}
+
 function mergeInvoices(cloudInvoices, entity) {
   let updates = 0;
   if (!cloudInvoices || !Array.isArray(cloudInvoices)) return 0;
   cloudInvoices.forEach(ci => {
     if (ci.entity && ci.entity !== entity) return;
+    const normalized = normalizeInvoice(ci);
     const localIdx = S.invoices.findIndex(i => i.num === ci.num);
     if (localIdx === -1) {
       // New from cloud
-      S.invoices.push(ci);
+      S.invoices.push(normalized);
       updates++;
     } else {
       const local = S.invoices[localIdx];
       const cloudTime = new Date(ci.createdAt || 0).getTime();
       const localTime = new Date(local.createdAt || 0).getTime();
       if (cloudTime > localTime) {
-        S.invoices[localIdx] = ci;
+        S.invoices[localIdx] = normalized;
         updates++;
       }
     }
@@ -861,25 +904,25 @@ async function loadFromCloud() {
     S.entries = [];
     S.invoices = [];
 
-    // Stamp entity on all loaded entries/invoices to ensure proper separation
+    // Stamp entity and normalize numeric fields on all loaded entries/invoices
     if (selfData.success) {
       if (selfData.entries) {
         selfData.entries.forEach(e => { e.entity = 'self'; });
-        S.entries.push(...selfData.entries);
+        S.entries.push(...selfData.entries.map(normalizeEntry));
       }
       if (selfData.invoices) {
         selfData.invoices.forEach(i => { i.entity = 'self'; i.logoType = i.logoType || 'self'; });
-        S.invoices.push(...selfData.invoices);
+        S.invoices.push(...selfData.invoices.map(normalizeInvoice));
       }
     }
     if (ltdData.success) {
       if (ltdData.entries) {
         ltdData.entries.forEach(e => { e.entity = 'ltd'; });
-        S.entries.push(...ltdData.entries);
+        S.entries.push(...ltdData.entries.map(normalizeEntry));
       }
       if (ltdData.invoices) {
         ltdData.invoices.forEach(i => { i.entity = 'ltd'; i.logoType = i.logoType || 'ltd'; });
-        S.invoices.push(...ltdData.invoices);
+        S.invoices.push(...ltdData.invoices.map(normalizeInvoice));
       }
     }
 
@@ -905,6 +948,12 @@ async function loadSettingsFromCloudFn() {
   if (result.success && result.settings) {
     if (result.settings.entities) S.ents = result.settings.entities;
     if (result.settings.payTerms) S.payTerms = result.settings.payTerms;
+    if (result.settings.nextInv) S.nextInv = result.settings.nextInv;
+    if (result.settings.dayMap) S.dayMap = result.settings.dayMap;
+    if (result.settings.ahPrac) {
+      S.ahPrac = result.settings.ahPrac;
+      console.log('[Settings Loaded] ahPrac=', S.ahPrac.length, 'practices');
+    }
   }
   return result;
 }
@@ -1112,8 +1161,11 @@ var r=document.getElementById('_dupReplace');if(r)r.onclick=function(){replaceDu
 async function addToDup(id,pts,ao){
   const e=S.entries.find(x=>x.id===id);
   if(e){
-    e.pts+=pts;
-    e.aoAmt+=ao;
+    // Ensure numeric fields are numbers (cloud data may be strings)
+    e.pts=(parseInt(e.pts)||0)+pts;
+    e.uPrice=parseFloat(e.uPrice)||0;
+    e.aoAmt=(parseFloat(e.aoAmt)||0)+ao;
+    e.comm=parseFloat(e.comm)||0;
     e.gross=(e.pts*e.uPrice)+e.aoAmt;
     e.commAmt=e.gross*e.comm;
     e.updatedAt=new Date().toISOString();
@@ -1193,9 +1245,12 @@ var r=document.getElementById('_ahDupReplace');if(r)r.onclick=function(){replace
 async function addToAhDup(id,pts,air,airPts){
 const e=S.entries.find(x=>x.id===id);
 if(e){
-  e.pts+=pts;
-  e.aoPatients=(e.aoPatients||0)+airPts;
-  e.gross=(e.pts*e.uPrice)+((e.aoPatients||0)*(e.aoAmt||0));
+  // Ensure numeric fields are numbers (cloud data may be strings)
+  e.pts=(parseInt(e.pts)||0)+pts;
+  e.uPrice=parseFloat(e.uPrice)||0;
+  e.aoPatients=(parseInt(e.aoPatients)||0)+airPts;
+  e.aoAmt=parseFloat(e.aoAmt)||0;
+  e.gross=(e.pts*e.uPrice)+(e.aoPatients*e.aoAmt);
   e.updatedAt=new Date().toISOString();
   save();closeMod2();nav('adhoc');
   showToast('Syncing...');
@@ -1285,18 +1340,73 @@ upHome();
 
 // ===== ARCHIVE SCREEN =====
 let arcFilter='all';
+let arcEntFilter='all';
+function filtArcEnt(f){
+  arcEntFilter=f;
+  document.getElementById('arcEAll').className='ebtn'+(f==='all'?' act':'');
+  document.getElementById('arcES').className='ebtn'+(f==='self'?' act':'');
+  document.getElementById('arcEL').className='ebtn'+(f==='ltd'?' act':'');
+  refArc();
+}
 function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(c=>c.classList.toggle('act',c.textContent.toLowerCase()===f||f==='all'&&c.textContent==='All'));refArc();}
-function refArc(){const c=document.getElementById('arcList');
-let entries=[...S.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-if(arcFilter!=='all')entries=entries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
-if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
-c.innerHTML=entries.map(e=>{const d=new Date(e.date);const col=e.pType==='adhoc'?'adhoc':e.pId;
-var dow=d.getDay();var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var dayName=dayNames[dow];
-var dayColors=['#EF4444','#2196F3','#EAB308','#7C3AED','#22C55E','#F97316','#1A1A1A'];var dbColor='border:2.5px solid '+dayColors[dow]+'!important';
-return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem" data-id="'+e.id+'" data-eid="'+e.id+'" style="'+dbColor+'">'+
-'<div class="db"><div class="dy">'+d.getDate()+'</div><div class="mo">'+dayName+' '+d.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
-'<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
-'<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';}).join('');}
+function refArc(){
+  const c=document.getElementById('arcList');
+  const now=new Date();
+  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+
+  // Sort by date desc, then by createdAt desc (most recent first)
+  let entries=[...S.entries].sort((a,b)=>{
+    const dateComp=b.date.localeCompare(a.date);
+    if(dateComp!==0)return dateComp;
+    return (b.createdAt||'').localeCompare(a.createdAt||'');
+  });
+
+  // Apply practice filter
+  if(arcFilter!=='all')entries=entries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
+  // Apply entity filter
+  if(arcEntFilter!=='all')entries=entries.filter(e=>(e.entity||'self')===arcEntFilter);
+
+  if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
+
+  // Group by month
+  const byMonth={};
+  entries.forEach(e=>{
+    const monthKey=e.date.substring(0,7); // YYYY-MM
+    if(!byMonth[monthKey])byMonth[monthKey]=[];
+    byMonth[monthKey].push(e);
+  });
+
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayColors=['#EF4444','#2196F3','#EAB308','#7C3AED','#22C55E','#F97316','#1A1A1A'];
+
+  let html='';
+  Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
+    const monthEntries=byMonth[monthKey];
+    const isCurrentMonth=monthKey===curMonth;
+    const d=new Date(monthKey+'-01');
+    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+    // Show month header for past months, or "This Month" for current
+    html+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthEntries.length+' entries</span></div>';
+
+    // Render entries for this month
+    html+=monthEntries.map(e=>{
+      const ed=new Date(e.date);
+      const col=e.pType==='adhoc'?'adhoc':e.pId;
+      const dow=ed.getDay();
+      const dayName=dayNames[dow];
+      const dayBorder='border-right:3px solid '+dayColors[dow];
+      const entBorder=e.entity==='ltd'?'border-left:3px solid #EF4444':'border-left:3px solid #0EA5E9';
+      const entLabel=e.entity==='ltd'?'Ltd':'Self';
+      const entBadgeClass=e.entity==='ltd'?'ltd':'self';
+      return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem" data-id="'+e.id+'" data-eid="'+e.id+'" style="'+entBorder+';'+dayBorder+'">'+
+        '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+dayName+' '+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
+        '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
+        '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
+    }).join('');
+  });
+  c.innerHTML=html;
+}
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
@@ -1323,6 +1433,7 @@ async function saveEntry(id){
   e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;
   e.aoType=e.aoAmt>0?'Airflow':null;
   e.gross=(e.pts*e.uPrice)+e.aoAmt;
+  e.comm=parseFloat(e.comm)||0;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
   console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
@@ -1340,6 +1451,118 @@ async function delEntry(id){
   // Sync deletion to cloud (queues on failure)
   const result=await deleteEntryFromCloud(id, entity);
   if(result.success){showToast('Entry deleted');}
+}
+
+// ===== CLEAR TODAY'S ENTRIES =====
+function showClearTodayModal(){
+  const td=today();
+  // Split by entity AND type (contract vs adhoc)
+  const selfContract=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='contract');
+  const selfAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='adhoc');
+  const ltdContract=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='contract');
+  const ltdAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='adhoc');
+
+  const hasAny=selfContract.length||selfAdhoc.length||ltdContract.length||ltdAdhoc.length;
+  if(!hasAny){
+    showToast('No entries for today');
+    return;
+  }
+
+  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear Today\'s Entries</h3>';
+  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Select which entries to clear for '+fdd(td)+':</p>';
+  _h+='<div style="display:flex;flex-direction:column;gap:12px">';
+
+  // Self-Employed Contract
+  _h+=renderClearOption('Self-Employed','Contract',selfContract,'#0EA5E9','_clearSelfContract');
+  // Self-Employed Ad Hoc
+  _h+=renderClearOption('Self-Employed','Ad Hoc',selfAdhoc,'#0EA5E9','_clearSelfAdhoc');
+  // Ltd Company Contract
+  _h+=renderClearOption('Ltd Company','Contract',ltdContract,'#EF4444','_clearLtdContract');
+  // Ltd Company Ad Hoc
+  _h+=renderClearOption('Ltd Company','Ad Hoc',ltdAdhoc,'#EF4444','_clearLtdAdhoc');
+
+  _h+='</div>';
+  _h+='<button class="btn btn-s" style="width:100%;margin-top:16px" id="_clearCancel">Cancel</button>';
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_clearCancel').onclick=()=>closeMod2();
+    if(selfContract.length>0) document.getElementById('_clearSelfContract').onclick=()=>showClearConfirmModal('self','contract');
+    if(selfAdhoc.length>0) document.getElementById('_clearSelfAdhoc').onclick=()=>showClearConfirmModal('self','adhoc');
+    if(ltdContract.length>0) document.getElementById('_clearLtdContract').onclick=()=>showClearConfirmModal('ltd','contract');
+    if(ltdAdhoc.length>0) document.getElementById('_clearLtdAdhoc').onclick=()=>showClearConfirmModal('ltd','adhoc');
+  },50);
+}
+
+function renderClearOption(entLabel,typeLabel,entries,color,btnId){
+  const gross=entries.reduce((s,e)=>s+(parseFloat(e.gross)||0),0);
+  if(entries.length>0){
+    return '<button class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px" id="'+btnId+'">'+
+      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2)">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+fc(gross)+' gross</div>'+
+      '</button>';
+  }else{
+    return '<div class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px;opacity:0.5;cursor:not-allowed">'+
+      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
+      '<div style="font-size:12px;color:var(--txt2)">No entries today</div>'+
+      '</div>';
+  }
+}
+
+function showClearConfirmModal(entity,pType){
+  const td=today();
+  const entries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
+  const entLabel=entity==='self'?'Self-Employed':'Ltd Company';
+  const typeLabel=pType==='adhoc'?'Ad Hoc':'Contract';
+  const entColor=entity==='self'?'#0EA5E9':'#EF4444';
+
+  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear '+entLabel+' '+typeLabel+'</h3>';
+  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete <b>'+entries.length+' entr'+(entries.length===1?'y':'ies')+'</b> from today ('+fdd(td)+').</p>';
+  _h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;border-left:3px solid '+entColor+'">';
+  entries.forEach(e=>{
+    _h+='<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)">'+e.pName+' · '+e.svc+' · '+e.pts+' pts · '+fc(parseFloat(e.gross)||0)+'</div>';
+  });
+  _h+='</div>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:8px">Type <b>11</b> to confirm deletion:</p>';
+  _h+='<input class="fi" id="clearConfirmInput" type="text" placeholder="Type 11" style="margin-bottom:16px">';
+  _h+='<div class="brow"><button class="btn btn-s" id="_clearBack">Back</button><button class="btn btn-d" id="_clearConfirm" disabled>Delete All</button></div>';
+  showModal(_h);
+
+  setTimeout(()=>{
+    const inp=document.getElementById('clearConfirmInput');
+    const btn=document.getElementById('_clearConfirm');
+    inp.focus();
+    inp.oninput=()=>{
+      btn.disabled=inp.value!=='11';
+    };
+    document.getElementById('_clearBack').onclick=()=>showClearTodayModal();
+    btn.onclick=()=>clearTodayEntries(entity,pType);
+  },50);
+}
+
+async function clearTodayEntries(entity,pType){
+  const td=today();
+  const todayEntries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
+  if(todayEntries.length===0){closeMod2();return;}
+
+  closeMod2();
+  showToast('Clearing '+todayEntries.length+' entries...');
+
+  // Delete from cloud first
+  let deleted=0;
+  for(const entry of todayEntries){
+    const result=await deleteEntryFromCloud(entry.id,entity);
+    if(result.success)deleted++;
+    console.log('[Clear Today] Deleted', entry.pName, entry.svc, entry.id, result.success?'OK':'FAIL');
+  }
+
+  // Remove from local state (only for selected entity and type)
+  S.entries=S.entries.filter(e=>!(e.date===td&&e.entity===entity&&e.pType===pType));
+  save();
+  refArc();
+  upHome();
+
+  showToast('Cleared '+deleted+'/'+todayEntries.length+' entries');
 }
 
 // ===== INVOICES =====
@@ -1392,12 +1615,37 @@ else{
   ac.innerHTML=ahHtml;
 }
 
-// Past invoices
+// Past invoices - grouped by month with entity badges
 const pc2=document.getElementById('pInv');
-if(!S.invoices.length){pc2.innerHTML='<div class="empty"><div class="emo">📄</div><p>Generated invoices will appear here.</p></div>';}
-else{pc2.innerHTML=S.invoices.sort((a,b)=>b.date.localeCompare(a.date)).map(inv=>
-'<div class="aitem"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+'</div><div class="pt">'+inv.period+' · '+inv.entity+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>'
-).join('');}
+// Filter by current entity view
+const filtInv=S.invoices.filter(inv=>(inv.logoType||inv.entity)===(S.iEnt==='self'?'self':'ltd')||(inv.logoType||inv.entity)===(S.iEnt==='self'?'Self-Employed':'Ltd Company'));
+if(!filtInv.length){pc2.innerHTML='<div class="empty"><div class="emo">📄</div><p>No invoices for this entity yet.</p></div>';}
+else{
+  // Group by month
+  const invByMonth={};
+  const now=new Date();
+  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  filtInv.sort((a,b)=>b.date.localeCompare(a.date)).forEach(inv=>{
+    const monthKey=inv.date.substring(0,7);
+    if(!invByMonth[monthKey])invByMonth[monthKey]=[];
+    invByMonth[monthKey].push(inv);
+  });
+  let invHtml='';
+  Object.keys(invByMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
+    const monthInvs=invByMonth[monthKey];
+    const isCurrentMonth=monthKey===curMonth;
+    const d=new Date(monthKey+'-01');
+    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    invHtml+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
+    invHtml+=monthInvs.map(inv=>{
+      const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+      const entClass='ent-'+entType;
+      const entLabel=entType==='ltd'?'Ltd':'Self';
+      return '<div class="aitem '+entClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
+    }).join('');
+  });
+  pc2.innerHTML=invHtml;
+}
 }
 
 // ===== INVOICE PREVIEW =====
@@ -1722,25 +1970,66 @@ _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label cl
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" value="'+svcsStr+'"></div>';
-_h+='<div class="brow"><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
+_h+='<div class="brow"><button class="btn" style="background:var(--err);color:#fff" id="_epDel">Delete</button><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
 showModal(_h);
 setTimeout(function(){
 document.getElementById('_epCancel').onclick=function(){closeMod2()};
-document.getElementById('_epSave').onclick=function(){savePrac(id)};
+document.getElementById('_epSave').onclick=function(){savePrac(id,false)};
+document.getElementById('_epDel').onclick=function(){deletePrac(id)};
 },50);
 }
-function savePrac(id){var p=S.practices[id];
-p.name=document.getElementById('ePName').value.trim()||p.name;
-p.short=document.getElementById('ePShort').value.trim()||p.short;
+function addPrac(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add New Practice</h3>';
+_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" placeholder="e.g. Smile Dental"></div>';
+_h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="ePShort" placeholder="e.g. Smile"></div>';
+_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3" placeholder="Full address..."></textarea></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" placeholder="e.g. 1,3,5"></div></div>';
+_h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" placeholder="e.g. Hygiene:70, Perio:160"></div>';
+_h+='<div class="brow"><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Add Practice</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_epCancel').onclick=function(){closeMod2()};
+document.getElementById('_epSave').onclick=function(){savePrac(null,true)};
+},50);
+}
+function savePrac(id,isNew){
+var name=document.getElementById('ePName').value.trim();
+var short=document.getElementById('ePShort').value.trim();
+if(!name){showToast('Please enter a practice name');return;}
+if(!short)short=name;
+var newId=isNew?(short.toLowerCase().replace(/[^a-z0-9]/g,'')||'prac'+Date.now()):id;
+var p=isNew?{}:S.practices[id];
+p.id=newId;
+p.name=name;
+p.short=short;
 p.addr=document.getElementById('ePAddr').value.trim().replace(/\n/g,'\\n');
 p.comm=(parseFloat(document.getElementById('ePComm').value)||35)/100;
 var daysVal=document.getElementById('ePDays').value.trim();
-if(daysVal)p.days=daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6});
+p.days=daysVal?daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6}):[];
 var svcsVal=document.getElementById('ePSvcs').value.trim();
 if(svcsVal){var newSvcs={};svcsVal.split(',').forEach(function(s){var parts=s.trim().split(':');if(parts.length===2){newSvcs[parts[0].trim()]={p:parseFloat(parts[1])||70,d:'per patient'};}});if(Object.keys(newSvcs).length)p.svcs=newSvcs;}
+else if(isNew)p.svcs={Hygiene:{p:70,d:'per patient'}};
+p.type='contract';
+p.createdAt=p.createdAt||new Date().toISOString();
+Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===newId)S.dayMap[k]='home';});
+if(p.days)p.days.forEach(function(d){S.dayMap[d]=newId;});
+S.practices[newId]=p;
+save();closeMod2();refreshSettings();buildDayMap();
+console.log('[Practice '+(isNew?'Added':'Updated')+']',p.short,'svcs=',Object.keys(p.svcs||{}),'days=',p.days);
+showToast('\u2713 '+(isNew?'Added':'Updated')+' '+p.short);
+syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Synced to Cloud]',p.short);else console.error('[Practice Sync Failed]',r);});
+}
+function deletePrac(id){
+var p=S.practices[id];if(!p)return;
+if(!confirm('Delete '+p.short+'? This cannot be undone.')){return;}
 Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===id)S.dayMap[k]='home';});
-if(p.days)p.days.forEach(function(d){S.dayMap[d]=id;});
-save();closeMod2();refreshSettings();buildDayMap();showToast('\u2713 '+p.short+' updated');}
+delete S.practices[id];
+save();closeMod2();refreshSettings();buildDayMap();
+console.log('[Practice Deleted]',p.short);
+showToast('\u2713 Deleted '+p.short);
+syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Delete Synced to Cloud]');else console.error('[Practice Delete Sync Failed]',r);});
+}
 function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementById('sEnt').textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 
 function editField(entType,field){
@@ -1819,6 +2108,69 @@ S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
 save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');};
 },50);
 }
+function addAhPracSettings(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>';
+_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" placeholder="e.g. Smile Dental"></div>';
+_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3" placeholder="Full invoice address..."></textarea></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per Patient (£)</label><input class="fi" id="ahsRate" type="number" value="25" step="0.01"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="ahsAir" type="number" value="9" step="0.01"></div></div>';
+_h+='<div class="brow"><button class="btn btn-s" id="_ahsC">Cancel</button><button class="btn btn-p" id="_ahsS">Add Practice</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_ahsC').onclick=function(){closeMod2()};
+document.getElementById('_ahsS').onclick=function(){saveAhPracSettings(null)};
+},50);
+}
+function editAhPracSettings(idx){
+var p=S.ahPrac[idx];if(!p)return;
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit '+p.name+'</h3>';
+_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" value="'+p.name+'"></div>';
+_h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per Patient (£)</label><input class="fi" id="ahsRate" type="number" value="'+p.rate+'" step="0.01"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="ahsAir" type="number" value="'+(p.air||0)+'" step="0.01"></div></div>';
+_h+='<div class="fg"><label class="fl">Status</label><select class="asel" id="ahsActive"><option value="1"'+(p.active?' selected':'')+'>Active</option><option value="0"'+(!p.active?' selected':'')+'>Inactive</option></select></div>';
+_h+='<div class="brow"><button class="btn" style="background:var(--err);color:#fff" id="_ahsDel">Delete</button><button class="btn btn-s" id="_ahsC">Cancel</button><button class="btn btn-p" id="_ahsS">Save</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_ahsC').onclick=function(){closeMod2()};
+document.getElementById('_ahsS').onclick=function(){saveAhPracSettings(idx)};
+document.getElementById('_ahsDel').onclick=function(){deleteAhPracSettings(idx)};
+},50);
+}
+function saveAhPracSettings(idx){
+var name=document.getElementById('ahsName').value.trim();
+if(!name){showToast('Please enter a practice name');return;}
+var addr=document.getElementById('ahsAddr').value.trim().replace(/\n/g,'\\n');
+var rate=parseFloat(document.getElementById('ahsRate').value)||25;
+var air=parseFloat(document.getElementById('ahsAir').value)||0;
+var activeEl=document.getElementById('ahsActive');
+var active=activeEl?activeEl.value==='1':true;
+if(idx===null){
+  // Add new
+  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true});
+  console.log('[Ad Hoc Practice Added]',name);
+}else{
+  // Edit existing
+  S.ahPrac[idx].name=name;
+  S.ahPrac[idx].addr=addr;
+  S.ahPrac[idx].rate=rate;
+  S.ahPrac[idx].air=air;
+  S.ahPrac[idx].active=active;
+  console.log('[Ad Hoc Practice Updated]',name,'active=',active);
+}
+save();closeMod2();refreshSettings();popAh();
+showToast('\u2713 '+(idx===null?'Added':'Updated')+' '+name);
+syncSettingsToCloud();
+}
+function deleteAhPracSettings(idx){
+var p=S.ahPrac[idx];if(!p)return;
+if(!confirm('Delete '+p.name+'? This cannot be undone.')){return;}
+console.log('[Ad Hoc Practice Deleted]',p.name);
+S.ahPrac.splice(idx,1);
+save();closeMod2();refreshSettings();popAh();
+showToast('\u2713 Deleted '+p.name);
+syncSettingsToCloud();
+}
 function refreshSettings(){
 var se=S.ents.self,lt=S.ents.ltd;var el;
 el=document.getElementById('se_name');if(el)el.textContent=se.name||'-';
@@ -1841,6 +2193,16 @@ row.innerHTML='<span class="la">'+(p.short||k)+'</span><span class="va">'+((p.co
 row.onclick=function(){editPrac(k)};
 psec.appendChild(row);
 });}
+// Ad Hoc practices
+var ahsec=document.getElementById('ahPracSettings');
+if(ahsec){ahsec.innerHTML='';(S.ahPrac||[]).forEach(function(p,idx){
+var row=document.createElement('div');row.className='srow';
+var statusBadge=p.active?'':'<span style="color:var(--txt3);font-size:10px"> (inactive)</span>';
+row.innerHTML='<span class="la">'+p.name+statusBadge+'</span><span class="va">\u00a3'+p.rate+'/pt'+(p.air>0?' +\u00a3'+p.air+' air':'')+'</span>';
+row.onclick=function(){editAhPracSettings(idx)};
+ahsec.appendChild(row);
+});
+if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);font-size:13px;padding:8px 0">No ad hoc practices. Add one above.</p>';}}
 }
 
 function exportCSV(){

@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { fileName, pdfBase64, entity, year, month } = req.body;
+  const { fileName, pdfBase64, entity, year, month, isAdhoc } = req.body;
 
   if (!fileName || !pdfBase64) {
     return res.status(400).json({ error: 'Missing required fields: fileName, pdfBase64' });
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
   try {
     const drive = await getDrive();
 
-    // Create folder structure: Entity/Invoices/Year/Month/
+    // Create folder structure: Entity/Invoices/Year/Month/ (or Entity/Invoices/Year/Month/Ad Hoc/ for adhoc)
     const entityFolderName = entity === 'ltd' ? 'Ltd Company' : 'Self-Employed';
     const yearStr = year || new Date().getFullYear().toString();
     const monthStr = month || new Date().toLocaleString('en-GB', { month: 'long' });
@@ -60,13 +60,21 @@ module.exports = async (req, res) => {
     // Get or create Month folder inside Year
     const monthFolderId = await getOrCreateFolder(drive, monthStr, yearFolderId);
 
+    // If adhoc, create/get Ad Hoc subfolder inside Month
+    let targetFolderId = monthFolderId;
+    let folderPath = `${entityFolderName}/Invoices/${yearStr}/${monthStr}`;
+    if (isAdhoc) {
+      targetFolderId = await getOrCreateFolder(drive, 'Ad Hoc', monthFolderId);
+      folderPath += '/Ad Hoc';
+    }
+
     // Convert base64 to buffer
     const pdfBuffer = Buffer.from(pdfBase64, 'base64');
 
     // Upload the PDF
     const fileMetadata = {
       name: fileName,
-      parents: [monthFolderId],
+      parents: [targetFolderId],
       mimeType: 'application/pdf'
     };
 
@@ -103,7 +111,7 @@ module.exports = async (req, res) => {
       fileName: updatedFile.data.name,
       webViewLink: updatedFile.data.webViewLink,
       webContentLink: updatedFile.data.webContentLink,
-      folderPath: `${entityFolderName}/Invoices/${yearStr}/${monthStr}`
+      folderPath: folderPath
     });
 
   } catch (error) {
