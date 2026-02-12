@@ -300,9 +300,9 @@ async function apiCall(endpoint, data) {
   }
 }
 
-// Sync entry to cloud
+// Sync entry to cloud (uses current entity S.iEnt)
 async function syncEntryToCloud(entry) {
-  const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry });
+  const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry, entity: S.iEnt });
   if (!result.success) {
     console.error('Failed to sync entry:', result);
     showToast('Cloud sync failed: ' + (result.error || result.message || 'Unknown'), 'err');
@@ -312,22 +312,76 @@ async function syncEntryToCloud(entry) {
 
 // Sync invoice to cloud
 async function syncInvoiceToCloud(invoice) {
-  const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice });
+  const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync invoice:', result);
   return result;
 }
 
 // Delete entry from cloud
 async function deleteEntryFromCloud(id) {
-  const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id } });
+  const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id }, entity: S.iEnt });
   if (!result.success) console.error('Failed to delete entry:', result);
   return result;
 }
 
 // Update entry in cloud
 async function updateEntryInCloud(id, updates) {
-  const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates } });
+  const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates }, entity: S.iEnt });
   if (!result.success) console.error('Failed to update entry:', result);
+  return result;
+}
+
+// Sync practices to cloud
+async function syncPracticesToCloud() {
+  const practices = Object.entries(S.practices).map(([id, p]) => ({
+    id, short: p.short, name: p.name, type: p.type, addr: p.addr, comm: p.comm, services: p.services
+  }));
+  const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
+  if (!result.success) console.error('Failed to sync practices:', result);
+  return result;
+}
+
+// Load practices from cloud
+async function loadPracticesFromCloud() {
+  const result = await apiCall('sheets-sync', { action: 'load_practices', entity: S.iEnt });
+  if (result.success && result.practices) {
+    result.practices.forEach(p => {
+      S.practices[p.id] = p;
+    });
+    save();
+  }
+  return result;
+}
+
+// Sync settings to cloud
+async function syncSettingsToCloud() {
+  const settings = {
+    entities: S.entities,
+    payTerms: S.payTerms,
+    iEnt: S.iEnt
+  };
+  const result = await apiCall('sheets-sync', { action: 'sync_settings', data: { settings }, entity: S.iEnt });
+  if (!result.success) console.error('Failed to sync settings:', result);
+  return result;
+}
+
+// Load settings from cloud
+async function loadSettingsFromCloud() {
+  const result = await apiCall('sheets-sync', { action: 'load_settings', entity: S.iEnt });
+  if (result.success && result.settings) {
+    if (result.settings.entities) S.entities = result.settings.entities;
+    if (result.settings.payTerms) S.payTerms = result.settings.payTerms;
+    save();
+  }
+  return result;
+}
+
+// Refresh dashboard
+async function refreshDashboard() {
+  const result = await apiCall('sheets-sync', { action: 'get_dashboard', entity: S.iEnt });
+  if (result.success) {
+    console.log('Dashboard updated:', result.dashboard);
+  }
   return result;
 }
 
@@ -389,7 +443,7 @@ async function generateAndUploadPDF(invData) {
 
 // Load data from cloud (for sync)
 async function loadFromCloud() {
-  const result = await apiCall('sheets-sync', { action: 'load_all' });
+  const result = await apiCall('sheets-sync', { action: 'load_all', entity: S.iEnt });
   if (result.success) {
     console.log('Loaded from cloud:', result.entriesCount, 'entries,', result.invoicesCount, 'invoices');
   }
@@ -399,8 +453,13 @@ async function loadFromCloud() {
 // Sync all local data to cloud
 async function syncAllToCloud() {
   showToast('Syncing to cloud...');
-  const entriesResult = await apiCall('sheets-sync', { action: 'sync_entries', data: { entries: S.entries } });
-  const invoicesResult = await apiCall('sheets-sync', { action: 'sync_invoices', data: { invoices: S.invoices } });
+  const entriesResult = await apiCall('sheets-sync', { action: 'sync_entries', data: { entries: S.entries }, entity: S.iEnt });
+  const invoicesResult = await apiCall('sheets-sync', { action: 'sync_invoices', data: { invoices: S.invoices }, entity: S.iEnt });
+  // Also sync practices and settings
+  await syncPracticesToCloud();
+  await syncSettingsToCloud();
+  // Refresh dashboard
+  await refreshDashboard();
   if (entriesResult.success && invoicesResult.success) {
     showToast('\u2713 Synced to cloud');
   } else {
