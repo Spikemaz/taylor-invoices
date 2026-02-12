@@ -35,7 +35,7 @@ function getSheetId(entity) {
 // Column mappings
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'airTotal', 'logoType', 'payTerms', 'isAdhoc', 'driveLink', 'createdAt'];
-const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'createdAt'];
+const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 
@@ -510,13 +510,13 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: sheetId,
-    range: 'Practices!A2:H',
+    range: 'Practices!A2:I',
   });
 
   if (rows.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Practices!A:H',
+      range: 'Practices!A:I',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows }
@@ -529,7 +529,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 async function loadPractices(sheets, sheetId, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Practices!A:H',
+    range: 'Practices!A:I',
   });
 
   const rows = response.data.values || [];
@@ -540,7 +540,7 @@ async function loadPractices(sheets, sheetId, res) {
       PRACTICE_COLUMNS.forEach((col, i) => {
         let val = row[i];
         if (col === 'comm') val = parseFloat(val) || 0;
-        if (col === 'services' && val) {
+        if ((col === 'services' || col === 'days') && val) {
           try { val = JSON.parse(val); } catch(e) {}
         }
         obj[col] = val || '';

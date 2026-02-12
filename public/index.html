@@ -563,8 +563,9 @@ async function deleteInvoiceFromCloud(num, entity) {
 // Sync practices to cloud
 async function syncPracticesToCloud() {
   const practices = Object.entries(S.practices).map(([id, p]) => ({
-    id, short: p.short, name: p.name, type: p.type, addr: p.addr, comm: p.comm, services: p.services
+    id, short: p.short, name: p.name, type: p.type, addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
   }));
+  console.log('[Practices Sync]', practices.map(p => p.short + ': ' + Object.keys(p.services || {}).join(',')));
   const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync practices:', result);
   return result;
@@ -575,11 +576,17 @@ async function loadPracticesFromCloud() {
   const result = await apiCall('sheets-sync', { action: 'load_practices', entity: S.iEnt });
   if (result.success && result.practices) {
     result.practices.forEach(p => {
+      // Map 'services' (API column) to 'svcs' (frontend field)
+      if (p.services && !p.svcs) {
+        p.svcs = typeof p.services === 'string' ? JSON.parse(p.services) : p.services;
+        delete p.services;
+      }
       // Ensure all required properties have defaults
       p.days = p.days || [];
       p.svcs = p.svcs || { Hygiene: { p: 70, d: 'per patient' } };
       p.comm = p.comm || 0.35;
       p.short = p.short || p.name || p.id;
+      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}));
       S.practices[p.id] = p;
     });
     save();
