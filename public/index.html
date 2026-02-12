@@ -1303,11 +1303,13 @@ if(e){
   e.aoAmt=parseFloat(e.aoAmt)||0;
   e.gross=(e.pts*e.uPrice)+(e.aoPatients*e.aoAmt);
   e.updatedAt=new Date().toISOString();
-  save();closeMod2();nav('adhoc');
+  save();closeMod2();
+  // Reset form
+  document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();
   showToast('Syncing...');
   const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
   if(result.success){showToast('Updated — '+e.pts+' patients');}
-}else{closeMod2();nav('adhoc');}
+}else{closeMod2();}
 }
 
 async function replaceAhDup(id){
