@@ -19,6 +19,7 @@ async function getDrive() {
 }
 
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const DRIVE_OWNER_EMAIL = process.env.GOOGLE_DRIVE_OWNER_EMAIL; // Email to transfer ownership to
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -89,6 +90,24 @@ module.exports = async (req, res) => {
       fields: 'id, name, webViewLink, webContentLink',
       supportsAllDrives: true
     });
+
+    // Transfer ownership to the Drive owner (so file uses their quota, not service account's)
+    if (DRIVE_OWNER_EMAIL) {
+      try {
+        await drive.permissions.create({
+          fileId: file.data.id,
+          requestBody: {
+            role: 'owner',
+            type: 'user',
+            emailAddress: DRIVE_OWNER_EMAIL
+          },
+          transferOwnership: true,
+          supportsAllDrives: true
+        });
+      } catch (transferErr) {
+        console.log('Ownership transfer failed (may already be owned):', transferErr.message);
+      }
+    }
 
     // Make the file viewable by anyone with the link
     await drive.permissions.create({

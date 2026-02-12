@@ -93,7 +93,9 @@ async function getOrCreateFolder(drive, folderName, parentId) {
   const response = await drive.files.list({
     q: query,
     fields: 'files(id, name)',
-    spaces: 'drive'
+    spaces: 'drive',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true
   });
 
   if (response.data.files && response.data.files.length > 0) {
@@ -110,7 +112,8 @@ async function getOrCreateFolder(drive, folderName, parentId) {
 
   const folder = await drive.files.create({
     requestBody: fileMetadata,
-    fields: 'id'
+    fields: 'id',
+    supportsAllDrives: true
   });
 
   return folder.data.id;
