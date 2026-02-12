@@ -37,6 +37,33 @@ const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPr
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'airTotal', 'logoType', 'payTerms', 'isAdhoc', 'driveLink', 'createdAt'];
 const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
+const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
+
+// ===== AUDIT LOG =====
+async function writeLog(sheets, sheetId, logEntry) {
+  try {
+    const row = [
+      new Date().toISOString(),
+      logEntry.action,       // CREATE, UPDATE, DELETE
+      logEntry.dataType,     // entry, invoice, practice, settings
+      logEntry.recordId,     // ID of the record
+      logEntry.changes || '',      // What changed (for updates)
+      logEntry.previousData ? JSON.stringify(logEntry.previousData) : '',
+      logEntry.newData ? JSON.stringify(logEntry.newData) : ''
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: 'Log!A:G',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+  } catch (e) {
+    console.error('Failed to write audit log:', e.message);
+    // Don't fail the main operation if logging fails
+  }
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -67,6 +94,7 @@ module.exports = async (req, res) => {
       case 'load_settings': return await loadSettings(sheets, sheetId, res);
       case 'get_dashboard': return await getDashboard(sheets, sheetId, res);
       case 'rename_sheet': return await renameSheet(sheets, sheetId, data, res);
+      case 'setup_log_tab': return await setupLogTab(sheets, sheetId, res);
       default: return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (error) {
@@ -97,6 +125,15 @@ async function appendEntry(sheets, sheetId, entry, res) {
     requestBody: { values: [row] }
   });
 
+  // Log the creation
+  await writeLog(sheets, sheetId, {
+    action: 'CREATE',
+    dataType: 'entry',
+    recordId: entry.id,
+    changes: `New entry: ${entry.pName} - ${entry.svc} - ${entry.pts} pts - £${entry.gross}`,
+    newData: entry
+  });
+
   return res.status(200).json({ success: true, message: 'Entry appended', id: entry.id });
 }
 
@@ -114,6 +151,10 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
   }
 
   const currentRow = rows[rowIndex];
+  // Convert current row to object for logging
+  const previousData = {};
+  ENTRY_COLUMNS.forEach((col, i) => { previousData[col] = currentRow[i] || ''; });
+
   const updatedRow = ENTRY_COLUMNS.map((col, i) => {
     if (updates.hasOwnProperty(col)) {
       const val = updates[col];
@@ -131,6 +172,17 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
     requestBody: { values: [updatedRow] }
   });
 
+  // Log the update with before/after data
+  const changedFields = Object.keys(updates).filter(k => updates[k] !== previousData[k]).join(', ');
+  await writeLog(sheets, sheetId, {
+    action: 'UPDATE',
+    dataType: 'entry',
+    recordId: id,
+    changes: `Updated fields: ${changedFields}`,
+    previousData: previousData,
+    newData: updates
+  });
+
   return res.status(200).json({ success: true, message: 'Entry updated', id });
 }
 
@@ -146,6 +198,11 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
   if (rowIndex === -1) {
     return res.status(404).json({ error: 'Entry not found', id });
   }
+
+  // Store the data before deletion for the log
+  const deletedRow = rows[rowIndex];
+  const deletedData = {};
+  ENTRY_COLUMNS.forEach((col, i) => { deletedData[col] = deletedRow[i] || ''; });
 
   const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
   const entriesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'Entries');
@@ -167,6 +224,15 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
         }
       }]
     }
+  });
+
+  // Log the deletion with full previous data
+  await writeLog(sheets, sheetId, {
+    action: 'DELETE',
+    dataType: 'entry',
+    recordId: id,
+    changes: `Deleted entry: ${deletedData.pName} - ${deletedData.svc} - ${deletedData.pts} pts - £${deletedData.gross}`,
+    previousData: deletedData
   });
 
   return res.status(200).json({ success: true, message: 'Entry deleted', id });
@@ -223,6 +289,15 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
     requestBody: { values: [row] }
   });
 
+  // Log the invoice creation
+  await writeLog(sheets, sheetId, {
+    action: 'CREATE',
+    dataType: 'invoice',
+    recordId: invoice.num,
+    changes: `New invoice #${invoice.num}: ${invoice.practiceName || invoice.practice} - £${invoice.amount}`,
+    newData: invoice
+  });
+
   return res.status(200).json({ success: true, message: 'Invoice appended', num: invoice.num });
 }
 
@@ -240,6 +315,10 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
   }
 
   const currentRow = rows[rowIndex];
+  // Convert current row to object for logging
+  const previousData = {};
+  INVOICE_COLUMNS.forEach((col, i) => { previousData[col] = currentRow[i] || ''; });
+
   const updatedRow = INVOICE_COLUMNS.map((col, i) => {
     if (updates.hasOwnProperty(col)) {
       const val = updates[col];
@@ -255,6 +334,17 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
     range: `Invoices!A${rowIndex + 1}:X${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [updatedRow] }
+  });
+
+  // Log the update
+  const changedFields = Object.keys(updates).filter(k => updates[k] !== previousData[k]).join(', ');
+  await writeLog(sheets, sheetId, {
+    action: 'UPDATE',
+    dataType: 'invoice',
+    recordId: num,
+    changes: `Updated fields: ${changedFields}`,
+    previousData: previousData,
+    newData: updates
   });
 
   return res.status(200).json({ success: true, message: 'Invoice updated', num });
@@ -601,4 +691,39 @@ async function renameSheet(sheets, sheetId, { title }, res) {
   });
 
   return res.status(200).json({ success: true, message: `Sheet renamed to: ${title}` });
+}
+
+// ===== SETUP LOG TAB =====
+async function setupLogTab(sheets, sheetId, res) {
+  try {
+    // First check if Log tab exists, if not create it
+    const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+    const logSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'Log');
+
+    if (!logSheet) {
+      // Create the Log tab
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: {
+          requests: [{
+            addSheet: {
+              properties: { title: 'Log' }
+            }
+          }]
+        }
+      });
+    }
+
+    // Add headers
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: 'Log!A1:G1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [LOG_COLUMNS] }
+    });
+
+    return res.status(200).json({ success: true, message: 'Log tab setup complete' });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to setup Log tab', message: e.message });
+  }
 }
