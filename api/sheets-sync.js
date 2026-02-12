@@ -86,6 +86,7 @@ module.exports = async (req, res) => {
       case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res);
       case 'load_all': return await loadAll(sheets, sheetId, res);
       case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res);
+      case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res);
       case 'sync_entries': return await syncEntries(sheets, sheetId, data, res);
       case 'sync_invoices': return await syncInvoices(sheets, sheetId, data, res);
       case 'sync_practices': return await syncPractices(sheets, sheetId, data, res);
@@ -236,6 +237,58 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
   });
 
   return res.status(200).json({ success: true, message: 'Entry deleted', id });
+}
+
+async function deleteInvoice(sheets, sheetId, { num }, res) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'Invoices!A:X',
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex(row => row[0] === num || row[0] === String(num));
+
+  if (rowIndex === -1) {
+    return res.status(404).json({ error: 'Invoice not found', num });
+  }
+
+  // Store the data before deletion for the log
+  const deletedRow = rows[rowIndex];
+  const deletedData = {};
+  INVOICE_COLUMNS.forEach((col, i) => { deletedData[col] = deletedRow[i] || ''; });
+
+  const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const invoicesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'Invoices');
+  if (!invoicesSheet) {
+    return res.status(500).json({ error: 'Invoices sheet not found' });
+  }
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: sheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId: invoicesSheet.properties.sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1
+          }
+        }
+      }]
+    }
+  });
+
+  // Log the deletion with full previous data
+  await writeLog(sheets, sheetId, {
+    action: 'DELETE',
+    dataType: 'invoice',
+    recordId: num,
+    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount}`,
+    previousData: deletedData
+  });
+
+  return res.status(200).json({ success: true, message: 'Invoice deleted', num });
 }
 
 async function syncEntries(sheets, sheetId, { entries }, res) {

@@ -265,6 +265,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="ssec">
 <div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
 <div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
+<div class="srow" onclick="initDriveFoldersManual()"><span class="la">Setup Drive Folders</span><span class="va">📁</span></div>
 </div>
 <div class="sh">Data</div>
 <div class="ssec">
@@ -464,9 +465,45 @@ async function apiCall(endpoint, data) {
   }
 }
 
-// Sync entry to cloud (uses current entity S.iEnt) - queues on failure
+// Initialize Google Drive folder structure for both entities
+let driveInitialized = false;
+async function initDriveFolders() {
+  if (driveInitialized) return; // Only run once per session
+  try {
+    const result = await apiCall('drive-init', {});
+    if (result.success) {
+      driveInitialized = true;
+      console.log('Drive folders initialized:', result);
+    } else {
+      console.error('Drive init failed:', result);
+    }
+  } catch (e) {
+    console.error('Drive init error:', e);
+  }
+}
+
+// Manual Drive folder setup with UI feedback
+async function initDriveFoldersManual() {
+  showToast('Setting up Drive folders...');
+  driveInitialized = false; // Reset to force re-run
+  try {
+    const result = await apiCall('drive-init', {});
+    if (result.success) {
+      driveInitialized = true;
+      const selfFolders = result.results['Self-Employed']?.folders?.length || 0;
+      const ltdFolders = result.results['Ltd Company']?.folders?.length || 0;
+      showToast('Drive folders ready: Self-Employed (' + selfFolders + '), Ltd Company (' + ltdFolders + ')');
+    } else {
+      showToast('Drive setup failed: ' + (result.error || result.message), 'err');
+    }
+  } catch (e) {
+    showToast('Drive setup error: ' + e.message, 'err');
+  }
+}
+
+// Sync entry to cloud - uses the entry's own entity property
 async function syncEntryToCloud(entry) {
-  const entity = S.iEnt;
+  const entity = entry.entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry, entity });
   if (!result.success) {
     console.error('Failed to sync entry:', result);
@@ -478,7 +515,7 @@ async function syncEntryToCloud(entry) {
 
 // Sync invoice to cloud - queues on failure
 async function syncInvoiceToCloud(invoice) {
-  const entity = S.iEnt;
+  const entity = invoice.logoType || S.iEnt;
   const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice, entity });
   if (!result.success) {
     addPendingOp({ type: 'append_invoice', data: { action: 'append_invoice', data: invoice, entity }, invoice });
@@ -489,7 +526,7 @@ async function syncInvoiceToCloud(invoice) {
 
 // Delete entry from cloud - queues on failure
 async function deleteEntryFromCloud(id, entity) {
-  entity = entity || S.iEnt;
+  entity = entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id }, entity });
   if (!result.success) {
     addPendingOp({ type: 'delete_entry', data: { action: 'delete_entry', data: { id }, entity }, id });
@@ -500,11 +537,22 @@ async function deleteEntryFromCloud(id, entity) {
 
 // Update entry in cloud - queues on failure
 async function updateEntryInCloud(id, updates, entity) {
-  entity = entity || S.iEnt;
+  entity = entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates }, entity });
   if (!result.success) {
     addPendingOp({ type: 'update_entry', data: { action: 'update_entry', data: { id, updates }, entity }, id, updates });
     showToast('Update queued - will sync when online', 'err');
+  }
+  return result;
+}
+
+// Delete invoice from cloud - queues on failure
+async function deleteInvoiceFromCloud(num, entity) {
+  entity = entity || S.iEnt;
+  const result = await apiCall('sheets-sync', { action: 'delete_invoice', data: { num }, entity });
+  if (!result.success) {
+    addPendingOp({ type: 'delete_invoice', data: { action: 'delete_invoice', data: { num }, entity }, num });
+    showToast('Delete queued - will sync when online', 'err');
   }
   return result;
 }
@@ -524,6 +572,11 @@ async function loadPracticesFromCloud() {
   const result = await apiCall('sheets-sync', { action: 'load_practices', entity: S.iEnt });
   if (result.success && result.practices) {
     result.practices.forEach(p => {
+      // Ensure all required properties have defaults
+      p.days = p.days || [];
+      p.svcs = p.svcs || { Hygiene: { p: 70, d: 'per patient' } };
+      p.comm = p.comm || 0.35;
+      p.short = p.short || p.name || p.id;
       S.practices[p.id] = p;
     });
     save();
@@ -608,8 +661,8 @@ async function generateAndUploadPDF(invData) {
   }
 }
 
-// Load data from cloud (for sync)
-async function loadFromCloud() {
+// Load data from cloud (simple - for UI refresh)
+async function loadFromCloudSimple() {
   const result = await apiCall('sheets-sync', { action: 'load_all', entity: S.iEnt });
   if (result.success) {
     console.log('Loaded from cloud:', result.entriesCount, 'entries,', result.invoicesCount, 'invoices');
@@ -639,7 +692,7 @@ async function syncAllToCloud() {
 async function loadFromCloudUI() {
   if (!confirm('This will replace your local data with cloud data. Continue?')) return;
   showToast('Loading from cloud...');
-  const result = await loadFromCloud();
+  const result = await loadFromCloudSimple();
   if (result.success) {
     S.entries = result.entries || [];
     S.invoices = result.invoices || [];
@@ -727,8 +780,10 @@ function mergeInvoices(cloudInvoices, entity) {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async ()=>{
+  console.log('DOMContentLoaded: Starting, S.practices=', S.practices);
   // Load settings from localStorage (quick - entity preference, day map, etc)
   loadSettings();
+  console.log('After loadSettings: S.practices=', S.practices);
   initDt();
   buildDayMap();
   updatePendingBar();
@@ -737,15 +792,19 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   showLoading('Connecting to cloud...');
   try {
     const success = await loadFromCloud();
+    console.log('After loadFromCloud: success=', success, 'S.practices=', S.practices);
     if (success) {
       hideLoading();
       // Show home screen
       document.getElementById('scr-home').classList.add('act');
-      S.scr='home'; upHdr('home'); upHome();
+      S.scr='home'; upHdr('home');
+      console.log('Before upHome: S.practices=', S.practices, 'typeof=', typeof S.practices);
+      upHome();
       // Smart auto-open based on day
       const day = new Date().getDay();
       const t = S.dayMap[day];
-      if (t && t !== 'home' && S.practices[t]) { openPractice(t); }
+      console.log('Auto-open check: day=', day, 't=', t, 'S.practices[t]=', S.practices[t]);
+      if (t && t !== 'home' && S.practices && S.practices[t]) { openPractice(t); }
       // Retry any pending operations
       if (pendingOps.length > 0) {
         setTimeout(retryPending, 2000);
@@ -770,6 +829,9 @@ async function loadFromCloud() {
       loadSettingsFromCloudFn()
     ]);
 
+    // Initialize Drive folder structure (runs in background, non-blocking)
+    initDriveFolders();
+
     showLoading('Loading entries & invoices...');
     // Load entries/invoices for both entities in parallel
     const [selfData, ltdData] = await Promise.all([
@@ -781,13 +843,26 @@ async function loadFromCloud() {
     S.entries = [];
     S.invoices = [];
 
+    // Stamp entity on all loaded entries/invoices to ensure proper separation
     if (selfData.success) {
-      if (selfData.entries) S.entries.push(...selfData.entries);
-      if (selfData.invoices) S.invoices.push(...selfData.invoices);
+      if (selfData.entries) {
+        selfData.entries.forEach(e => { e.entity = 'self'; });
+        S.entries.push(...selfData.entries);
+      }
+      if (selfData.invoices) {
+        selfData.invoices.forEach(i => { i.entity = 'self'; i.logoType = i.logoType || 'self'; });
+        S.invoices.push(...selfData.invoices);
+      }
     }
     if (ltdData.success) {
-      if (ltdData.entries) S.entries.push(...ltdData.entries);
-      if (ltdData.invoices) S.invoices.push(...ltdData.invoices);
+      if (ltdData.entries) {
+        ltdData.entries.forEach(e => { e.entity = 'ltd'; });
+        S.entries.push(...ltdData.entries);
+      }
+      if (ltdData.invoices) {
+        ltdData.invoices.forEach(i => { i.entity = 'ltd'; i.logoType = i.logoType || 'ltd'; });
+        S.invoices.push(...ltdData.invoices);
+      }
     }
 
     // Update nextInv from cloud data
@@ -851,10 +926,11 @@ b.classList.toggle('vis',s!=='home');}
 
 // ===== HOME =====
 function upHome(){
+if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid');return;}
 const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 document.getElementById('hBanM').textContent=mn;
 const me=getMonth(n.getFullYear(),n.getMonth());
-var entMe=me.filter(function(e){return !e.entity||e.entity===S.ent});
+var entMe=me.filter(function(e){return e.entity===S.ent});
 let tc=0;entMe.forEach(function(e){tc+=e.pType==='contract'?e.gross*e.comm:e.gross});
 document.getElementById('hBanA').textContent=fc(tc);
 // Weekly calc
@@ -871,7 +947,7 @@ _st=document.getElementById('grSt')||document.getElementById('groveSt');if(_st)_
 _st=document.getElementById('ahSt');if(_st)_st.className='cs'+(te.some(e=>e.pType==='adhoc')?' on':'');
 Object.keys(S.practices).forEach(function(k){var st=document.getElementById(k+'St');if(st)st.className='cs'+(te.some(function(e){return e.pId===k})?' on':'');});
 Object.keys(S.practices).forEach(function(k){
-var mEl=document.getElementById(k+'M');if(mEl){var cnt=me.filter(function(e){return e.pId===k}).length;var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];mEl.textContent=S.practices[k].days.map(function(d){return dn[d]}).join('/')+' \u00b7 '+cnt+' entries';}
+var mEl=document.getElementById(k+'M');if(mEl){var cnt=me.filter(function(e){return e.pId===k}).length;var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var pDays=S.practices[k].days||[];mEl.textContent=pDays.map(function(d){return dn[d]}).join('/')+' \u00b7 '+cnt+' entries';}
 var stEl=document.getElementById(k+'St');if(stEl)stEl.className='cs'+(te.some(function(e){return e.pId===k})?' on':'');
 });
 document.getElementById('eS').className='ebtn'+(S.ent==='self'?' act':'');
@@ -890,73 +966,109 @@ if(!h&&(be>0||ge>0))h='<div class="rb ok">✓ All sessions logged this month</di
 c.innerHTML=h;}
 
 // ===== ENTITY =====
-function setEntity(t){S.ent=t;save();document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';upHome();}
-function setInvEnt(t){S.iEnt=t;document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');refInv();}
-function setPracticeEntity(t){
+// Unified entity switcher - updates ALL toggles across the entire app
+function switchEntity(t){
   S.ent=t;save();
-  document.getElementById('pES').className='ebtn'+(t==='self'?' act':'');
-  document.getElementById('pEL').className='ebtn'+(t==='ltd'?' act':'');
-  document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');
-  document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');
+
+  // Update ALL entity toggle buttons across all screens
+  const selfClass='ebtn'+(t==='self'?' act':'');
+  const ltdClass='ebtn'+(t==='ltd'?' act':'');
+
+  // Home screen toggle
+  const eS=document.getElementById('eS'),eL=document.getElementById('eL');
+  if(eS)eS.className=selfClass;
+  if(eL)eL.className=ltdClass;
+
+  // Practice screen toggle
+  const pES=document.getElementById('pES'),pEL=document.getElementById('pEL');
+  if(pES)pES.className=selfClass;
+  if(pEL)pEL.className=ltdClass;
+
+  // Ad Hoc screen toggle
+  const ahES=document.getElementById('ahES'),ahEL=document.getElementById('ahEL');
+  if(ahES)ahES.className=selfClass;
+  if(ahEL)ahEL.className=ltdClass;
+
+  // Update header entity display
   document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
-  if(S.prac){const p=S.practices[S.prac];if(p){
-    const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-    const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&(!e.entity||e.entity===S.ent));
+
+  // Update practice screen if we're on it
+  if(S.prac&&S.practices[S.prac]){
+    const p=S.practices[S.prac];
+    if(!p)return;
+    const pComm=p.comm||0.35;
+    const n=new Date();
+    const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&e.entity===S.ent);
     let tg=0;me.forEach(e=>tg+=e.gross);
-    document.getElementById('pBanA').textContent=fc(tg*p.comm);
-    document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(p.comm*100).toFixed(0)+'% commission';
-  }}
+    const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
+    if(pBanA)pBanA.textContent=fc(tg*pComm);
+    if(pBanS)pBanS.textContent=fc(tg)+' gross · '+(pComm*100).toFixed(0)+'% commission';
+    // Update "already logged today" indicator
+    const tEl=document.getElementById('pToday'),td2=today();
+    if(tEl){
+      const logged=S.entries.some(e=>e.date===td2&&e.pId===S.prac&&e.entity===S.ent);
+      if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
+      else if(p.days&&p.days.includes(new Date().getDay()))tEl.innerHTML='<div style="display:flex;align-items:center;margin-bottom:8px"><span class="td"><span class="tdot"></span> Today is a '+p.short+' day</span></div>';
+      else tEl.innerHTML='';
+    }
+  }
+
+  // Update home screen totals if visible
+  if(S.scr==='home')upHome();
 }
-function setAhEntity(t){
-  S.ent=t;save();
-  document.getElementById('ahES').className='ebtn'+(t==='self'?' act':'');
-  document.getElementById('ahEL').className='ebtn'+(t==='ltd'?' act':'');
-  document.getElementById('eS').className='ebtn'+(t==='self'?' act':'');
-  document.getElementById('eL').className='ebtn'+(t==='ltd'?' act':'');
-  document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
-}
+
+// Aliases for backwards compatibility - all call the unified function
+function setEntity(t){switchEntity(t);}
+function setPracticeEntity(t){switchEntity(t);}
+function setAhEntity(t){switchEntity(t);}
+
+// Invoice entity is separate (for viewing invoices from either entity)
+function setInvEnt(t){S.iEnt=t;document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');refInv();}
 
 // ===== PRACTICE LOGGING =====
 function openPractice(id){
+if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid in openPractice');return;}
 if(id==='adhoc'){S.prac=null;showScreen('adhoc');popAh();return;}
-const p=S.practices[id];if(!p)return;S.prac=id;S.svc=null;showScreen('practice');
+const p=S.practices[id];if(!p){console.warn('Practice not found:',id);return;}S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
 const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 document.getElementById('pBanT').textContent=p.short+' — '+mn;
-const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===id&&(!e.entity||e.entity===S.ent));
+const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===id&&e.entity===S.ent);
 let tg=0;me.forEach(e=>tg+=e.gross);
-document.getElementById('pBanA').textContent=fc(tg*p.comm);
-document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(p.comm*100).toFixed(0)+'% commission';
+const comm=p.comm||0.35;
+document.getElementById('pBanA').textContent=fc(tg*comm);
+document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
 const tEl=document.getElementById('pToday'),td2=today();
-const logged=S.entries.some(e=>e.date===td2&&e.pId===id);
+const logged=S.entries.some(e=>e.date===td2&&e.pId===id&&e.entity===S.ent);
 if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
-else if(p.days.includes(new Date().getDay()))tEl.innerHTML='<div style="display:flex;align-items:center;margin-bottom:8px"><span class="td"><span class="tdot"></span> Today is a '+p.short+' day</span></div>';
+else if(p.days&&p.days.includes(new Date().getDay()))tEl.innerHTML='<div style="display:flex;align-items:center;margin-bottom:8px"><span class="td"><span class="tdot"></span> Today is a '+p.short+' day</span></div>';
 else tEl.innerHTML='';
 const g=document.getElementById('sGrid');g.innerHTML='';
-Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn';b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});
+if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn';b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
 }
-function selSvc(nm){const p=S.practices[S.prac];if(!p)return;S.svc=nm;const sv=p.svcs[nm];
+function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
 document.querySelectorAll('#sGrid .sbtn').forEach(b=>b.classList.toggle('sel',b.getAttribute('data-s')===nm));
 document.getElementById('logForm').style.display='block';
 document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';upAmt();}
 function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
 function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value);
 const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
-const p=S.practices[S.prac];if(p){document.getElementById('comL').textContent='Commission @'+(p.comm*100).toFixed(0)+'%: '+fc(t*p.comm);}
+const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Commission @'+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdd(el.value);}
 
 // ===== ARCHIVE ENTRY =====
 function doArchive(){
 const p=S.practices[S.prac];if(!p||!S.svc)return;
+const pComm=p.comm||0.35;
 const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value),dt=document.getElementById('logDt').value;
 if(!pts)return;const gr=(pts*pr)+ao;
-const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr);
+const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:p.comm,commAmt:gr*p.comm,entity:S.ent,invSt:'pending',invNo:null,entity:S.ent};
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null};
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
@@ -1011,7 +1123,7 @@ function showUndo(entry){clearTimeout(S.undoT);S.undoE=entry;const t=document.ge
 t.className='toast ok';t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
 function showToast(msg,cls){const t=document.getElementById('toast');t.className='toast ok';t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -1034,10 +1146,48 @@ const t=(pts*rate)+(airPts*air);document.getElementById('ahTot').textContent=fc(
 function doAhArchive(){const pId=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===pId);if(!p)return;
 const pts=parseInt(document.getElementById('ap').value)||0,rate=pc(document.getElementById('arv').value),air=pc(document.getElementById('aao').value),airPts=parseInt(document.getElementById('aap').value)||0,dt=document.getElementById('ahDt').value;
 if(!pts)return;const gr=(pts*rate)+(airPts*air);
+// Check for duplicate (same date, practice, service, rate, entity)
+const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
+if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent};
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();}
+
+function showAhDupMod(ex,pts,air,airPts){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
+_h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">You already logged <b>'+ex.svc+'</b> at <b>'+ex.pName+'</b> for <b>'+fdd(ex.date)+'</b> ('+ex.pts+' patients at '+fc(ex.uPrice)+').</p>';
+_h+='<div class="brow"><button class="btn btn-s" id="_ahDupCancel">Cancel</button><button class="btn btn-p" id="_ahDupAdd">Add '+pts+' more patients</button></div>';
+_h+='<button class="btn btn-d" style="width:100%;margin-top:8px" id="_ahDupReplace">Replace entry</button>';
+showModal(_h);
+setTimeout(function(){
+var c=document.getElementById('_ahDupCancel');if(c)c.onclick=function(){closeMod2()};
+var a=document.getElementById('_ahDupAdd');if(a)a.onclick=function(){addToAhDup(ex.id,pts,air,airPts)};
+var r=document.getElementById('_ahDupReplace');if(r)r.onclick=function(){replaceAhDup(ex.id)};
+},50);
+}
+
+async function addToAhDup(id,pts,air,airPts){
+const e=S.entries.find(x=>x.id===id);
+if(e){
+  e.pts+=pts;
+  e.aoPatients=(e.aoPatients||0)+airPts;
+  e.gross=(e.pts*e.uPrice)+((e.aoPatients||0)*(e.aoAmt||0));
+  e.updatedAt=new Date().toISOString();
+  save();closeMod2();nav('adhoc');
+  showToast('Syncing...');
+  const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
+  if(result.success){showToast('Updated — '+e.pts+' patients');}
+}else{closeMod2();nav('adhoc');}
+}
+
+async function replaceAhDup(id){
+const e=S.entries.find(x=>x.id===id);
+const entity=e?e.entity||S.ent:S.ent;
+S.entries=S.entries.filter(e=>e.id!==id);
+save();closeMod2();doAhArchive();
+await deleteEntryFromCloud(id,entity);
+}
 
 function showAddAhPractice(){
 showModal('<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>'+
@@ -1096,7 +1246,7 @@ grid.innerHTML='';
 Object.keys(S.practices).forEach(function(k){
 var p=S.practices[k];if(!p||!p.short)return;var col=p.color||'grove';
 var card=document.createElement('div');card.className='pcard '+col;card.onclick=function(){openPractice(k)};
-card.innerHTML='<div class="cs" id="'+k+'St"></div><div class="ci">'+p.short[0]+'</div><div class="cn">'+p.short+'</div><div class="cm" id="'+k+'M">'+p.days.map(function(d){return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]}).join(', ')+'</div>';
+card.innerHTML='<div class="cs" id="'+k+'St"></div><div class="ci">'+p.short[0]+'</div><div class="cn">'+p.short+'</div><div class="cm" id="'+k+'M">'+(p.days||[]).map(function(d){return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]}).join(', ')+'</div>';
 grid.appendChild(card);
 });
 // Ad hoc card
@@ -1172,22 +1322,50 @@ function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
 
-// Monthly invoices
+// Monthly invoices - show pending entries grouped by practice
 const mc=document.getElementById('mInv');let mh='';
-Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short)return;var pe=me.filter(function(e){return e.pId===pid&&(!e.entity||e.entity===S.iEnt)});
-if(!pe.length){mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+mn+'</div></div></div><p style="color:var(--txt2);font-size:13px">No entries logged yet.</p></div>';return;}
-var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var cm=tg*p.comm;
-mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+mn+'</div></div></div>'+
+Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short)return;
+var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
+if(!pe.length){mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+mn+'</div></div></div><p style="color:var(--txt2);font-size:13px">No pending entries.</p></div>';return;}
+var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
+var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
+mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
 '<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Commission<strong>'+fc(cm)+'</strong></div></div>'+
-'<div class="ia"><button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button><button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Generate PDF</button></div></div>';
+'<div class="ia">';
+if(pe.length>1){
+  mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
+}else{
+  mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
+}
+mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Invoice All</button></div></div>';
 });mc.innerHTML=mh;
 
-// Ad hoc invoices
-const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&(!e.entity||e.entity===S.iEnt)});
+// Ad hoc invoices - group by practice
+const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&e.entity===S.iEnt});
 if(!ahe.length){ac.innerHTML='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending ad hoc invoices.</p>';}
-else{ac.innerHTML=ahe.map(e=>'<div class="icard"><div class="ih"><div><div class="ip">'+e.pName+'</div><div class="iper">'+fdd(e.date)+'</div></div></div>'+
-'<div class="is"><div class="ist">Patients<strong>'+e.pts+'</strong></div><div class="ist">Total<strong>'+fc(e.gross)+'</strong></div></div>'+
-'<div class="ia"><button class="ibtn pv" data-action="ahpreview" data-eid="'+e.id+'">Preview</button><button class="ibtn gn" data-action="ahgenerate" data-eid="'+e.id+'">Generate PDF</button></div></div>').join('');}
+else{
+  // Group by practice
+  const ahByPrac={};ahe.forEach(e=>{if(!ahByPrac[e.pId])ahByPrac[e.pId]={name:e.pName,addr:e.adhocAddr,entries:[]};ahByPrac[e.pId].entries.push(e);});
+  let ahHtml='';
+  Object.keys(ahByPrac).forEach(pId=>{
+    const g=ahByPrac[pId];const entries=g.entries.sort((a,b)=>a.date.localeCompare(b.date));
+    const totalPts=entries.reduce((s,e)=>s+e.pts,0);const totalGross=entries.reduce((s,e)=>s+e.gross,0);
+    const dates=entries.map(e=>e.date);const minDate=dates[0];const maxDate=dates[dates.length-1];
+    const dateRange=minDate===maxDate?fdd(minDate):fdd(minDate)+' - '+fdd(maxDate);
+    ahHtml+='<div class="icard"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
+    ahHtml+='<div class="is"><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Total<strong>'+fc(totalGross)+'</strong></div></div>';
+    ahHtml+='<div class="ia">';
+    if(entries.length===1){
+      ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
+      ahHtml+='<button class="ibtn gn" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
+    }else{
+      ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
+      ahHtml+='<button class="ibtn gn" data-action="ahgenall" data-pid="'+pId+'">Invoice All</button>';
+    }
+    ahHtml+='</div></div>';
+  });
+  ac.innerHTML=ahHtml;
+}
 
 // Past invoices
 const pc2=document.getElementById('pInv');
@@ -1199,14 +1377,16 @@ else{pc2.innerHTML=S.invoices.sort((a,b)=>b.date.localeCompare(a.date)).map(inv=
 
 // ===== INVOICE PREVIEW =====
 function previewInv(pid,y,m){
-const p=S.practices[pid],ent=S.ents[S.iEnt],me=getMonth(y,m).filter(function(e){return e.pId===pid&&(!e.entity||e.entity===S.iEnt)});
+const p=S.practices[pid];if(!p)return;
+const ent=S.ents[S.iEnt],me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.entity===S.iEnt});
 if(!me.length)return;
+const pComm=p.comm||0.35;
 // Group by service
 const svcs={};me.forEach(e=>{if(!svcs[e.svc])svcs[e.svc]={pts:0,price:e.uPrice,total:0};svcs[e.svc].pts+=e.pts;svcs[e.svc].total+=e.pts*e.uPrice;});
 // Airflow
 let airTotal=0;me.forEach(e=>{if(e.aoAmt>0)airTotal+=e.aoAmt;});
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
-const cm=tg*p.comm;
+const cm=tg*pComm;
 const mn=new Date(y,m).toLocaleString('en-GB',{month:'long',year:'numeric'});
 const logo=LOGO[S.iEnt];
 
@@ -1223,7 +1403,7 @@ Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
 if(airTotal>0)html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">Airflow</td><td style="padding:6px 4px;font-size:12px">Add-on</td><td colspan="2"></td><td style="text-align:right;padding:6px 4px;font-size:12px">'+airTotal.toFixed(2)+'</td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Gross Total</td><td style="text-align:right;padding:6px 4px;font-size:13px;font-weight:700">'+fc(tg)+'</td></tr>';
-html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Commission @'+(p.comm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
+html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Commission @'+(pComm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Balance Due</td><td style="text-align:right;padding:6px 4px;font-size:15px;font-weight:700;color:var(--pri-dk)">'+fc(cm)+'</td></tr>';
 html+='</table>';
 html+='<div style="margin-top:20px;padding-top:12px;border-top:1px solid var(--bdr);font-size:11px;color:var(--txt2)">';
@@ -1240,20 +1420,133 @@ var gb=document.getElementById('_pvGen');if(gb)gb.onclick=function(){closeMod2()
 
 function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;showToast('Ad hoc preview — coming soon');}
 
+// Show entry selection modal for contract practice invoice
+function showCpSelect(pid){
+const n=new Date(),y=n.getFullYear(),m=n.getMonth();
+const pe=getMonth(y,m).filter(e=>e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt);
+if(!pe.length)return;
+const p=S.practices[pid];
+let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
+html+='<p style="font-size:14px;color:var(--txt2);margin-bottom:12px">'+p.short+'</p>';
+html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
+pe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+  html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
+  html+='<input type="checkbox" class="cpsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
+  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='</label>';
+});
+html+='</div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genCpMulti(\''+pid+'\')">Generate Invoice</button></div>';
+showModal(html);
+}
+
+// Generate invoice for selected contract practice entries
+async function genCpMulti(pid){
+const checkboxes=document.querySelectorAll('.cpsel-cb:checked');
+const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
+if(!ids.length){showToast('Select at least one entry');return;}
+const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
+if(!entries.length)return;
+closeMod2();
+await genCpInvMulti(pid,entries);
+}
+
+// Generate invoice for multiple contract practice entries
+async function genCpInvMulti(pid,entries){
+const p=S.practices[pid];if(!p)return;
+const pComm=p.comm||0.35;
+const ent=S.ents[S.iEnt];
+const invNum=pad(S.nextInv);S.nextInv++;
+
+// Mark all entries as invoiced
+entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
+
+// Determine period
+const dates=entries.map(e=>e.date).sort();
+const minDate=dates[0];const maxDate=dates[dates.length-1];
+let period;
+if(minDate===maxDate){
+  period=fdd(minDate);
+}else{
+  const d1=new Date(minDate),d2=new Date(maxDate);
+  const diff=(d2-d1)/(1000*60*60*24);
+  if(diff<=7){
+    period='Week of '+fdd(minDate);
+  }else if(d1.getMonth()===d2.getMonth()&&d1.getFullYear()===d2.getFullYear()){
+    period=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+  }else{
+    period=fdd(minDate)+' - '+fdd(maxDate);
+  }
+}
+
+// Group services
+const svcs={};entries.forEach(e=>{
+  const key=e.svc+'@'+e.uPrice;
+  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;
+});
+
+let airTotal=0;entries.forEach(e=>{if(e.aoAmt>0)airTotal+=e.aoAmt;});
+let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
+const cm=tg*pComm;
+
+const invData={
+  num:invNum,date:today(),practice:p.short,practiceName:p.name,
+  practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,
+  entity:S.iEnt==='self'?'Self-Employed':'Ltd',
+  entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
+  entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
+  bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
+  commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,
+  logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length
+};
+
+S.invoices.push(invData);save();
+syncInvoiceToCloud(invData);
+
+for(const e of entries){
+  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
+}
+
+showToast('Generating invoice...');
+await generateAndUploadPDF(invData);
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
+}
+
 // ===== GENERATE PDF (uses jsPDF-like approach via canvas) =====
 async function genInv(pid,y,m){
 var p=S.practices[pid];if(!p)return;
+var pComm=p.comm||0.35;
 var ent=S.ents[S.iEnt];
-var me=getMonth(y,m).filter(function(e){return e.pId===pid&&(!e.entity||e.entity===S.iEnt)});
+var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
 if(!me.length){showToast('No entries to invoice');return;}
 var invNum=pad(S.nextInv);S.nextInv++;
 me.forEach(function(e){e.invSt='invoiced';e.invNo=invNum;});save();
-var mn=new Date(y,m).toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+// Determine period based on dates
+var dates=me.map(e=>e.date).sort();
+var minDate=dates[0];var maxDate=dates[dates.length-1];
+var period;
+if(minDate===maxDate){
+  period=fdd(minDate);
+}else{
+  var d1=new Date(minDate),d2=new Date(maxDate);
+  var diff=(d2-d1)/(1000*60*60*24);
+  if(diff<=7){
+    period='Week of '+fdd(minDate);
+  }else if(d1.getMonth()===d2.getMonth()&&d1.getFullYear()===d2.getFullYear()){
+    period=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+  }else{
+    period=fdd(minDate)+' - '+fdd(maxDate);
+  }
+}
+
 var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;});
 var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
-var cm=tg*p.comm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:mn,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(p.comm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms};
+var cm=tg*pComm;
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length};
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
 me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum});});
@@ -1281,18 +1574,126 @@ showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
 refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
 }
 
+// Show entry selection modal for multi-entry ad hoc invoice
+function showAhSelect(pId){
+const ahe=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&e.entity===S.iEnt);
+if(!ahe.length)return;
+const pName=ahe[0].pName;
+let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
+html+='<p style="font-size:14px;color:var(--txt2);margin-bottom:12px">'+pName+'</p>';
+html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
+ahe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+  html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
+  html+='<input type="checkbox" class="ahsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
+  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='</label>';
+});
+html+='</div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genAhMulti(\''+pId+'\')">Generate Invoice</button></div>';
+showModal(html);
+}
+
+// Generate multi-entry ad hoc invoice
+async function genAhMulti(pId){
+const checkboxes=document.querySelectorAll('.ahsel-cb:checked');
+const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
+if(!ids.length){showToast('Select at least one entry');return;}
+const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
+if(!entries.length)return;
+closeMod2();
+await genAhInvMulti(entries);
+}
+
+// Generate all entries for a practice
+async function genAhAll(pId){
+const entries=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&e.entity===S.iEnt);
+if(!entries.length)return;
+await genAhInvMulti(entries);
+}
+
+// Generate invoice for multiple ad hoc entries
+async function genAhInvMulti(entries){
+if(!entries.length)return;
+const ent=S.ents[S.iEnt];
+const invNum=pad(S.nextInv);S.nextInv++;
+const pName=entries[0].pName;
+const pAddr=entries[0].adhocAddr||'';
+
+// Mark all entries as invoiced
+entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
+
+// Group services by svc+price
+const svcs={};
+entries.forEach(e=>{
+  const key=e.svc+'@'+e.uPrice;
+  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  svcs[key].pts+=e.pts;
+  svcs[key].total+=e.pts*e.uPrice;
+});
+
+// Calculate totals
+let airTotal=0;entries.forEach(e=>{airTotal+=(e.aoPatients||0)*(e.aoAmt||0);});
+const tg=entries.reduce((s,e)=>s+e.gross,0);
+
+// Determine period description
+const dates=entries.map(e=>e.date).sort();
+const minDate=dates[0];const maxDate=dates[dates.length-1];
+let period;
+if(minDate===maxDate){
+  period=fdd(minDate);
+}else{
+  // Check if it's a week
+  const d1=new Date(minDate),d2=new Date(maxDate);
+  const diff=(d2-d1)/(1000*60*60*24);
+  if(diff<=7){
+    period='Week of '+fdd(minDate);
+  }else{
+    // Check if same month
+    if(d1.getMonth()===d2.getMonth()&&d1.getFullYear()===d2.getFullYear()){
+      period=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    }else{
+      period=fdd(minDate)+' - '+fdd(maxDate);
+    }
+  }
+}
+
+const invData={
+  num:invNum,date:today(),practice:pName,practiceName:pName,
+  practiceAddr:pAddr.replace(/\\n/g,'\n'),period:period,
+  entity:S.iEnt==='self'?'Self-Employed':'Ltd',
+  entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
+  entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
+  bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
+  commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,
+  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length
+};
+
+S.invoices.push(invData);save();
+syncInvoiceToCloud(invData);
+
+// Update all entries in cloud
+for(const e of entries){
+  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
+}
+
+showToast('Generating invoice...');
+await generateAndUploadPDF(invData);
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+refInv();document.getElementById('nInv').textContent=pad(S.nextInv);
+}
+
 // ===== SETTINGS =====
-function editPrac(id){var p=S.practices[id];
+function editPrac(id){var p=S.practices[id];if(!p)return;
 var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-var daysStr=p.days.map(function(d){return d}).join(',');
-var svcsStr=Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', ');
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+p.short+' Settings</h3>';
-_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+p.name+'"></div>';
-_h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+p.short+'"></div>';
+var daysStr=(p.days||[]).map(function(d){return d}).join(',');
+var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', '):'';
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short||id)+' Settings</h3>';
+_h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
+_h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="'+(p.comm*100).toFixed(0)+'" min="0" max="100"></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="'+((p.comm||0)*100).toFixed(0)+'" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
-_h+='<div class="fg"><label class="fl">Current days: '+p.days.map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
+_h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" value="'+svcsStr+'"></div>';
 _h+='<div class="brow"><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
 showModal(_h);
@@ -1311,7 +1712,7 @@ if(daysVal)p.days=daysVal.split(',').map(function(d){return parseInt(d.trim())})
 var svcsVal=document.getElementById('ePSvcs').value.trim();
 if(svcsVal){var newSvcs={};svcsVal.split(',').forEach(function(s){var parts=s.trim().split(':');if(parts.length===2){newSvcs[parts[0].trim()]={p:parseFloat(parts[1])||70,d:'per patient'};}});if(Object.keys(newSvcs).length)p.svcs=newSvcs;}
 Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===id)S.dayMap[k]='home';});
-p.days.forEach(function(d){S.dayMap[d]=id;});
+if(p.days)p.days.forEach(function(d){S.dayMap[d]=id;});
 save();closeMod2();refreshSettings();buildDayMap();showToast('\u2713 '+p.short+' updated');}
 function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementById('sEnt').textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 
@@ -1409,7 +1810,7 @@ var psec=document.getElementById('pracSettings');
 if(psec){psec.innerHTML='';Object.keys(S.practices).forEach(function(k){
 var p=S.practices[k];
 var row=document.createElement('div');row.className='srow';
-row.innerHTML='<span class="la">'+p.short+'</span><span class="va">'+(p.comm*100).toFixed(0)+'% \u00b7 '+p.days.map(function(d){return dn[d]}).join('/')+'</span>';
+row.innerHTML='<span class="la">'+(p.short||k)+'</span><span class="va">'+((p.comm||0)*100).toFixed(0)+'% \u00b7 '+(p.days||[]).map(function(d){return dn[d]}).join('/')+'</span>';
 row.onclick=function(){editPrac(k)};
 psec.appendChild(row);
 });}
@@ -1597,12 +1998,16 @@ generatePDF(inv);
 showToast('\u2713 Invoice #'+inv.num+' re-downloaded');
 }
 
-function deleteInvoice(idx){
+async function deleteInvoice(idx){
 var inv=S.invoices[idx];if(!inv)return;
+var entity=inv.logoType||S.iEnt;
 // Unmark entries
-S.entries.forEach(function(e){if(e.invNo===inv.num){e.invSt='pending';e.invNo=null;}});
+S.entries.forEach(function(e){if(e.invNo===inv.num){e.invSt='pending';e.invNo=null;updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);}});
 S.invoices.splice(idx,1);
-save();refInv();showToast('\u2713 Invoice #'+inv.num+' deleted');
+save();refInv();showToast('Deleting...');
+// Sync to cloud
+const result=await deleteInvoiceFromCloud(inv.num,entity);
+if(result.success){showToast('\u2713 Invoice #'+inv.num+' deleted');}
 }
 
 // ===== ARCHIVE CLICK HANDLER =====
@@ -1655,8 +2060,11 @@ var btn=ev.target.closest('[data-action]');if(!btn)return;
 var action=btn.getAttribute('data-action');
 if(action==='preview'){previewInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
 if(action==='generate'){genInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
+if(action==='cpselect'){showCpSelect(btn.getAttribute('data-pid'));}
 if(action==='ahpreview'){previewAhInv(btn.getAttribute('data-eid'));}
 if(action==='ahgenerate'){genAhInv(btn.getAttribute('data-eid'));}
+if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
+if(action==='ahgenall'){genAhAll(btn.getAttribute('data-pid'));}
 if(action==='redownload'){redownloadInvoice(parseInt(btn.getAttribute('data-idx')));}
 if(action==='delinv'){deleteInvoice(parseInt(btn.getAttribute('data-idx')));}
 });
