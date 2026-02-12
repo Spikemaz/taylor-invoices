@@ -585,11 +585,13 @@ async function loadPracticesFromCloud() {
       if (typeof p.days === 'string') {
         try { p.days = JSON.parse(p.days); } catch(e) { p.days = []; }
       }
-      // Ensure all required properties have defaults
-      p.days = Array.isArray(p.days) ? p.days : [];
-      p.svcs = p.svcs || { Hygiene: { p: 70, d: 'per patient' } };
-      p.comm = p.comm || 0.35;
-      p.short = p.short || p.name || p.id;
+      // Get existing local practice data
+      const existing = S.practices[p.id];
+      // Merge: cloud data takes priority, but keep local svcs/days if cloud is empty
+      p.days = Array.isArray(p.days) && p.days.length > 0 ? p.days : (existing?.days || []);
+      p.svcs = (p.svcs && Object.keys(p.svcs).length > 0) ? p.svcs : (existing?.svcs || { Hygiene: { p: 70, d: 'per patient' } });
+      p.comm = p.comm || existing?.comm || 0.35;
+      p.short = p.short || existing?.short || p.name || p.id;
       console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days);
       S.practices[p.id] = p;
     });
