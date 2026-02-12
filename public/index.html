@@ -105,9 +105,30 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .sync-dot.online{background:var(--ok)}
 .sync-dot.offline{background:var(--err)}
 .sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
+.load-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
+.load-overlay.hidden{opacity:0;pointer-events:none}
+.load-spinner{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--pri);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{font-size:14px;color:var(--txt2);text-align:center}
+.load-error{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:16px;margin:16px;text-align:center;max-width:300px}
+.load-error .msg{font-size:14px;color:var(--err);margin-bottom:12px}
+.load-error button{background:var(--pri);color:#fff;border:0;padding:10px 20px;border-radius:var(--rs);font-weight:600;cursor:pointer}
+.pending-bar{position:fixed;top:0;left:0;right:0;background:var(--warn);color:#000;padding:8px 16px;font-size:12px;font-weight:500;z-index:1000;display:none;align-items:center;justify-content:space-between}
+.pending-bar.show{display:flex}
+.pending-bar button{background:rgba(0,0,0,.2);border:0;color:#000;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
 </head>
 <body>
+<!-- Loading overlay - shown during initial cloud load -->
+<div class="load-overlay" id="loadOverlay">
+<div class="load-spinner"></div>
+<div class="load-text" id="loadText">Loading from cloud...</div>
+</div>
+<!-- Pending operations bar -->
+<div class="pending-bar" id="pendingBar">
+<span id="pendingText">1 pending change</span>
+<button onclick="retryPending()">Retry Now</button>
+</div>
 <div id="app">
 <div class="hdr">
 <button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
@@ -293,9 +314,122 @@ const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
 
-// ===== PERSISTENCE =====
-function load(){try{var d=JSON.parse(localStorage.getItem('tm_inv')||'{}');if(d.entries)S.entries=d.entries;if(d.invoices)S.invoices=d.invoices;if(d.nextInv)S.nextInv=d.nextInv;if(d.ent)S.ent=d.ent;if(d.dayMap)S.dayMap=d.dayMap;if(d.ahPrac)S.ahPrac=d.ahPrac;if(d.payTerms)S.payTerms=d.payTerms;if(d.ents){if(d.ents.self)Object.assign(S.ents.self,d.ents.self);if(d.ents.ltd)Object.assign(S.ents.ltd,d.ents.ltd);}if(d.practices){Object.keys(d.practices).forEach(function(k){if(S.practices[k]){var saved=d.practices[k];if(saved){if(saved.comm!=null)S.practices[k].comm=saved.comm;if(saved.name)S.practices[k].name=saved.name;if(saved.short)S.practices[k].short=saved.short;if(saved.addr)S.practices[k].addr=saved.addr;if(saved.days)S.practices[k].days=saved.days;if(saved.svcs)S.practices[k].svcs=saved.svcs;}}else if(saved&&saved.short&&saved.name){S.practices[k]={id:k,name:saved.name,short:saved.short,addr:saved.addr||'',days:saved.days||[],comm:saved.comm||0.35,type:'contract',color:saved.color||'grove',svcs:saved.svcs||{Hygiene:{p:70,d:'per patient'}}};}});};}catch(e){}}
-function save(){try{var pData={};Object.keys(S.practices).forEach(function(k){var p=S.practices[k];pData[k]={name:p.name,short:p.short,addr:p.addr,comm:p.comm,days:p.days,svcs:p.svcs,color:p.color||'grove',type:p.type||'contract'};});localStorage.setItem('tm_inv',JSON.stringify({entries:S.entries,invoices:S.invoices,nextInv:S.nextInv,ent:S.ent,dayMap:S.dayMap,ahPrac:S.ahPrac,practices:pData,ents:S.ents,payTerms:S.payTerms}));}catch(e){}}
+// ===== PERSISTENCE (Cloud-First) =====
+// Pending operations queue for failed cloud syncs
+let pendingOps = [];
+
+// Load settings only (entity toggle, day map) from localStorage - NOT data
+function loadSettings(){
+  try {
+    const d = JSON.parse(localStorage.getItem('tm_inv_settings') || '{}');
+    if (d.ent) S.ent = d.ent;
+    if (d.dayMap) S.dayMap = d.dayMap;
+    if (d.ahPrac) S.ahPrac = d.ahPrac;
+    if (d.payTerms) S.payTerms = d.payTerms;
+    if (d.ents) {
+      if (d.ents.self) Object.assign(S.ents.self, d.ents.self);
+      if (d.ents.ltd) Object.assign(S.ents.ltd, d.ents.ltd);
+    }
+    if (d.practices) {
+      Object.keys(d.practices).forEach(k => {
+        if (S.practices[k]) {
+          const saved = d.practices[k];
+          if (saved) {
+            if (saved.comm != null) S.practices[k].comm = saved.comm;
+            if (saved.name) S.practices[k].name = saved.name;
+            if (saved.short) S.practices[k].short = saved.short;
+            if (saved.addr) S.practices[k].addr = saved.addr;
+            if (saved.days) S.practices[k].days = saved.days;
+            if (saved.svcs) S.practices[k].svcs = saved.svcs;
+          }
+        } else if (d.practices[k] && d.practices[k].short && d.practices[k].name) {
+          const saved = d.practices[k];
+          S.practices[k] = { id: k, name: saved.name, short: saved.short, addr: saved.addr || '', days: saved.days || [], comm: saved.comm || 0.35, type: 'contract', color: saved.color || 'grove', svcs: saved.svcs || { Hygiene: { p: 70, d: 'per patient' } } };
+        }
+      });
+    }
+    // Load pending operations
+    const pending = JSON.parse(localStorage.getItem('tm_inv_pending') || '[]');
+    if (pending.length) pendingOps = pending;
+  } catch(e) { console.error('Load settings error:', e); }
+}
+
+// Save settings and pending ops to localStorage (NOT entries/invoices)
+function save() {
+  try {
+    const pData = {};
+    Object.keys(S.practices).forEach(k => {
+      const p = S.practices[k];
+      pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract' };
+    });
+    localStorage.setItem('tm_inv_settings', JSON.stringify({
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInv: S.nextInv
+    }));
+    localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
+  } catch(e) { console.error('Save error:', e); }
+}
+
+// Add operation to pending queue
+function addPendingOp(op) {
+  pendingOps.push({ ...op, timestamp: Date.now() });
+  save();
+  updatePendingBar();
+}
+
+// Update pending bar UI
+function updatePendingBar() {
+  const bar = document.getElementById('pendingBar');
+  const text = document.getElementById('pendingText');
+  if (pendingOps.length > 0) {
+    bar.classList.add('show');
+    text.textContent = pendingOps.length + ' pending change' + (pendingOps.length > 1 ? 's' : '') + ' - tap to retry';
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+// Retry all pending operations
+async function retryPending() {
+  if (!pendingOps.length) return;
+  showToast('Retrying ' + pendingOps.length + ' pending changes...');
+  const toRetry = [...pendingOps];
+  pendingOps = [];
+  updatePendingBar();
+
+  for (const op of toRetry) {
+    const result = await apiCall('sheets-sync', op.data);
+    if (!result.success) {
+      pendingOps.push(op);
+    }
+  }
+  save();
+  updatePendingBar();
+  if (pendingOps.length === 0) {
+    showToast('All changes synced!');
+  } else {
+    showToast(pendingOps.length + ' changes still pending', 'err');
+  }
+}
+
+// Show/hide loading overlay
+function showLoading(msg) {
+  const overlay = document.getElementById('loadOverlay');
+  const text = document.getElementById('loadText');
+  if (text) text.textContent = msg || 'Loading...';
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideLoading() {
+  const overlay = document.getElementById('loadOverlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function showLoadError(msg) {
+  const overlay = document.getElementById('loadOverlay');
+  if (overlay) {
+    overlay.innerHTML = '<div class="load-error"><div class="msg">' + msg + '</div><button onclick="location.reload()">Retry</button></div>';
+  }
+}
 
 // ===== CLOUD API =====
 const API_BASE = '';  // Empty for same-origin, or set to your Vercel URL
@@ -331,34 +465,48 @@ async function apiCall(endpoint, data) {
   }
 }
 
-// Sync entry to cloud (uses current entity S.iEnt)
+// Sync entry to cloud (uses current entity S.iEnt) - queues on failure
 async function syncEntryToCloud(entry) {
-  const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry, entity: S.iEnt });
+  const entity = S.iEnt;
+  const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry, entity });
   if (!result.success) {
     console.error('Failed to sync entry:', result);
-    showToast('Cloud sync failed: ' + (result.error || result.message || 'Unknown'), 'err');
+    addPendingOp({ type: 'append_entry', data: { action: 'append_entry', data: entry, entity }, entry });
+    showToast('Saved locally - will sync when online', 'err');
   }
   return result;
 }
 
-// Sync invoice to cloud
+// Sync invoice to cloud - queues on failure
 async function syncInvoiceToCloud(invoice) {
-  const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice, entity: S.iEnt });
-  if (!result.success) console.error('Failed to sync invoice:', result);
+  const entity = S.iEnt;
+  const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice, entity });
+  if (!result.success) {
+    addPendingOp({ type: 'append_invoice', data: { action: 'append_invoice', data: invoice, entity }, invoice });
+    showToast('Invoice saved locally - will sync when online', 'err');
+  }
   return result;
 }
 
-// Delete entry from cloud
-async function deleteEntryFromCloud(id) {
-  const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id }, entity: S.iEnt });
-  if (!result.success) console.error('Failed to delete entry:', result);
+// Delete entry from cloud - queues on failure
+async function deleteEntryFromCloud(id, entity) {
+  entity = entity || S.iEnt;
+  const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id }, entity });
+  if (!result.success) {
+    addPendingOp({ type: 'delete_entry', data: { action: 'delete_entry', data: { id }, entity }, id });
+    showToast('Delete queued - will sync when online', 'err');
+  }
   return result;
 }
 
-// Update entry in cloud
-async function updateEntryInCloud(id, updates) {
-  const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates }, entity: S.iEnt });
-  if (!result.success) console.error('Failed to update entry:', result);
+// Update entry in cloud - queues on failure
+async function updateEntryInCloud(id, updates, entity) {
+  entity = entity || S.iEnt;
+  const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates }, entity });
+  if (!result.success) {
+    addPendingOp({ type: 'update_entry', data: { action: 'update_entry', data: { id, updates }, entity }, id, updates });
+    showToast('Update queued - will sync when online', 'err');
+  }
   return result;
 }
 
@@ -393,17 +541,6 @@ async function syncSettingsToCloud() {
   };
   const result = await apiCall('sheets-sync', { action: 'sync_settings', data: { settings }, entity: S.iEnt });
   if (!result.success) console.error('Failed to sync settings:', result);
-  return result;
-}
-
-// Load settings from cloud
-async function loadSettingsFromCloud() {
-  const result = await apiCall('sheets-sync', { action: 'load_settings', entity: S.iEnt });
-  if (result.success && result.settings) {
-    if (result.settings.entities) S.entities = result.settings.entities;
-    if (result.settings.payTerms) S.payTerms = result.settings.payTerms;
-    save();
-  }
   return result;
 }
 
@@ -589,45 +726,96 @@ function mergeInvoices(cloudInvoices, entity) {
   return updates;
 }
 
-// ===== STARTUP CLOUD SYNC =====
-async function syncFromCloudOnStartup() {
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // Load settings from localStorage (quick - entity preference, day map, etc)
+  loadSettings();
+  initDt();
+  buildDayMap();
+  updatePendingBar();
+
+  // Cloud-first: Load all data from cloud with loading overlay
+  showLoading('Connecting to cloud...');
   try {
-    // Load practices and settings first
+    const success = await loadFromCloud();
+    if (success) {
+      hideLoading();
+      // Show home screen
+      document.getElementById('scr-home').classList.add('act');
+      S.scr='home'; upHdr('home'); upHome();
+      // Smart auto-open based on day
+      const day = new Date().getDay();
+      const t = S.dayMap[day];
+      if (t && t !== 'home' && S.practices[t]) { openPractice(t); }
+      // Retry any pending operations
+      if (pendingOps.length > 0) {
+        setTimeout(retryPending, 2000);
+      }
+    } else {
+      showLoadError('Failed to load from cloud. Check your connection.');
+    }
+  } catch (e) {
+    console.error('Startup error:', e);
+    showLoadError('Connection error: ' + e.message);
+  }
+  scheduleMidnightReset();
+});
+
+// Load all data from cloud (entries, invoices, practices, settings)
+async function loadFromCloud() {
+  try {
+    showLoading('Loading practices...');
+    // Load practices first
     await Promise.all([
       loadPracticesFromCloud(),
-      loadSettingsFromCloud()
+      loadSettingsFromCloudFn()
     ]);
-    // Then load entries/invoices for both entities
+
+    showLoading('Loading entries & invoices...');
+    // Load entries/invoices for both entities in parallel
     const [selfData, ltdData] = await Promise.all([
       apiCall('sheets-sync', { action: 'load_all', entity: 'self' }),
       apiCall('sheets-sync', { action: 'load_all', entity: 'ltd' })
     ]);
-    if (selfData.success || ltdData.success) {
-      mergeCloudData(selfData, ltdData);
-      updateSyncStatus(true);
-    } else {
-      updateSyncStatus(false);
+
+    // Clear existing and replace with cloud data
+    S.entries = [];
+    S.invoices = [];
+
+    if (selfData.success) {
+      if (selfData.entries) S.entries.push(...selfData.entries);
+      if (selfData.invoices) S.invoices.push(...selfData.invoices);
     }
+    if (ltdData.success) {
+      if (ltdData.entries) S.entries.push(...ltdData.entries);
+      if (ltdData.invoices) S.invoices.push(...ltdData.invoices);
+    }
+
+    // Update nextInv from cloud data
+    if (S.invoices.length > 0) {
+      const maxInv = Math.max(...S.invoices.map(i => parseInt(i.num) || 0));
+      if (maxInv >= S.nextInv) S.nextInv = maxInv + 1;
+    }
+
+    save(); // Save settings (not data)
+    updateSyncStatus(true);
+    return selfData.success || ltdData.success;
   } catch (e) {
-    console.error('Startup sync failed:', e);
+    console.error('loadFromCloud error:', e);
     updateSyncStatus(false);
+    return false;
   }
 }
 
-// ===== INIT =====
-document.addEventListener('DOMContentLoaded',()=>{
-load();initDt();buildDayMap();
-// Always show home first, then route
-document.getElementById('scr-home').classList.add('act');
-S.scr='home';upHdr('home');upHome();
-// Smart auto-open based on day
-const day=new Date().getDay();const t=S.dayMap[day];
-if(t&&t!=='home'&&S.practices[t]){openPractice(t);}
-// Schedule midnight reset
-scheduleMidnightReset();
-// Background cloud sync (non-blocking)
-syncFromCloudOnStartup();
-});
+// Load settings from cloud
+async function loadSettingsFromCloudFn() {
+  const result = await apiCall('sheets-sync', { action: 'load_settings', entity: 'self' });
+  if (result.success && result.settings) {
+    if (result.settings.entities) S.ents = result.settings.entities;
+    if (result.settings.payTerms) S.payTerms = result.settings.payTerms;
+  }
+  return result;
+}
 function scheduleMidnightReset(){
 const now=new Date();
 const midnight=new Date(now);
@@ -926,20 +1114,31 @@ var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){save
 },50);
 }
 
-async function saveEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
-e.date=document.getElementById('edDt').value;e.svc=document.getElementById('edSvc').value;
-e.pts=parseInt(document.getElementById('edPts').value)||0;e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
-e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;e.aoType=e.aoAmt>0?'Airflow':null;
-e.gross=(e.pts*e.uPrice)+e.aoAmt;if(e.pType==='contract')e.commAmt=e.gross*e.comm;
-e.updatedAt=new Date().toISOString();
-save();closeMod2();refArc();showToast('Syncing...');
-// Sync to cloud
-const result=await apiCall('sheets-sync',{action:'update_entry',data:{id:e.id,updates:e},entity:e.entity||S.ent});
-if(result.success){showToast('\u2713 Entry updated & synced');}else{showToast('Updated locally, cloud sync failed','err');}}
-async function delEntry(id){var e=S.entries.find(function(x){return x.id===id});var entity=e?e.entity||S.ent:S.ent;S.entries=S.entries.filter(function(e){return e.id!==id});save();closeMod2();refArc();showToast('Deleting...');
-// Sync deletion to cloud
-const result=await apiCall('sheets-sync',{action:'delete_entry',data:{id:id},entity:entity});
-if(result.success){showToast('✓ Entry deleted & synced');}else{showToast('Deleted locally, cloud sync failed','err');}}
+async function saveEntry(id){
+  var e=S.entries.find(function(x){return x.id===id});if(!e)return;
+  e.date=document.getElementById('edDt').value;
+  e.svc=document.getElementById('edSvc').value;
+  e.pts=parseInt(document.getElementById('edPts').value)||0;
+  e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
+  e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;
+  e.aoType=e.aoAmt>0?'Airflow':null;
+  e.gross=(e.pts*e.uPrice)+e.aoAmt;
+  if(e.pType==='contract')e.commAmt=e.gross*e.comm;
+  e.updatedAt=new Date().toISOString();
+  save();closeMod2();refArc();showToast('Syncing...');
+  // Sync to cloud (queues on failure)
+  const result=await updateEntryInCloud(e.id, e, e.entity||S.ent);
+  if(result.success){showToast('Entry updated');}
+}
+async function delEntry(id){
+  var e=S.entries.find(function(x){return x.id===id});
+  var entity=e?e.entity||S.ent:S.ent;
+  S.entries=S.entries.filter(function(e){return e.id!==id});
+  save();closeMod2();refArc();showToast('Deleting...');
+  // Sync deletion to cloud (queues on failure)
+  const result=await deleteEntryFromCloud(id, entity);
+  if(result.success){showToast('Entry deleted');}
+}
 
 // ===== INVOICES =====
 function refInv(){
