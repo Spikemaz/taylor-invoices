@@ -976,8 +976,36 @@ var r=document.getElementById('_dupReplace');if(r)r.onclick=function(){replaceDu
 },50);
 }
 
-function addToDup(id,pts,ao){const e=S.entries.find(x=>x.id===id);if(e){e.pts+=pts;e.aoAmt+=ao;e.gross=(e.pts*e.uPrice)+e.aoAmt;e.commAmt=e.gross*e.comm;save();showToast('✓ Updated — '+e.pts+' patients');}closeMod2();openPractice(S.prac);}
-function replaceDup(id){S.entries=S.entries.filter(e=>e.id!==id);save();closeMod2();doArchive();}
+async function addToDup(id,pts,ao){
+  const e=S.entries.find(x=>x.id===id);
+  if(e){
+    e.pts+=pts;
+    e.aoAmt+=ao;
+    e.gross=(e.pts*e.uPrice)+e.aoAmt;
+    e.commAmt=e.gross*e.comm;
+    e.updatedAt=new Date().toISOString();
+    save();
+    closeMod2();
+    openPractice(S.prac);
+    showToast('Syncing...');
+    // Sync update to cloud
+    const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
+    if(result.success){ showToast('Updated — '+e.pts+' patients'); }
+  } else {
+    closeMod2();
+    openPractice(S.prac);
+  }
+}
+async function replaceDup(id){
+  const e=S.entries.find(x=>x.id===id);
+  const entity = e ? e.entity || S.ent : S.ent;
+  S.entries=S.entries.filter(e=>e.id!==id);
+  save();
+  closeMod2();
+  doArchive();
+  // Delete from cloud
+  await deleteEntryFromCloud(id, entity);
+}
 
 // ===== UNDO =====
 function showUndo(entry){clearTimeout(S.undoT);S.undoE=entry;const t=document.getElementById('toast');
