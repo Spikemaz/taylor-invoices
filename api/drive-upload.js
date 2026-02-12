@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
   try {
     const drive = await getDrive();
 
-    // Create folder structure: Entity/Year/Month/
+    // Create folder structure: Entity/Invoices/Year/Month/
     const entityFolderName = entity === 'ltd' ? 'Ltd Company' : 'Self-Employed';
     const yearStr = year || new Date().getFullYear().toString();
     const monthStr = month || new Date().toLocaleString('en-GB', { month: 'long' });
@@ -51,8 +51,11 @@ module.exports = async (req, res) => {
     // Get or create Entity folder
     const entityFolderId = await getOrCreateFolder(drive, entityFolderName, ROOT_FOLDER_ID);
 
-    // Get or create Year folder inside Entity
-    const yearFolderId = await getOrCreateFolder(drive, yearStr, entityFolderId);
+    // Get or create Invoices folder inside Entity
+    const invoicesFolderId = await getOrCreateFolder(drive, 'Invoices', entityFolderId);
+
+    // Get or create Year folder inside Invoices
+    const yearFolderId = await getOrCreateFolder(drive, yearStr, invoicesFolderId);
 
     // Get or create Month folder inside Year
     const monthFolderId = await getOrCreateFolder(drive, monthStr, yearFolderId);
@@ -100,7 +103,7 @@ module.exports = async (req, res) => {
       fileName: updatedFile.data.name,
       webViewLink: updatedFile.data.webViewLink,
       webContentLink: updatedFile.data.webContentLink,
-      folderPath: `${entityFolderName}/${yearStr}/${monthStr}`
+      folderPath: `${entityFolderName}/Invoices/${yearStr}/${monthStr}`
     });
 
   } catch (error) {

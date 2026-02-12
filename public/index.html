@@ -334,8 +334,11 @@ async function updateEntryInCloud(id, updates) {
 // Generate PDF via API and upload to Drive
 async function generateAndUploadPDF(invData) {
   try {
+    // Add logo to invoice data for PDF generation
+    const dataWithLogo = { ...invData, logoBase64: LOGO[invData.logoType] || LOGO.self };
+
     // Generate PDF via API
-    const pdfResult = await apiCall('generate-pdf', invData);
+    const pdfResult = await apiCall('generate-pdf', dataWithLogo);
     if (!pdfResult.success) {
       console.error('PDF generation failed:', pdfResult);
       showToast('API error - using local PDF', 'err');

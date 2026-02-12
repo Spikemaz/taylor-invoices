@@ -38,34 +38,48 @@ module.exports = async (req, res) => {
     // Set default font
     doc.setFont('helvetica');
 
+    // Add logo if provided (top left)
+    if (inv.logoBase64) {
+      try {
+        // Logo at top left, 60x60 points
+        doc.addImage(inv.logoBase64, 'JPEG', 40, y, 60, 60);
+      } catch (logoErr) {
+        console.error('Logo error:', logoErr);
+      }
+    }
+
     // Header - entity name (right aligned)
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(26, 26, 26);
     doc.text(inv.entName || '', W - 40, y + 10, { align: 'right' });
 
-    // Entity address
-    doc.setFontSize(11);
+    // Entity address (right aligned, below entity name)
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(107, 114, 128);
     const addrLines = (inv.entAddr || '').split('\n');
+    let addrY = y + 26;
     addrLines.forEach((line, i) => {
-      doc.text(line, W - 40, y + 26 + i * 14, { align: 'right' });
+      doc.text(line, W - 40, addrY + i * 12, { align: 'right' });
     });
-    doc.text(inv.entPhone || '', W - 40, y + 26 + addrLines.length * 14, { align: 'right' });
+    // Phone below address with proper spacing
+    if (inv.entPhone) {
+      doc.text(inv.entPhone, W - 40, addrY + addrLines.length * 12, { align: 'right' });
+    }
 
-    // INVOICE title
+    // INVOICE title (starts below logo area)
     doc.setTextColor(45, 106, 79); // Primary green
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 40, 110);
+    doc.text('INVOICE', 40, 120);
 
-    // Green line
+    // Green line (below INVOICE title)
     doc.setFillColor(27, 67, 50); // Dark green
-    doc.rect(40, 118, W - 80, 3, 'F');
+    doc.rect(40, 128, W - 80, 3, 'F');
 
     // Bill To section
-    y = 140;
+    y = 150;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(107, 114, 128);
@@ -93,7 +107,7 @@ module.exports = async (req, res) => {
     doc.text('Entity:  ' + (inv.entity || ''), W - 40, y + 42, { align: 'right' });
 
     // Table header
-    y = 240;
+    y = 250;
     doc.setFillColor(27, 67, 50);
     doc.rect(40, y, W - 80, 22, 'F');
     doc.setFontSize(10);
