@@ -962,6 +962,65 @@ function mergeInvoices(cloudInvoices, entity) {
   return updates;
 }
 
+// ===== DATA MIGRATIONS =====
+// Run one-time data fixes after cloud load
+async function runDataMigrations() {
+  let needsSync = false;
+
+  // Migration 1: Remove ad hoc practices that got mistakenly added to S.practices (contracted)
+  // Ad hoc practices should only exist in S.ahPrac, not S.practices
+  const ahPracIds = (S.ahPrac || []).map(p => p.id);
+  const keysToRemove = [];
+  Object.keys(S.practices || {}).forEach(key => {
+    const prac = S.practices[key];
+    // Check if this practice is actually an ad hoc practice by checking:
+    // 1. If it has type='adhoc'
+    // 2. If its ID matches an ad hoc practice
+    // 3. If it looks like an imported ad hoc (has rate field instead of comm)
+    if (prac.type === 'adhoc' || ahPracIds.includes(key) || prac.rate !== undefined) {
+      keysToRemove.push(key);
+    }
+  });
+
+  if (keysToRemove.length > 0) {
+    console.log('Migration: Removing ad hoc practices from S.practices:', keysToRemove);
+    keysToRemove.forEach(key => delete S.practices[key]);
+    needsSync = true;
+  }
+
+  // Migration 2: Update old Bupa service names to new ones
+  if (S.practices && S.practices.bupa && S.practices.bupa.svcs) {
+    const svcs = S.practices.bupa.svcs;
+
+    // Rename "Plan" to "Bupa Smile Plan" if it exists
+    if (svcs.Plan && !svcs['Bupa Smile Plan']) {
+      svcs['Bupa Smile Plan'] = { ...svcs.Plan };
+      delete svcs.Plan;
+      needsSync = true;
+      console.log('Migration: Renamed Plan to Bupa Smile Plan');
+    }
+
+    // Rename "Legacy" to "Bupa UKI 20%" if it exists
+    if (svcs.Legacy && !svcs['Bupa UKI 20%']) {
+      svcs['Bupa UKI 20%'] = { ...svcs.Legacy };
+      delete svcs.Legacy;
+      needsSync = true;
+      console.log('Migration: Renamed Legacy to Bupa UKI 20%');
+    }
+  }
+
+  // Save locally and sync to cloud if changes were made
+  if (needsSync) {
+    save();
+    try {
+      await syncPracticesToCloud();
+      console.log('Migration: Changes synced to cloud');
+    } catch (e) {
+      console.error('Migration: Failed to sync changes to cloud:', e);
+    }
+  }
+}
+
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async ()=>{
   console.log('DOMContentLoaded: Starting, S.practices=', S.practices);
@@ -978,6 +1037,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     const success = await loadFromCloud();
     console.log('After loadFromCloud: success=', success, 'S.practices=', S.practices);
     if (success) {
+      // Run data migrations after cloud load
+      await runDataMigrations();
       hideLoading();
       // Show home screen
       document.getElementById('scr-home').classList.add('act');
