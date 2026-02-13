@@ -1468,7 +1468,7 @@ function filtArcEnt(f){
   document.getElementById('arcEL').className='ebtn'+(f==='ltd'?' act':'');
   refArc();
 }
-function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(c=>c.classList.toggle('act',c.textContent.toLowerCase()===f||f==='all'&&c.textContent==='All'));refArc();}
+function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(c=>{var txt=c.textContent.toLowerCase().replace(/\s+/g,'');c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));});refArc();}
 function refArc(){
   const c=document.getElementById('arcList');
   const now=new Date();
