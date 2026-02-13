@@ -1336,7 +1336,8 @@ async function replaceDup(id){
 
 // ===== UNDO =====
 function showUndo(entry){clearTimeout(S.undoT);S.undoE=entry;const t=document.getElementById('toast');
-t.className='toast ok';t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
+const prcClass=entry.pType==='adhoc'?'prc-adhoc':(entry.pId==='bupa'?'prc-bupa':(entry.pId==='grove'?'prc-grove':'ok'));
+t.className='toast '+prcClass;t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
 function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
