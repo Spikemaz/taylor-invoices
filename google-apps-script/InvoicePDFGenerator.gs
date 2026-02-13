@@ -51,40 +51,62 @@ function onSheetChange(e) {
 /**
  * Check for invoices without PDFs and generate them
  * Called by onChange trigger when new rows are added
+ * Uses Script Lock to prevent duplicate PDFs from concurrent trigger executions
  */
 function checkForNewInvoices() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
-  if (!sheet) return;
+  // Use script lock to prevent concurrent executions (prevents duplicate PDFs)
+  const lock = LockService.getScriptLock();
 
-  const data = sheet.getDataRange().getValues();
-  if (data.length < 2) return;
+  // Try to acquire lock - if another execution is running, skip this one
+  if (!lock.tryLock(100)) {
+    Logger.log('Another execution is in progress, skipping...');
+    return;
+  }
 
-  const headers = data[0];
-  const numCol = headers.indexOf('num');
-  const driveLinkCol = headers.indexOf('driveLink');
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
+    if (!sheet) return;
 
-  if (numCol === -1 || driveLinkCol === -1) return;
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
 
-  // Find first invoice without driveLink (process one at a time to avoid timeout)
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const invoiceNum = row[numCol];
-    const driveLink = row[driveLinkCol];
+    const headers = data[0];
+    const numCol = headers.indexOf('num');
+    const driveLinkCol = headers.indexOf('driveLink');
 
-    if (invoiceNum && !driveLink) {
-      try {
-        Logger.log('Generating PDF for invoice: ' + invoiceNum);
-        const pdfUrl = generatePDFFromVercel(row, headers);
-        if (pdfUrl) {
-          sheet.getRange(i + 1, driveLinkCol + 1).setValue(pdfUrl);
-          Logger.log('PDF generated: ' + pdfUrl);
+    if (numCol === -1 || driveLinkCol === -1) return;
+
+    // Find first invoice without driveLink (process one at a time to avoid timeout)
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const invoiceNum = row[numCol];
+      const driveLink = row[driveLinkCol];
+
+      if (invoiceNum && !driveLink) {
+        // Double-check by re-reading the cell (in case another process just wrote it)
+        const currentLink = sheet.getRange(i + 1, driveLinkCol + 1).getValue();
+        if (currentLink) {
+          Logger.log('Invoice ' + invoiceNum + ' already has driveLink (race condition avoided)');
+          continue;
         }
-      } catch (err) {
-        Logger.log('Error generating PDF for ' + invoiceNum + ': ' + err.message);
+
+        try {
+          Logger.log('Generating PDF for invoice: ' + invoiceNum);
+          const pdfUrl = generatePDFFromVercel(row, headers);
+          if (pdfUrl) {
+            sheet.getRange(i + 1, driveLinkCol + 1).setValue(pdfUrl);
+            Logger.log('PDF generated: ' + pdfUrl);
+          }
+        } catch (err) {
+          Logger.log('Error generating PDF for ' + invoiceNum + ': ' + err.message);
+        }
+        // Only process ONE invoice per run to avoid timeout
+        return;
       }
-      // Only process ONE invoice per run to avoid timeout
-      return;
     }
+  } finally {
+    // Always release the lock
+    lock.releaseLock();
   }
 }
 
