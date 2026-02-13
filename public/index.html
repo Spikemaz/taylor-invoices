@@ -40,6 +40,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
 .sbtn{padding:14px 12px;border:3px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:14px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--grove-lt);color:var(--pri-dk)}
+.sbtn.prc-bupa{border-color:var(--bupa)}.sbtn.prc-grove{border-color:var(--grove)}.sbtn.prc-adhoc{border-color:#EF4444}
 .sbtn.sel.prc-bupa{border-color:var(--bupa);background:var(--bupa-lt);color:var(--bupa)}
 .sbtn.sel.prc-grove{border-color:var(--grove);background:var(--grove-lt);color:var(--grove)}
 .sbtn.sel.prc-adhoc{border-color:#EF4444;background:#FEE2E2;color:#EF4444}
@@ -57,6 +58,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .abtn:active{background:var(--pri-dk);transform:scale(.98)}.abtn:disabled{opacity:.5;cursor:not-allowed}
 .toast{position:fixed;bottom:calc(20px + var(--sb));left:50%;transform:translateX(-50%) translateY(100px);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:1000;transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;box-shadow:var(--shl);max-width:calc(100vw - 40px);font-family:var(--f)}
 .toast.show{transform:translateX(-50%) translateY(0)}.toast.ok{background:var(--pri-dk);color:#fff}.toast.err{background:var(--err);color:#fff}
+.toast.prc-bupa{background:var(--bupa)}.toast.prc-grove{background:var(--grove)}.toast.prc-adhoc{background:#EF4444}
 .toast .ubtn{background:rgba(255,255,255,.2);border:0;color:#fff;padding:4px 12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;font-family:var(--f);margin-left:8px}
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
@@ -97,12 +99,17 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .inv-section:first-child{margin-top:0}
 .inv-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
+.ibtn.gn.prc-bupa{background:var(--bupa)}.ibtn.gn.prc-grove{background:var(--grove)}.ibtn.gn.prc-adhoc{background:#EF4444}
 .sh{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px}.sh:first-child{margin-top:0}
 .frow{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 .fc{padding:6px 14px;border-radius:20px;border:1px solid var(--bdr);background:var(--card);font-size:12px;font-weight:500;color:var(--txt2);white-space:nowrap;cursor:pointer;transition:all .15s;font-family:var(--f)}.fc.act{background:var(--pri);color:#fff;border-color:var(--pri)}
+.fc.prc-bupa{border-color:var(--bupa);color:var(--bupa)}.fc.prc-bupa.act{background:var(--bupa);color:#fff}
+.fc.prc-grove{border-color:var(--grove);color:var(--grove)}.fc.prc-grove.act{background:var(--grove);color:#fff}
+.fc.prc-adhoc{border-color:#EF4444;color:#EF4444}.fc.prc-adhoc.act{background:#EF4444;color:#fff}
 .mov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;opacity:0;transition:opacity .25s}
 .mov.show{display:flex;opacity:1;align-items:flex-end}
-.mod{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + var(--sb));max-height:85vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.mod{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + var(--sb));max-height:85vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);border-top:4px solid var(--bdr)}
+.mod.prc-bupa{border-top-color:var(--bupa)}.mod.prc-grove{border-top-color:var(--grove)}.mod.prc-adhoc{border-top-color:#EF4444}
 .mov.show .mod{transform:translateY(0)}
 .mh{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px}
 .fg{margin-bottom:14px}.fl{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:block}
@@ -243,9 +250,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 </div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
-<button class="fc" onclick="filtArc('bupa')">Bupa</button>
-<button class="fc" onclick="filtArc('grove')">Grove</button>
-<button class="fc" onclick="filtArc('adhoc')">Ad Hoc</button>
+<button class="fc prc-bupa" onclick="filtArc('bupa')">Bupa</button>
+<button class="fc prc-grove" onclick="filtArc('grove')">Grove</button>
+<button class="fc prc-adhoc" onclick="filtArc('adhoc')">Ad Hoc</button>
 </div>
 <div class="alist" id="arcList"><div class="empty"><div class="emo">&#128203;</div><p>No entries yet.</p></div></div>
 <div style="padding:16px;margin-top:8px"><button class="btn btn-d" style="width:100%" onclick="showClearTodayModal()">Clear Today's Entries</button></div>
@@ -1230,7 +1237,8 @@ const logged=S.entries.some(e=>e.date===td2&&e.pId===id&&e.entity===S.ent);
 if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
 else tEl.innerHTML='';
 const g=document.getElementById('sGrid');g.innerHTML='';
-if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn';b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
+const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
+if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
 }
 function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
@@ -1332,7 +1340,7 @@ t.className='toast ok';t.innerHTML='<span>✓ Saved to Sheet</span><button class
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
 function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
-function showToast(msg,cls){const t=document.getElementById('toast');t.className='toast ok';t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function showToast(msg,prcClass){const t=document.getElementById('toast');t.className='toast'+(prcClass?' '+prcClass:' ok');t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
 let ahSvc='Hygiene';
@@ -1630,6 +1638,7 @@ function toggleArcMonth(el){
 }
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
+var prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
 _h+='<div class="fg"><label class="fl">Service</label><input class="fi" id="edSvc" value="'+e.svc+'"></div>';
@@ -1637,7 +1646,7 @@ _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label cl
 _h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
 _h+='<div class="fg"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div>';
 _h+='<div class="brow"><button class="btn btn-d" id="_edDel">Delete</button><button class="btn btn-s" id="_edCancel">Cancel</button><button class="btn btn-p" id="_edSave">Save</button></div>';
-showModal(_h);
+showModal(_h,prcClass);
 setTimeout(function(){
 var delB=document.getElementById('_edDel');if(delB)delB.onclick=function(){delEntry(id)};
 var canB=document.getElementById('_edCancel');if(canB)canB.onclick=function(){closeMod2()};
@@ -1816,7 +1825,7 @@ if(pe.length>1){
 }else{
   mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
 }
-mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button></div></div>';
+mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button></div></div>';
 });
 if(!mh)mh='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending contracted invoices.</p>';
 mc.innerHTML=mh;
@@ -1838,10 +1847,10 @@ else{
     ahHtml+='<div class="ia">';
     if(entries.length===1){
       ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
-      ahHtml+='<button class="ibtn gn" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
+      ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
     }else{
       ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
-      ahHtml+='<button class="ibtn gn" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
+      ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
     }
     ahHtml+='</div></div>';
   });
@@ -2084,9 +2093,10 @@ for(const e of entries){
   await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
 }
 
-showToast('Generating invoice...');
+const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
+showToast('Generating invoice...',prcClass);
 await generateAndUploadPDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass);
 refInv();document.getElementById('nInv').textContent=pad(getNextInv());
 }
 
@@ -2127,9 +2137,10 @@ console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
 me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);});
-showToast('Generating invoice...');
+var prcClass2=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
+showToast('Generating invoice...',prcClass2);
 await generateAndUploadPDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass2);
 refInv();
 document.getElementById('nInv').textContent=pad(getNextInv());
 }
@@ -2164,9 +2175,9 @@ console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData, entKey);
 updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
-showToast('Generating invoice...');
+showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInv());
 }
 
@@ -2272,9 +2283,9 @@ for(const e of entries){
   await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
 }
 
-showToast('Generating invoice...');
+showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInv());
 }
 
@@ -2341,9 +2352,9 @@ for(const e of entries){
   await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
 }
 
-showToast('Generating invoice...');
+showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
-showToast('\u2713 Invoice #'+invNum+' generated ('+entries.length+' entries combined)');
+showToast('\u2713 Invoice #'+invNum+' generated ('+entries.length+' entries combined)','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInv());
 }
 
@@ -2641,7 +2652,7 @@ S.entries.forEach(e=>{csv+=e.date+','+e.pName+','+e.svc+','+e.pts+','+e.uPrice+'
 const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taylor_invoices_backup.csv';a.click();showToast('✓ CSV downloaded');}
 
 // ===== MODAL =====
-function showModal(html){document.getElementById('modC').innerHTML=html;document.getElementById('modOv').classList.add('show');}
+function showModal(html,prcClass){const mod=document.getElementById('modC');mod.innerHTML=html;mod.parentElement.className='mod'+(prcClass?' '+prcClass:'');document.getElementById('modOv').classList.add('show');}
 function closeMod(e){if(e.target===document.getElementById('modOv'))closeMod2();}
 function closeMod2(){document.getElementById('modOv').classList.remove('show');}
 
