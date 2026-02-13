@@ -685,7 +685,9 @@ async function syncPracticesToCloud() {
 async function loadPracticesFromCloud() {
   const result = await apiCall('sheets-sync', { action: 'load_practices', entity: S.iEnt });
   if (result.success && result.practices) {
-    result.practices.forEach(p => {
+    // Filter: only load CONTRACT practices here (ad hoc are loaded via ahPrac in settings)
+    const contractPractices = result.practices.filter(p => p.type !== 'adhoc');
+    contractPractices.forEach(p => {
       // Map 'services' (API column) to 'svcs' (frontend field)
       if (p.services && !p.svcs) {
         p.svcs = typeof p.services === 'string' ? JSON.parse(p.services) : p.services;
@@ -705,6 +707,7 @@ async function loadPracticesFromCloud() {
       console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days);
       S.practices[p.id] = p;
     });
+    console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
     save();
   }
   return result;
