@@ -1722,7 +1722,7 @@ function showClearTodayModal(){
     return;
   }
 
-  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear Today\'s Entries</h3>';
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Clear Today\'s Entries</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Select which entries to clear for '+fdd(td)+':</p>';
   _h+='<div style="display:flex;flex-direction:column;gap:12px">';
 
@@ -1770,7 +1770,7 @@ function showClearConfirmModal(entity,pType){
   const typeLabel=pType==='adhoc'?'Ad Hoc':'Contract';
   const entColor=entity==='self'?'#0EA5E9':'#EF4444';
 
-  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--err)">Clear '+entLabel+' '+typeLabel+'</h3>';
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Clear '+entLabel+' '+typeLabel+'</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete <b>'+entries.length+' entr'+(entries.length===1?'y':'ies')+'</b> from today ('+fdd(td)+').</p>';
   _h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;border-left:3px solid '+entColor+'">';
   entries.forEach(e=>{
