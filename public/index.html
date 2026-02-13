@@ -1955,6 +1955,20 @@ async function genAhInv(id){
 var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 // Use entry's entity, not current entity
 var entKey=e.entity||S.ent;
+
+// Auto-combine: find all pending ad-hoc entries with same date, practice, and entity
+var sameDayEntries=S.entries.filter(function(x){
+  return x.pType==='adhoc' && x.invSt==='pending' && x.date===e.date && x.pId===e.pId && (x.entity||S.ent)===entKey;
+});
+
+// If multiple entries found, combine them into one invoice
+if(sameDayEntries.length>1){
+  console.log('[Auto-combine] Found '+sameDayEntries.length+' entries for '+e.pName+' on '+e.date);
+  await genAhInvMultiWithEntity(sameDayEntries, entKey);
+  return;
+}
+
+// Single entry - original logic
 var ent=S.ents[entKey];
 var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
 if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
@@ -2078,6 +2092,75 @@ for(const e of entries){
 showToast('Generating invoice...');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded');
+refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+}
+
+// Generate invoice for multiple ad hoc entries with specific entity (for auto-combine)
+async function genAhInvMultiWithEntity(entries, entKey){
+if(!entries.length)return;
+const ent=S.ents[entKey];
+const invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
+if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
+const pName=entries[0].pName;
+const pAddr=entries[0].adhocAddr||'';
+
+// Mark all entries as invoiced
+entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
+
+// Group services by svc+price
+const svcs={};
+entries.forEach(e=>{
+  const key=e.svc+'@'+e.uPrice;
+  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  svcs[key].pts+=e.pts;
+  svcs[key].total+=e.pts*e.uPrice;
+});
+
+// Calculate totals
+let airTotal=0;entries.forEach(e=>{airTotal+=(e.aoPatients||0)*(e.aoAmt||0);});
+const tg=entries.reduce((s,e)=>s+e.gross,0);
+
+// Determine period description
+const dates=entries.map(e=>e.date).sort();
+const minDate=dates[0];const maxDate=dates[dates.length-1];
+let period;
+if(minDate===maxDate){
+  period=fdd(minDate);
+}else{
+  const d1=new Date(minDate),d2=new Date(maxDate);
+  const diff=(d2-d1)/(1000*60*60*24);
+  if(diff<=7){
+    period='Week of '+fdd(minDate);
+  }else if(d1.getMonth()===d2.getMonth()&&d1.getFullYear()===d2.getFullYear()){
+    period=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+  }else{
+    period=fdd(minDate)+' - '+fdd(maxDate);
+  }
+}
+
+const invData={
+  num:invNum,date:today(),practice:pName,practiceName:pName,
+  practiceAddr:pAddr.replace(/\\n/g,'\n'),period:period,
+  entity:entKey==='self'?'Self-Employed':'Ltd',
+  entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
+  entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
+  bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
+  commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,
+  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length
+};
+
+console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.length+' entries', '£'+tg.toFixed(2), 'entity='+entKey);
+S.invoices.push(invData);save();
+syncInvoiceToCloud(invData, entKey);
+
+// Update all entries in cloud
+for(const e of entries){
+  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
+}
+
+showToast('Generating invoice...');
+await generateAndUploadPDF(invData);
+showToast('\u2713 Invoice #'+invNum+' generated ('+entries.length+' entries combined)');
 refInv();document.getElementById('nInv').textContent=pad(getNextInv());
 }
 

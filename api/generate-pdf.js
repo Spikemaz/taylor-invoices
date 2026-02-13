@@ -2,6 +2,7 @@
 // Generates invoice PDF using jsPDF, uploads to Drive, updates Sheets
 
 const { jsPDF } = require('jspdf');
+const LOGOS = require('./logos');
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -38,11 +39,14 @@ module.exports = async (req, res) => {
     // Set default font
     doc.setFont('helvetica');
 
-    // Add logo if provided (top left)
-    if (inv.logoBase64) {
+    // Determine logo: use provided logoBase64, or look up by logoType, default to self
+    const logoData = inv.logoBase64 || LOGOS[inv.logoType] || LOGOS.self;
+
+    // Add logo (top left)
+    if (logoData) {
       try {
         // Logo at top left, 60x60 points
-        doc.addImage(inv.logoBase64, 'JPEG', 40, y, 60, 60);
+        doc.addImage(logoData, 'JPEG', 40, y, 60, 60);
       } catch (logoErr) {
         console.error('Logo error:', logoErr);
       }

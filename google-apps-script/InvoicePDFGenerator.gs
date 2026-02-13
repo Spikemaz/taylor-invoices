@@ -11,7 +11,7 @@
  * 7. Authorize when prompted
  * 8. Repeat for Ltd Company sheet
  *
- * PDFs will be generated ONLY when a new invoice row is added
+ * PDFs will be generated automatically when a new invoice row is added
  */
 
 // Configuration - UPDATE THIS with your Vercel URL
@@ -21,63 +21,79 @@ const INVOICES_TAB_NAME = 'Invoices';
 
 /**
  * Setup trigger - Run this ONCE
+ * Uses onChange trigger which fires for BOTH manual and programmatic edits
  */
 function setupTrigger() {
   // Remove existing triggers
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
 
-  // Create onEdit trigger (fires when sheet is edited)
-  ScriptApp.newTrigger('onSheetEdit')
-    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
-    .onEdit()
+  // Create onChange trigger - fires when spreadsheet content changes (including API edits)
+  ScriptApp.newTrigger('onSheetChange')
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onChange()
     .create();
 
   SpreadsheetApp.getUi().alert('Setup complete!\n\nPDFs will be generated automatically when new invoices are added.');
 }
 
 /**
- * Triggered on any edit - checks if new invoice row was added
+ * onChange handler - fires for ALL changes including API/service account edits
+ * This is an "installable trigger" which has more permissions than simple triggers
+ */
+function onSheetChange(e) {
+  // Only process EDIT and INSERT_ROW change types
+  if (e && e.changeType && (e.changeType === 'EDIT' || e.changeType === 'INSERT_ROW')) {
+    checkForNewInvoices();
+  }
+}
+
+/**
+ * Check for invoices without PDFs and generate them
+ * Called by onChange trigger when new rows are added
+ */
+function checkForNewInvoices() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+
+  const headers = data[0];
+  const numCol = headers.indexOf('num');
+  const driveLinkCol = headers.indexOf('driveLink');
+
+  if (numCol === -1 || driveLinkCol === -1) return;
+
+  // Find first invoice without driveLink (process one at a time to avoid timeout)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const invoiceNum = row[numCol];
+    const driveLink = row[driveLinkCol];
+
+    if (invoiceNum && !driveLink) {
+      try {
+        Logger.log('Generating PDF for invoice: ' + invoiceNum);
+        const pdfUrl = generatePDFFromVercel(row, headers);
+        if (pdfUrl) {
+          sheet.getRange(i + 1, driveLinkCol + 1).setValue(pdfUrl);
+          Logger.log('PDF generated: ' + pdfUrl);
+        }
+      } catch (err) {
+        Logger.log('Error generating PDF for ' + invoiceNum + ': ' + err.message);
+      }
+      // Only process ONE invoice per run to avoid timeout
+      return;
+    }
+  }
+}
+
+/**
+ * Legacy onEdit handler - kept for manual edits but main trigger is time-based
  */
 function onSheetEdit(e) {
-  try {
-    // Check if edit was on Invoices sheet
-    const sheet = e.source.getActiveSheet();
-    if (sheet.getName() !== INVOICES_TAB_NAME) return;
-
-    // Get the edited range
-    const range = e.range;
-    const row = range.getRow();
-
-    // Skip header row
-    if (row <= 1) return;
-
-    // Check if this is a new row (column A has value but driveLink is empty)
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const numCol = headers.indexOf('num');
-    const driveLinkCol = headers.indexOf('driveLink');
-
-    if (numCol === -1 || driveLinkCol === -1) return;
-
-    const invoiceNum = sheet.getRange(row, numCol + 1).getValue();
-    const driveLink = sheet.getRange(row, driveLinkCol + 1).getValue();
-
-    // Only generate if invoice number exists and no driveLink yet
-    if (invoiceNum && !driveLink) {
-      // Get full row data
-      const rowData = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
-
-      // Generate PDF
-      const pdfUrl = generatePDFFromVercel(rowData, headers);
-
-      if (pdfUrl) {
-        sheet.getRange(row, driveLinkCol + 1).setValue(pdfUrl);
-        Logger.log('Generated PDF for invoice ' + invoiceNum);
-      }
-    }
-  } catch (err) {
-    Logger.log('onSheetEdit error: ' + err.message);
-  }
+  // Time-based trigger (checkForNewInvoices) handles PDF generation
+  // This is kept as backup for manual sheet edits
 }
 
 /**
@@ -153,10 +169,11 @@ function generatePDFFromVercel(rowData, headers) {
 }
 
 /**
- * Get or create folder structure: Taylor Invoices / Entity / Year / Month
+ * Get or create folder structure:
+ * Taylor Invoices / Self-Employed (or Ltd Company) / Invoices / 2026 / February / [Ad Hoc/]
  */
 function getOrCreateInvoiceFolder(inv) {
-  // Root folder
+  // Root folder: Taylor Invoices
   let rootFolder;
   const rootFolders = DriveApp.getFoldersByName(INVOICE_FOLDER_NAME);
   if (rootFolders.hasNext()) {
@@ -165,18 +182,22 @@ function getOrCreateInvoiceFolder(inv) {
     rootFolder = DriveApp.createFolder(INVOICE_FOLDER_NAME);
   }
 
-  // Entity folder
+  // Entity folder: Self-Employed or Ltd Company
   const entityName = (inv.entity === 'ltd' || inv.logoType === 'ltd') ? 'Ltd Company' : 'Self-Employed';
   let entityFolder = getSubfolder(rootFolder, entityName);
   if (!entityFolder) entityFolder = rootFolder.createFolder(entityName);
 
-  // Year folder
+  // Invoices folder inside Entity
+  let invoicesFolder = getSubfolder(entityFolder, 'Invoices');
+  if (!invoicesFolder) invoicesFolder = entityFolder.createFolder('Invoices');
+
+  // Year folder inside Invoices
   const date = inv.date ? new Date(inv.date) : new Date();
   const year = date.getFullYear().toString();
-  let yearFolder = getSubfolder(entityFolder, year);
-  if (!yearFolder) yearFolder = entityFolder.createFolder(year);
+  let yearFolder = getSubfolder(invoicesFolder, year);
+  if (!yearFolder) yearFolder = invoicesFolder.createFolder(year);
 
-  // Month folder
+  // Month folder inside Year
   const month = Utilities.formatDate(date, 'Europe/London', 'MMMM');
   let monthFolder = getSubfolder(yearFolder, month);
   if (!monthFolder) monthFolder = yearFolder.createFolder(month);
@@ -232,6 +253,86 @@ function testGenerateLatest() {
   } else {
     SpreadsheetApp.getUi().alert('Failed to generate PDF. Check the logs.');
   }
+}
+
+/**
+ * DIAGNOSTIC TEST - Run this to see exactly where the problem is
+ */
+function diagnosticTest() {
+  const ui = SpreadsheetApp.getUi();
+  let results = [];
+
+  // Step 1: Check sheet access
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
+    if (sheet) {
+      results.push('✓ Sheet "Invoices" found');
+      const data = sheet.getDataRange().getValues();
+      results.push('✓ Found ' + data.length + ' rows (including header)');
+
+      if (data.length > 1) {
+        const headers = data[0];
+        results.push('✓ Headers: ' + headers.slice(0, 5).join(', ') + '...');
+
+        const numCol = headers.indexOf('num');
+        const driveLinkCol = headers.indexOf('driveLink');
+        results.push('  num column: ' + (numCol >= 0 ? 'Found at ' + numCol : 'NOT FOUND'));
+        results.push('  driveLink column: ' + (driveLinkCol >= 0 ? 'Found at ' + driveLinkCol : 'NOT FOUND'));
+      }
+    } else {
+      results.push('✗ Sheet "Invoices" NOT FOUND');
+    }
+  } catch (e) {
+    results.push('✗ Sheet error: ' + e.message);
+  }
+
+  // Step 2: Test API call
+  try {
+    results.push('\n--- Testing Vercel API ---');
+    const testPayload = { num: 'DIAG-TEST', date: '2026-02-13', practiceName: 'Test', entName: 'Diagnostic', amount: 100, gross: 100 };
+    const response = UrlFetchApp.fetch(VERCEL_API_URL + '/api/generate-pdf', {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(testPayload),
+      muteHttpExceptions: true
+    });
+    const code = response.getResponseCode();
+    results.push('✓ API response code: ' + code);
+
+    if (code === 200) {
+      const result = JSON.parse(response.getContentText());
+      results.push('✓ API success: ' + result.success);
+      results.push('✓ PDF base64 length: ' + (result.pdfBase64 ? result.pdfBase64.length : 0));
+      results.push('✓ Filename: ' + result.fileName);
+    } else {
+      results.push('✗ API error: ' + response.getContentText().substring(0, 200));
+    }
+  } catch (e) {
+    results.push('✗ API call failed: ' + e.message);
+  }
+
+  // Step 3: Test Drive access
+  try {
+    results.push('\n--- Testing Drive Access ---');
+    const folders = DriveApp.getFoldersByName(INVOICE_FOLDER_NAME);
+    if (folders.hasNext()) {
+      const folder = folders.next();
+      results.push('✓ Found folder: ' + folder.getName());
+      results.push('✓ Folder URL: ' + folder.getUrl());
+    } else {
+      results.push('! Folder "' + INVOICE_FOLDER_NAME + '" not found - will be created on first PDF');
+      // Try creating a test folder
+      const testFolder = DriveApp.createFolder('_TestFolder_DELETE_ME');
+      results.push('✓ Can create folders! Created test folder');
+      testFolder.setTrashed(true);
+      results.push('✓ Deleted test folder');
+    }
+  } catch (e) {
+    results.push('✗ Drive error: ' + e.message);
+  }
+
+  ui.alert('Diagnostic Results', results.join('\n'), ui.ButtonSet.OK);
+  Logger.log(results.join('\n'));
 }
 
 /**
