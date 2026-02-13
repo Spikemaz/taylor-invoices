@@ -2679,13 +2679,14 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(-
 _h+='<p style="margin:12px 0">This will permanently delete:</p>';
 _h+='<ul style="margin:8px 0 16px 20px;font-size:14px"><li>All entries</li><li>All invoices</li><li>All settings</li></ul>';
 _h+='<p style="font-size:12px;color:var(--err);margin-bottom:16px">This action cannot be undone!</p>';
-_h+='<div class="fg"><label class="fl">Type DELETE to confirm</label><input class="fi" id="_cdVal" placeholder="DELETE"></div>';
+_h+='<div class="fg"><label class="fl">Enter Admin Code</label><input class="fi" id="_cdVal" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="****"></div>';
+_h+='<p style="font-size:11px;color:var(--txt3);margin:8px 0">Contact Admin for reset code</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_cdC">Cancel</button><button class="btn" style="background:var(--err);color:white" id="_cdS">Clear All</button></div>';
 showModal(_h);
 setTimeout(function(){
 document.getElementById('_cdC').onclick=function(){closeMod2()};
 document.getElementById('_cdS').onclick=function(){
-if(document.getElementById('_cdVal').value!=='DELETE'){showToast('Type DELETE to confirm','err');return;}
+if(document.getElementById('_cdVal').value!=='3945'){showToast('Invalid admin code','err');return;}
 localStorage.removeItem('tm_inv_settings');
 localStorage.removeItem('tm_inv_entries');
 localStorage.removeItem('tm_inv_invoices');
