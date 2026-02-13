@@ -67,9 +67,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-left:6px}
 .ent-badge.self{background:#E0F2FE;color:#0369A1}.ent-badge.ltd{background:#FEE2E2;color:#B91C1C}
 .aitem.ent-self{border-left:3px solid #0EA5E9}.aitem.ent-ltd{border-left:3px solid #EF4444}
-.arc-month{font-size:14px;font-weight:700;color:var(--txt);padding:12px 0 8px;margin-top:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px}
+.arc-month{font-size:14px;font-weight:700;color:var(--txt);padding:12px 0 8px;margin-top:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;cursor:pointer}
 .arc-month:first-child{margin-top:0}
 .arc-month .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
+.arc-month::before{content:'▼';font-size:10px;color:var(--txt3);transition:transform .2s}
+.arc-month.collapsed::before{transform:rotate(-90deg)}
+.month-group{overflow:hidden;transition:max-height .3s ease}
+.month-group.collapsed{max-height:0!important}
 .icard{background:var(--card);border-radius:var(--r);padding:18px;border:1px solid var(--bdr);margin-bottom:12px;box-shadow:var(--sh)}
 .icard .ih{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .icard .ip{font-size:16px;font-weight:700}.icard .iper{font-size:12px;color:var(--txt2)}
@@ -233,7 +237,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <!-- INVOICES -->
 <div class="scr" id="scr-invoices">
 <div class="esw"><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
-<div class="sh">Monthly Invoices</div>
+<div class="sh">Contracted Invoices</div>
 <div id="mInv"></div>
 <div class="sh">Ad Hoc Invoices</div>
 <div id="ahInv"></div>
@@ -1690,11 +1694,11 @@ function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
 
-// Monthly invoices - show pending entries grouped by practice
+// Contracted invoices - show pending entries grouped by practice (exclude adhoc)
 const mc=document.getElementById('mInv');let mh='';
-Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short)return;
-var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
-if(!pe.length){mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+mn+'</div></div></div><p style="color:var(--txt2);font-size:13px">No pending entries.</p></div>';return;}
+Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
+var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt&&e.pType!=='adhoc'});
+if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
 mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
@@ -1706,7 +1710,9 @@ if(pe.length>1){
   mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
 }
 mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Invoice All</button></div></div>';
-});mc.innerHTML=mh;
+});
+if(!mh)mh='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending contracted invoices.</p>';
+mc.innerHTML=mh;
 
 // Ad hoc invoices - group by practice
 const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&e.entity===S.iEnt});
@@ -1756,15 +1762,28 @@ else{
     const isCurrentMonth=monthKey===curMonth;
     const d=new Date(monthKey+'-01');
     const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-    invHtml+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
+    const collapsed=!isCurrentMonth;
+    invHtml+='<div class="arc-month'+(collapsed?' collapsed':'')+'" data-month="'+monthKey+'">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
+    invHtml+='<div class="month-group'+(collapsed?' collapsed':'')+'" data-month="'+monthKey+'" style="max-height:'+(collapsed?'0':monthInvs.length*70)+'px">';
     invHtml+=monthInvs.map(inv=>{
       const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
       const entClass='ent-'+entType;
       const entLabel=entType==='ltd'?'Ltd':'Self';
       return '<div class="aitem '+entClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
     }).join('');
+    invHtml+='</div>';
   });
   pc2.innerHTML=invHtml;
+  // Add click handlers for collapsible months
+  pc2.querySelectorAll('.arc-month').forEach(hdr=>{
+    hdr.onclick=function(){
+      const mk=this.dataset.month;
+      const grp=pc2.querySelector('.month-group[data-month="'+mk+'"]');
+      const isCollapsed=this.classList.toggle('collapsed');
+      grp.classList.toggle('collapsed',isCollapsed);
+      grp.style.maxHeight=isCollapsed?'0':grp.scrollHeight+'px';
+    };
+  });
 }
 }
 
