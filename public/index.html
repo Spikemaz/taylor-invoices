@@ -728,7 +728,10 @@ async function syncSettingsToCloud() {
     payTerms: S.payTerms,
     nextInv: S.nextInvSelf,
     dayMap: S.dayMap,
-    ahPrac: S.ahPrac
+    ahPrac: S.ahPrac,
+    defComm: S.defComm,
+    invoiceFooter: S.invoiceFooter,
+    svcs: S.svcs
   };
   // Sync Ltd settings
   const ltdSettings = {
@@ -736,7 +739,10 @@ async function syncSettingsToCloud() {
     payTerms: S.payTerms,
     nextInv: S.nextInvLtd,
     dayMap: S.dayMap,
-    ahPrac: S.ahPrac
+    ahPrac: S.ahPrac,
+    defComm: S.defComm,
+    invoiceFooter: S.invoiceFooter,
+    svcs: S.svcs
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
   const [selfResult, ltdResult] = await Promise.all([
