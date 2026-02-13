@@ -1709,7 +1709,7 @@ if(pe.length>1){
 }else{
   mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
 }
-mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Invoice All</button></div></div>';
+mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button></div></div>';
 });
 if(!mh)mh='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending contracted invoices.</p>';
 mc.innerHTML=mh;
@@ -1734,7 +1734,7 @@ else{
       ahHtml+='<button class="ibtn gn" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
     }else{
       ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
-      ahHtml+='<button class="ibtn gn" data-action="ahgenall" data-pid="'+pId+'">Invoice All</button>';
+      ahHtml+='<button class="ibtn gn" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
     }
     ahHtml+='</div></div>';
   });
