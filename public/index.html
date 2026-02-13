@@ -1302,6 +1302,7 @@ var r=document.getElementById('_dupReplace');if(r)r.onclick=function(){replaceDu
 async function addToDup(id,pts,ao){
   const e=S.entries.find(x=>x.id===id);
   if(e){
+    const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
     // Ensure numeric fields are numbers (cloud data may be strings)
     e.pts=(parseInt(e.pts)||0)+pts;
     e.uPrice=parseFloat(e.uPrice)||0;
@@ -1314,10 +1315,10 @@ async function addToDup(id,pts,ao){
     closeMod2();
     document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
     refreshPracticeBanner();
-    showToast('Syncing...');
+    showToast('Syncing...',prcClass);
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
-    if(result.success){ showToast('Updated — '+e.pts+' patients'); }
+    if(result.success){ showToast('Updated — '+e.pts+' patients',prcClass); }
   } else {
     closeMod2();
     refreshPracticeBanner();
@@ -1340,7 +1341,7 @@ const prcClass=entry.pType==='adhoc'?'prc-adhoc':(entry.pId==='bupa'?'prc-bupa':
 t.className='toast '+prcClass;t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed');if(S.prac)openPractice(S.prac);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(S.undoE.pId==='bupa'?'prc-bupa':(S.undoE.pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);if(S.prac)openPractice(S.prac);}}
 function showToast(msg,prcClass){const t=document.getElementById('toast');t.className='toast'+(prcClass?' '+prcClass:' ok');t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -1403,9 +1404,9 @@ if(e){
   save();closeMod2();
   // Reset form
   document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();
-  showToast('Syncing...');
+  showToast('Syncing...','prc-adhoc');
   const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
-  if(result.success){showToast('Updated — '+e.pts+' patients');}
+  if(result.success){showToast('Updated — '+e.pts+' patients','prc-adhoc');}
 }else{closeMod2();}
 }
 
@@ -1657,6 +1658,7 @@ var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){save
 
 async function saveEntry(id){
   var e=S.entries.find(function(x){return x.id===id});if(!e)return;
+  const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
   e.date=document.getElementById('edDt').value;
   e.svc=document.getElementById('edSvc').value;
   e.pts=parseInt(document.getElementById('edPts').value)||0;
@@ -1668,20 +1670,21 @@ async function saveEntry(id){
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
   console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
-  save();closeMod2();refArc();showToast('Syncing...');
+  save();closeMod2();refArc();showToast('Syncing...',prcClass);
   // Sync to cloud (queues on failure)
   const result=await updateEntryInCloud(e.id, e, e.entity||S.ent);
-  if(result.success){showToast('Entry updated');}
+  if(result.success){showToast('Entry updated',prcClass);}
 }
 async function delEntry(id){
   var e=S.entries.find(function(x){return x.id===id});
   var entity=e?e.entity||S.ent:S.ent;
+  const prcClass=e?(e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''))):'';
   console.log('[Entry Deleted]', e?.pName, e?.svc, e?.pts+'pts', 'id='+id);
   S.entries=S.entries.filter(function(e){return e.id!==id});
-  save();closeMod2();refArc();showToast('Deleting...');
+  save();closeMod2();refArc();showToast('Deleting...',prcClass);
   // Sync deletion to cloud (queues on failure)
   const result=await deleteEntryFromCloud(id, entity);
-  if(result.success){showToast('Entry deleted');}
+  if(result.success){showToast('Entry deleted',prcClass);}
 }
 
 // ===== CLEAR TODAY'S ENTRIES =====
