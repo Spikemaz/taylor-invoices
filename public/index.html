@@ -1899,7 +1899,8 @@ function renderInv(inv){
   if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
-  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
+  const idx=S.invoices.findIndex(i=>i.num===inv.num);
+  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
 }
 
 let invHtml='';
@@ -1982,6 +1983,108 @@ pc2.querySelectorAll('.arc-month').forEach(hdr=>{
     }
   };
 });
+
+// Add click handlers for invoice items
+pc2.querySelectorAll('.aitem[data-inv]').forEach(item=>{
+  item.onclick=function(e){
+    if(e.target.closest('.prc-group-hdr'))return;
+    const invNum=this.dataset.inv;
+    const idx=parseInt(this.dataset.idx);
+    if(idx>=0)showInvoiceOptionsModal(idx);
+  };
+});
+}
+
+// ===== INVOICE OPTIONS MODAL =====
+function showInvoiceOptionsModal(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Invoice #'+inv.num+'</h3></div>';
+  _h+='<div style="margin-bottom:16px">';
+  _h+='<div style="font-size:14px;font-weight:600;color:var(--txt)">'+inv.practice+'</div>';
+  _h+='<div style="font-size:13px;color:var(--txt2)">'+inv.period+' · '+entLabel+'</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:var(--pri);margin-top:8px">'+fc(inv.amount)+'</div>';
+  _h+='</div>';
+
+  // Show Drive link if available
+  if(inv.driveLink){
+    _h+='<a href="'+inv.driveLink+'" target="_blank" class="btn btn-p" style="width:100%;margin-bottom:8px;text-decoration:none;display:block;text-align:center">View PDF in Drive</a>';
+  }
+
+  _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invRedownload">Re-download PDF</button>';
+  _h+='<button class="btn btn-d" style="width:100%;margin-bottom:8px" id="_invDelete">Delete Invoice</button>';
+  _h+='<button class="btn btn-s" style="width:100%" onclick="closeMod2()">Cancel</button>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
+    document.getElementById('_invDelete').onclick=()=>showDeleteInvoiceConfirmModal(idx);
+  },50);
+}
+
+function showDeleteInvoiceConfirmModal(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Delete Invoice #'+inv.num+'?</h3></div>';
+  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete:</p>';
+  _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
+  _h+='<li>Invoice record from Google Sheets</li>';
+  if(inv.driveLink)_h+='<li>PDF file from Google Drive</li>';
+  _h+='<li>Reset linked entries to "pending" status</li>';
+  _h+='</ul>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:8px">Type <b>'+inv.num.slice(-2)+'</b> to confirm:</p>';
+  _h+='<input class="fi" id="_delInvConfirmInput" type="text" placeholder="Type '+inv.num.slice(-2)+'" style="margin-bottom:16px">';
+  _h+='<div class="brow"><button class="btn btn-s" id="_delInvBack">Back</button><button class="btn btn-d" id="_delInvConfirm" disabled>Delete</button></div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    const inp=document.getElementById('_delInvConfirmInput');
+    const btn=document.getElementById('_delInvConfirm');
+    const confirmCode=inv.num.slice(-2);
+    inp.focus();
+    inp.oninput=()=>{btn.disabled=inp.value!==confirmCode;};
+    document.getElementById('_delInvBack').onclick=()=>showInvoiceOptionsModal(idx);
+    btn.onclick=()=>deleteInvoiceWithDrive(idx);
+  },50);
+}
+
+async function deleteInvoiceWithDrive(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+
+  closeMod2();
+  showToast('Deleting invoice...');
+
+  // Unmark entries first
+  S.entries.forEach(e=>{
+    if(e.invNo===inv.num){
+      e.invSt='pending';
+      e.invNo=null;
+      updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);
+    }
+  });
+
+  // Delete from cloud (Sheets + Drive)
+  const result=await apiCall('sheets-sync',{action:'delete_invoice',data:{num:inv.num,driveLink:inv.driveLink},entity});
+
+  // Remove from local state
+  S.invoices.splice(idx,1);
+  save();
+  refInv();
+
+  if(result.success){
+    showToast('Invoice #'+inv.num+' deleted');
+  }else{
+    showToast('Invoice removed locally (cloud sync may be pending)','err');
+  }
 }
 
 // ===== INVOICE PREVIEW =====

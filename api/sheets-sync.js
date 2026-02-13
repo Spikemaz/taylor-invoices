@@ -18,6 +18,20 @@ async function getSheets() {
   return sheets;
 }
 
+// Initialize Google Drive client (for deleting invoice PDFs)
+async function getDrive() {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/drive'],
+  });
+
+  const drive = google.drive({ version: 'v3', auth });
+  return drive;
+}
+
 // Dual sheet IDs - one for each entity type
 const SHEET_IDS = {
   self: process.env.GOOGLE_SHEET_ID,
@@ -240,7 +254,7 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
   return res.status(200).json({ success: true, message: 'Entry deleted', id });
 }
 
-async function deleteInvoice(sheets, sheetId, { num }, res) {
+async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Invoices!A:X',
@@ -257,6 +271,35 @@ async function deleteInvoice(sheets, sheetId, { num }, res) {
   const deletedRow = rows[rowIndex];
   const deletedData = {};
   INVOICE_COLUMNS.forEach((col, i) => { deletedData[col] = deletedRow[i] || ''; });
+
+  // Get Drive link from sheet if not provided
+  const driveLinkToDelete = driveLink || deletedData.driveLink;
+
+  // Delete PDF from Google Drive if link exists
+  let driveDeleted = false;
+  if (driveLinkToDelete) {
+    try {
+      // Extract file ID from Drive URL
+      // URLs look like: https://drive.google.com/file/d/FILE_ID/view or https://drive.google.com/open?id=FILE_ID
+      let fileId = null;
+      const fileMatch = driveLinkToDelete.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const idMatch = driveLinkToDelete.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      fileId = fileMatch ? fileMatch[1] : (idMatch ? idMatch[1] : null);
+
+      if (fileId) {
+        const drive = await getDrive();
+        await drive.files.delete({
+          fileId: fileId,
+          supportsAllDrives: true
+        });
+        driveDeleted = true;
+        console.log('Deleted Drive file:', fileId);
+      }
+    } catch (driveErr) {
+      console.log('Drive delete failed (file may not exist):', driveErr.message);
+      // Continue - don't fail the whole operation if Drive delete fails
+    }
+  }
 
   const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
   const invoicesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'Invoices');
@@ -285,11 +328,11 @@ async function deleteInvoice(sheets, sheetId, { num }, res) {
     action: 'DELETE',
     dataType: 'invoice',
     recordId: num,
-    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount}`,
+    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount}${driveDeleted ? ' (PDF also deleted)' : ''}`,
     previousData: deletedData
   });
 
-  return res.status(200).json({ success: true, message: 'Invoice deleted', num });
+  return res.status(200).json({ success: true, message: 'Invoice deleted', num, driveDeleted });
 }
 
 async function syncEntries(sheets, sheetId, { entries }, res) {
