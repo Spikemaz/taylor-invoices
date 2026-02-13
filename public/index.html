@@ -151,6 +151,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .pending-bar.show{display:flex}
 .pending-bar button{background:rgba(0,0,0,.2);border:0;color:#000;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <!-- Loading overlay - shown during initial cloud load -->
@@ -286,6 +287,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="srow" onclick="editField('ltd','addr')"><span class="la">Registered Address</span><span class="va" id="ltd_addr">71-75 Shelton St...</span></div>
 <div class="srow" onclick="editField('ltd','phone')"><span class="la">Phone</span><span class="va" id="ltd_phone">+44 7429 399687</span></div>
 <div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
+<div class="srow" onclick="editCompanyNo()"><span class="la">Company Number</span><span class="va" id="ltd_compNo">Not set</span></div>
 </div>
 <div class="sh">Practice Configuration</div>
 <div class="ssec" id="pracSettings"></div>
@@ -336,7 +338,7 @@ ahPrac:[
 ],
 ents:{
 self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingham\nMK18 2PZ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08'},
-ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08'}
+ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:''}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
 nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days'
@@ -2087,7 +2089,8 @@ const invData={
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
   commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,
-  logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length
+  logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length,
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''
 };
 
 S.invoices.push(invData);save();
@@ -2136,7 +2139,7 @@ var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs
 var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length};
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
@@ -2174,7 +2177,7 @@ e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
 var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true};
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):''};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData, entKey);
@@ -2276,7 +2279,8 @@ const invData={
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,
-  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length
+  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''
 };
 
 S.invoices.push(invData);save();
@@ -2344,7 +2348,8 @@ const invData={
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,
-  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length
+  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
+  companyNo:entKey==='ltd'?(ent.companyNo||''):''
 };
 
 console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.length+' entries', '£'+tg.toFixed(2), 'entity='+entKey);
@@ -2506,6 +2511,20 @@ S.ents[entType].sort=document.getElementById('_ebSort').value.trim();
 save();closeMod2();refreshSettings();showToast('\u2713 Bank details updated');};
 },50);
 }
+function editCompanyNo(){
+var val=S.ents.ltd.companyNo||'';
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Ltd Company Number</h3>';
+_h+='<div class="fg"><label class="fl">Company Registration Number</label><input class="fi" id="_ecVal" value="'+val+'" placeholder="e.g. 12345678"></div>';
+_h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">This appears at the bottom of Ltd invoices</p>';
+_h+='<div class="brow"><button class="btn btn-s" id="_ecC">Cancel</button><button class="btn btn-p" id="_ecS">Save</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_ecC').onclick=function(){closeMod2()};
+document.getElementById('_ecS').onclick=function(){
+S.ents.ltd.companyNo=document.getElementById('_ecVal').value.trim();
+save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Company number updated');};
+},50);
+}
 function editDayMapping(dayNum){
 var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var current=S.dayMap[dayNum]||'home';
@@ -2625,6 +2644,7 @@ el=document.getElementById('ltd_name');if(el){var n=lt.name||'-';el.textContent=
 el=document.getElementById('ltd_addr');if(el){var a2=(lt.addr||'').replace(/\\n/g,', ');el.textContent=a2.length>28?a2.substring(0,28)+'...':a2;}
 el=document.getElementById('ltd_phone');if(el)el.textContent=lt.phone||'-';
 el=document.getElementById('ltd_bank');if(el)el.textContent=(lt.bank||'Bank')+' ****'+(lt.acc||'').slice(-4);
+el=document.getElementById('ltd_compNo');if(el)el.textContent=lt.companyNo||'Not set';
 el=document.getElementById('sEnt');if(el)el.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
 el=document.getElementById('nInv');if(el)el.textContent='S:'+pad(S.nextInvSelf)+' L:'+pad(S.nextInvLtd);
 el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'5 working days';
@@ -2673,156 +2693,134 @@ if(eid)editEntry(eid);
 });
 
 
-// ===== PDF GENERATION =====
+// ===== PDF GENERATION (Local Fallback using jsPDF) =====
 function generatePDF(inv){
-var can=document.createElement('canvas');
-var W=595,H=842;// A4 at 72dpi
-can.width=W;can.height=H;
-var ctx=can.getContext('2d');
-ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-var yPos=40;
-// Logo
-var logoImg=new Image();
-logoImg.onload=function(){
-ctx.drawImage(logoImg,40,30,60,60);
-drawInvoiceContent(ctx,inv,W,H);
-downloadCanvas(can,inv.num);
-};
-logoImg.onerror=function(){
-drawInvoiceContent(ctx,inv,W,H);
-downloadCanvas(can,inv.num);
-};
-logoImg.src=LOGO[inv.logoType]||LOGO.self;
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+const W = 595, H = 842;
+let y = 40;
+
+// Add logo
+const logoData = LOGO[inv.logoType] || LOGO.self;
+if (logoData) {
+  try { doc.addImage(logoData, 'JPEG', 40, y, 60, 60); } catch(e) { console.log('Logo error:', e); }
 }
 
-function drawInvoiceContent(ctx,inv,W,H){
-var y=40;
-// Header - entity name
-ctx.fillStyle='#1a1a1a';ctx.font='bold 16px Arial';
-ctx.textAlign='right';
-ctx.fillText(inv.entName,W-40,y+10);
-ctx.font='11px Arial';ctx.fillStyle='#6b7280';
-var addrLines=(inv.entAddr||'').split('\n');
-addrLines.forEach(function(line,i){ctx.fillText(line,W-40,y+26+i*14);});
-ctx.fillText(inv.entPhone||'',W-40,y+26+addrLines.length*14);
+// Header - entity name (right aligned)
+doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+doc.text(inv.entName || '', W - 40, y + 10, { align: 'right' });
+doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+const addrLines = (inv.entAddr || '').split('\n');
+let addrY = y + 26;
+addrLines.forEach((line, i) => { doc.text(line, W - 40, addrY + i * 12, { align: 'right' }); });
+if (inv.entPhone) doc.text(inv.entPhone, W - 40, addrY + addrLines.length * 12, { align: 'right' });
 
 // INVOICE title
-ctx.textAlign='left';ctx.fillStyle='#2d6a4f';ctx.font='bold 22px Arial';
-ctx.fillText('INVOICE',40,110);
+doc.setTextColor(45, 106, 79); doc.setFontSize(22); doc.setFont('helvetica', 'bold');
+doc.text('INVOICE', 40, 120);
+doc.setFillColor(27, 67, 50); doc.rect(40, 128, W - 80, 3, 'F');
 
-// Green line
-ctx.fillStyle='#1b4332';ctx.fillRect(40,118,W-80,3);
+// Bill To section
+y = 150;
+doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(107, 114, 128);
+doc.text('BILL TO:', 40, y);
+doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+doc.text(inv.practiceName || inv.practice || '', 40, y + 16);
+doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+const pAddr = (inv.practiceAddr || '').split('\n');
+pAddr.forEach((line, i) => { doc.text(line, 40, y + 30 + i * 13); });
 
-// Bill To + Invoice details
-y=140;
-ctx.fillStyle='#6b7280';ctx.font='bold 10px Arial';ctx.textAlign='left';
-ctx.fillText('BILL TO:',40,y);
-ctx.fillStyle='#1a1a1a';ctx.font='bold 12px Arial';
-ctx.fillText(inv.practiceName||inv.practice,40,y+16);
-ctx.font='10px Arial';ctx.fillStyle='#6b7280';
-var pAddr=(inv.practiceAddr||'').split('\n');
-pAddr.forEach(function(line,i){ctx.fillText(line,40,y+30+i*13);});
-
-ctx.textAlign='right';ctx.fillStyle='#6b7280';ctx.font='10px Arial';
-ctx.fillText('Invoice No:  '+inv.num,W-40,y);
-ctx.fillText('Date:  '+fdd(inv.date),W-40,y+14);
-ctx.fillText('Period:  '+inv.period,W-40,y+28);
-ctx.fillText('Entity:  '+inv.entity,W-40,y+42);
+// Invoice details (right side)
+doc.text('Invoice No:  ' + inv.num, W - 40, y, { align: 'right' });
+doc.text('Date:  ' + fdd(inv.date), W - 40, y + 14, { align: 'right' });
+doc.text('Period:  ' + (inv.period || ''), W - 40, y + 28, { align: 'right' });
+doc.text('Entity:  ' + (inv.entity || ''), W - 40, y + 42, { align: 'right' });
 
 // Table header
-y=240;
-ctx.fillStyle='#1b4332';ctx.fillRect(40,y,W-80,22);
-ctx.fillStyle='#ffffff';ctx.font='bold 10px Arial';ctx.textAlign='left';
-ctx.fillText('Service',50,y+15);
-ctx.fillText('Price',260,y+15);
-ctx.textAlign='right';
-ctx.fillText('Qty',390,y+15);
-ctx.fillText('Subtotal',W-50,y+15);
-y+=30;
+y = 250;
+doc.setFillColor(27, 67, 50); doc.rect(40, y, W - 80, 22, 'F');
+doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+doc.text('Service', 50, y + 15);
+doc.text('Price', 260, y + 15);
+doc.text('Qty', 390, y + 15, { align: 'right' });
+doc.text('Subtotal', W - 50, y + 15, { align: 'right' });
+y += 30;
 
 // Table rows
-ctx.textAlign='left';
-var svcKeys=Object.keys(inv.svcs);
-svcKeys.forEach(function(key){
-var s=inv.svcs[key];
-ctx.fillStyle='#1a1a1a';ctx.font='11px Arial';
-ctx.fillText(s.name,50,y+4);
-ctx.fillText('\u00a3'+s.price.toFixed(2),260,y+4);
-ctx.textAlign='right';
-ctx.fillText(String(s.pts),390,y+4);
-ctx.fillText('\u00a3'+s.total.toFixed(2),W-50,y+4);
-ctx.textAlign='left';
-ctx.fillStyle='#e5e7eb';ctx.fillRect(40,y+10,W-80,1);
-y+=22;
+doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+const svcs = inv.svcs || {};
+Object.keys(svcs).forEach(key => {
+  const s = svcs[key];
+  doc.setTextColor(26, 26, 26);
+  doc.text(s.name || '', 50, y + 4);
+  doc.text('£' + (s.price || 0).toFixed(2), 260, y + 4);
+  doc.text(String(s.pts || 0), 390, y + 4, { align: 'right' });
+  doc.text('£' + (s.total || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
+  doc.setDrawColor(229, 231, 235); doc.setLineWidth(1); doc.line(40, y + 10, W - 40, y + 10);
+  y += 22;
 });
 
-if(inv.airTotal>0){
-ctx.fillStyle='#1a1a1a';ctx.font='11px Arial';ctx.textAlign='left';
-ctx.fillText('Airflow Add-on',50,y+4);
-ctx.textAlign='right';
-ctx.fillText('\u00a3'+inv.airTotal.toFixed(2),W-50,y+4);
-ctx.textAlign='left';
-ctx.fillStyle='#e5e7eb';ctx.fillRect(40,y+10,W-80,1);
-y+=22;
+// Airflow if present
+if (inv.airTotal > 0) {
+  doc.setTextColor(26, 26, 26);
+  doc.text('Airflow Add-on', 50, y + 4);
+  doc.text('£' + inv.airTotal.toFixed(2), W - 50, y + 4, { align: 'right' });
+  doc.setDrawColor(229, 231, 235); doc.line(40, y + 10, W - 40, y + 10);
+  y += 22;
 }
 
 // Totals
-y+=10;
-ctx.fillStyle='#e5e7eb';ctx.fillRect(280,y,W-320,1);y+=14;
-ctx.fillStyle='#1a1a1a';ctx.font='bold 11px Arial';ctx.textAlign='left';
-ctx.fillText('Gross Total',300,y);
-ctx.textAlign='right';ctx.fillText('\u00a3'+inv.gross.toFixed(2),W-50,y);
-y+=18;
+y += 10;
+doc.setDrawColor(229, 231, 235); doc.line(280, y, W - 40, y);
+y += 14;
+doc.setTextColor(26, 26, 26); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+doc.text('Gross Total', 300, y);
+doc.text('£' + (inv.gross || 0).toFixed(2), W - 50, y, { align: 'right' });
+y += 18;
 
-if(!inv.isAdhoc){
-ctx.font='11px Arial';ctx.fillStyle='#6b7280';ctx.textAlign='left';
-ctx.fillText('Commission @ '+inv.commRate+'%',300,y);
-y+=22;
+if (!inv.isAdhoc) {
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+  doc.text('Commission @ ' + (inv.commRate || '0') + '%', 300, y);
+  y += 22;
 }
 
-ctx.fillStyle='#1b4332';ctx.fillRect(280,y-4,W-320,2);y+=10;
-ctx.fillStyle='#1b4332';ctx.font='bold 14px Arial';ctx.textAlign='left';
-ctx.fillText('Balance Due',300,y);
-ctx.textAlign='right';ctx.fillText('\u00a3'+inv.amount.toFixed(2),W-50,y);
+doc.setFillColor(27, 67, 50); doc.rect(280, y - 4, W - 320, 2, 'F');
+y += 10;
+doc.setTextColor(27, 67, 50); doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+doc.text('Balance Due', 300, y);
+doc.text('£' + (inv.amount || 0).toFixed(2), W - 50, y, { align: 'right' });
 
 // Bank details
-y=Math.max(y+40,560);
-ctx.fillStyle='#e5e7eb';ctx.fillRect(40,y,W-80,1);y+=16;
-ctx.fillStyle='#6b7280';ctx.font='bold 10px Arial';ctx.textAlign='left';
-ctx.fillText('PAYMENT DETAILS',40,y);y+=16;
-ctx.font='10px Arial';
-ctx.fillText('Bank: '+(inv.bankName||''),40,y);y+=13;
-ctx.fillText('Account Name: '+(inv.bankAccName||''),40,y);y+=13;
-ctx.fillText('Account Number: '+(inv.bankAcc||''),40,y);y+=13;
-ctx.fillText('Sort Code: '+(inv.bankSort||''),40,y);y+=20;
+y = Math.max(y + 40, 560);
+doc.setDrawColor(229, 231, 235); doc.line(40, y, W - 40, y);
+y += 16;
+doc.setTextColor(107, 114, 128); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+doc.text('PAYMENT DETAILS', 40, y);
+y += 16;
+doc.setFont('helvetica', 'normal');
+doc.text('Bank: ' + (inv.bankName || ''), 40, y); y += 13;
+doc.text('Account Name: ' + (inv.bankAccName || ''), 40, y); y += 13;
+doc.text('Account Number: ' + (inv.bankAcc || ''), 40, y); y += 13;
+doc.text('Sort Code: ' + (inv.bankSort || ''), 40, y); y += 20;
 
-ctx.font='bold 10px Arial';ctx.fillStyle='#1a1a1a';
-ctx.fillText('Payment Terms: Payment is due within '+(inv.payTerms||'5 working days')+' of the invoice date.',40,y);y+=14;
-ctx.font='10px Arial';ctx.fillStyle='#6b7280';
-ctx.fillText('Please ensure the invoice reference ('+inv.num+') is quoted with payment.',40,y);y+=18;
-ctx.fillText('Thank you for your continued support.',40,y);
+doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+doc.text('Payment Terms: Payment is due within ' + (inv.payTerms || '5 working days') + ' of the invoice date.', 40, y);
+y += 14;
+doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
+doc.text('Please ensure the invoice reference (' + inv.num + ') is quoted with payment.', 40, y);
+y += 18;
+doc.text('Thank you for your continued support.', 40, y);
 
 // Footer
-ctx.fillStyle='#e5e7eb';ctx.fillRect(40,H-50,W-80,1);
-ctx.fillStyle='#9ca3af';ctx.font='9px Arial';ctx.textAlign='center';
-ctx.fillText(inv.entName+' | Invoice '+inv.num,W/2,H-32);
+doc.setDrawColor(229, 231, 235); doc.line(40, H - 50, W - 40, H - 50);
+doc.setFontSize(9); doc.setTextColor(156, 163, 175);
+doc.text(inv.entName + ' | Invoice ' + inv.num, W / 2, H - 32, { align: 'center' });
+if (inv.companyNo) {
+  doc.text('Company No: ' + inv.companyNo, W / 2, H - 20, { align: 'center' });
 }
 
-function downloadCanvas(can,invNum){
-try{
-can.toBlob(function(blob){
-var url=URL.createObjectURL(blob);
-var a=document.createElement('a');
-a.href=url;a.download='Invoice-'+invNum+'.png';
-a.click();
-setTimeout(function(){URL.revokeObjectURL(url)},1000);
-},'image/png');
-}catch(e){
-var dataUrl=can.toDataURL('image/png');
-var a=document.createElement('a');
-a.href=dataUrl;a.download='Invoice-'+invNum+'.png';
-a.click();
-}
+// Download
+doc.save('Invoice-' + inv.num + '.pdf');
 }
 
 function redownloadInvoice(idx){

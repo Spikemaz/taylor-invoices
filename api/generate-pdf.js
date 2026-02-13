@@ -226,6 +226,10 @@ module.exports = async (req, res) => {
     doc.setFontSize(9);
     doc.setTextColor(156, 163, 175);
     doc.text(inv.entName + ' | Invoice ' + inv.num, W / 2, H - 32, { align: 'center' });
+    // Add company number for Ltd invoices
+    if (inv.companyNo) {
+      doc.text('Company No: ' + inv.companyNo, W / 2, H - 20, { align: 'center' });
+    }
 
     // Get PDF as base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];
