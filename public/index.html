@@ -26,11 +26,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .scr{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;display:none;opacity:0;transform:translateX(20px);transition:opacity .25s,transform .25s}
 .scr.act{display:block;opacity:1;transform:translateX(0)}
 .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
-.pcard{background:var(--card);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;border:2px solid var(--bdr);transition:all .2s;box-shadow:var(--sh);position:relative}
+.pcard{background:var(--card);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;border:3px solid var(--bdr);transition:all .2s;box-shadow:var(--sh);position:relative}
 .pcard:active{transform:scale(.97)}.pcard .ci{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 10px;font-weight:700}
 .pcard.bupa{border-color:var(--bupa)}.pcard.bupa .ci{background:var(--bupa-lt);color:var(--bupa)}
 .pcard.grove{border-color:var(--grove)}.pcard.grove .ci{background:var(--grove-lt);color:var(--grove)}
-.pcard.adhoc{border-color:var(--adhoc)}.pcard.adhoc .ci{background:var(--adhoc-lt);color:var(--adhoc)}
+.pcard.adhoc{border-color:#EF4444}.pcard.adhoc .ci{background:#FEE2E2;color:#EF4444}
 .cn{font-size:15px;font-weight:600;margin-bottom:4px}.cm{font-size:12px;color:var(--txt2)}
 .cs{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--txt3)}.cs.on{background:var(--ok)}
 .banner{background:linear-gradient(135deg,var(--pri-dk),var(--pri));color:#fff;border-radius:var(--r);padding:16px 18px;margin-bottom:4px}
@@ -38,9 +38,12 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .esw{display:flex;background:var(--card);border-radius:var(--rs);padding:3px;border:1px solid var(--bdr);margin-bottom:16px}
 .ebtn{flex:1;padding:8px 12px;border:0;background:0;font-size:12px;font-weight:500;color:var(--txt2);border-radius:6px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri);color:#fff}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
-.sbtn{padding:14px 12px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:14px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
+.sbtn{padding:14px 12px;border:3px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:14px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--grove-lt);color:var(--pri-dk)}
-.sbtn .ph{display:block;font-size:11px;font-weight:400;color:var(--txt2);margin-top:2px}.sbtn.sel .ph{color:var(--pri)}
+.sbtn.sel.prc-bupa{border-color:var(--bupa);background:var(--bupa-lt);color:var(--bupa)}
+.sbtn.sel.prc-grove{border-color:var(--grove);background:var(--grove-lt);color:var(--grove)}
+.sbtn.sel.prc-adhoc{border-color:#EF4444;background:#FEE2E2;color:#EF4444}
+.sbtn .ph{display:block;font-size:11px;font-weight:400;color:var(--txt2);margin-top:2px}.sbtn.sel .ph{color:inherit}
 .stg{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--bdr)}
 .stg .sl{font-size:13px;font-weight:500;color:var(--txt2);margin-bottom:10px;display:flex;justify-content:space-between}
 .stp{display:flex;align-items:center;justify-content:center;gap:16px}
@@ -58,16 +61,19 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
 .alist{display:flex;flex-direction:column;gap:8px}
-.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border-top:1px solid var(--bdr);border-bottom:1px solid var(--bdr);border-left:3px solid var(--bdr);border-right:3px solid var(--bdr);cursor:pointer;transition:all .15s}
+.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border:3px solid var(--bdr);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
+.aitem.prc-bupa{border-color:var(--bupa)}.aitem.prc-grove{border-color:var(--grove)}.aitem.prc-adhoc{border-color:#EF4444}
 .aitem .db{min-width:44px;text-align:center}.aitem .db .dy{font-size:18px;font-weight:700;line-height:1}.aitem .db .mo{font-size:10px;color:var(--txt2);text-transform:uppercase;font-weight:500}
 .aitem .dt{flex:1}.aitem .dt .sv{font-size:14px;font-weight:600}.aitem .dt .pt{font-size:12px;color:var(--txt2)}
 .aitem .ac{text-align:right}.aitem .ac .gr{font-size:15px;font-weight:700}.aitem .ac .co{font-size:11px;color:var(--acc)}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
-.pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:var(--adhoc-lt);color:var(--adhoc)}
+.pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:#FEE2E2;color:#EF4444}
 .ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;margin-left:6px}
 .ent-badge.self{background:#E0F2FE;color:#0369A1}.ent-badge.ltd{background:#FEE2E2;color:#B91C1C}
-.aitem.ent-self{border-left:3px solid #0EA5E9}.aitem.ent-ltd{border-left:3px solid #EF4444}
+.arc-section{font-size:16px;font-weight:700;color:var(--txt);padding:16px 0 10px;margin-top:12px;border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:8px}
+.arc-section:first-child{margin-top:0}
+.arc-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
 .arc-month{font-size:14px;font-weight:700;color:var(--txt);padding:12px 0 8px;margin-top:8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;cursor:pointer}
 .arc-month:first-child{margin-top:0}
 .arc-month .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
@@ -75,11 +81,21 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .arc-month.collapsed::before{transform:rotate(-90deg)}
 .month-group{overflow:hidden;transition:max-height .3s ease}
 .month-group.collapsed{max-height:0!important}
-.icard{background:var(--card);border-radius:var(--r);padding:18px;border:1px solid var(--bdr);margin-bottom:12px;box-shadow:var(--sh)}
+.prc-group{margin:8px 0;padding:8px 12px;background:var(--bg);border-radius:var(--rs);cursor:pointer}
+.prc-group-hdr{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.prc-group-hdr::before{content:'▼';font-size:9px;color:var(--txt3);transition:transform .2s}
+.prc-group.collapsed .prc-group-hdr::before{transform:rotate(-90deg)}
+.prc-group-entries{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.prc-group.collapsed .prc-group-entries{display:none}
+.icard{background:var(--card);border-radius:var(--r);padding:18px;border:3px solid var(--bdr);margin-bottom:12px;box-shadow:var(--sh)}
+.icard.prc-bupa{border-color:var(--bupa)}.icard.prc-grove{border-color:var(--grove)}.icard.prc-adhoc{border-color:#EF4444}
 .icard .ih{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .icard .ip{font-size:16px;font-weight:700}.icard .iper{font-size:12px;color:var(--txt2)}
 .icard .is{display:flex;gap:16px;margin-bottom:14px}.icard .ist{font-size:12px;color:var(--txt2)}.icard .ist strong{display:block;font-size:18px;color:var(--txt);letter-spacing:-.5px}
 .icard .ia{display:flex;gap:8px}
+.inv-section{font-size:16px;font-weight:700;color:var(--txt);padding:16px 0 10px;margin-top:12px;border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:8px}
+.inv-section:first-child{margin-top:0}
+.inv-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
 .sh{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px}.sh:first-child{margin-top:0}
 .frow{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
@@ -1218,7 +1234,13 @@ if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document
 document.getElementById('logForm').style.display='none';initDt();
 }
 function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
-document.querySelectorAll('#sGrid .sbtn').forEach(b=>b.classList.toggle('sel',b.getAttribute('data-s')===nm));
+const prcClass=p.type==='adhoc'?'prc-adhoc':(S.prac==='bupa'?'prc-bupa':(S.prac==='grove'?'prc-grove':''));
+document.querySelectorAll('#sGrid .sbtn').forEach(b=>{
+  const isSel=b.getAttribute('data-s')===nm;
+  b.classList.toggle('sel',isSel);
+  b.classList.remove('prc-bupa','prc-grove','prc-adhoc');
+  if(isSel&&prcClass)b.classList.add(prcClass);
+});
 document.getElementById('logForm').style.display='block';
 document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';upAmt();}
 function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
@@ -1322,7 +1344,12 @@ document.getElementById('ap').value='0';document.getElementById('aap').value='0'
 document.getElementById('ahHH').textContent=fc(p.rate)+'/pt';
 document.getElementById('ahApG').style.display=p.air>0?'block':'none';
 upAhAmt();initDt();}
-function selAhSvc(nm){ahSvc=nm;document.querySelectorAll('#ahSGrid .sbtn').forEach(b=>b.classList.toggle('sel',b.getAttribute('data-s')===nm));
+function selAhSvc(nm){ahSvc=nm;document.querySelectorAll('#ahSGrid .sbtn').forEach(b=>{
+  const isSel=b.getAttribute('data-s')===nm;
+  b.classList.toggle('sel',isSel);
+  b.classList.remove('prc-bupa','prc-grove','prc-adhoc');
+  if(isSel)b.classList.add('prc-adhoc');
+});
 if(nm==='Perio')document.getElementById('arv').value='£160.00';
 else{const id=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===id);if(p)document.getElementById('arv').value=fc(p.rate);}
 upAhAmt();}
@@ -1483,7 +1510,7 @@ function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(
 function refArc(){
   const c=document.getElementById('arcList');
   const now=new Date();
-  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const todayStr=now.toISOString().substring(0,10);
 
   // Sort by date desc, then by createdAt desc (most recent first)
   let entries=[...S.entries].sort((a,b)=>{
@@ -1499,44 +1526,107 @@ function refArc(){
 
   if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
 
-  // Group by month
+  // Split into today (Recent) and past entries
+  const todayEntries=entries.filter(e=>e.date===todayStr);
+  const pastEntries=entries.filter(e=>e.date!==todayStr);
+
+  // Group past entries by month
   const byMonth={};
-  entries.forEach(e=>{
-    const monthKey=e.date.substring(0,7); // YYYY-MM
+  pastEntries.forEach(e=>{
+    const monthKey=e.date.substring(0,7);
     if(!byMonth[monthKey])byMonth[monthKey]=[];
     byMonth[monthKey].push(e);
   });
 
-  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const dayColors=['#EF4444','#2196F3','#EAB308','#7C3AED','#22C55E','#F97316','#1A1A1A'];
+  // Helper to get practice border class
+  function getPrcClass(e){
+    if(e.pType==='adhoc')return 'prc-adhoc';
+    if(e.pId==='bupa')return 'prc-bupa';
+    if(e.pId==='grove')return 'prc-grove';
+    return '';
+  }
+
+  // Helper to render a single entry
+  function renderEntry(e){
+    const ed=new Date(e.date);
+    const col=e.pType==='adhoc'?'adhoc':e.pId;
+    const entLabel=e.entity==='ltd'?'Ltd':'Self';
+    const entBadgeClass=e.entity==='ltd'?'ltd':'self';
+    const prcClass=getPrcClass(e);
+    return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
+      '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
+      '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
+      '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
+  }
 
   let html='';
-  Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-    const monthEntries=byMonth[monthKey];
-    const isCurrentMonth=monthKey===curMonth;
-    const d=new Date(monthKey+'-01');
-    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
 
-    // Show month header for past months, or "This Month" for current
-    html+='<div class="arc-month">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthEntries.length+' entries</span></div>';
+  // RECENT section (today's entries)
+  html+='<div class="arc-section">Recent <span class="sec-count">'+todayEntries.length+' entries</span></div>';
+  if(todayEntries.length){
+    html+='<div class="alist" style="margin-top:8px">'+todayEntries.map(renderEntry).join('')+'</div>';
+  }else{
+    html+='<div style="padding:16px;color:var(--txt3);font-size:13px">No entries today</div>';
+  }
 
-    // Render entries for this month
-    html+=monthEntries.map(e=>{
-      const ed=new Date(e.date);
-      const col=e.pType==='adhoc'?'adhoc':e.pId;
-      const dow=ed.getDay();
-      const dayName=dayNames[dow];
-      const dayBorder='border-right:3px solid '+dayColors[dow];
-      const entBorder=e.entity==='ltd'?'border-left:3px solid #EF4444':'border-left:3px solid #0EA5E9';
-      const entLabel=e.entity==='ltd'?'Ltd':'Self';
-      const entBadgeClass=e.entity==='ltd'?'ltd':'self';
-      return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem" data-id="'+e.id+'" data-eid="'+e.id+'" style="'+entBorder+';'+dayBorder+'">'+
-        '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+dayName+' '+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
-        '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
-        '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
-    }).join('');
-  });
+  // PAST ENTRIES section
+  html+='<div class="arc-section" style="margin-top:20px">Past Entries <span class="sec-count">'+pastEntries.length+' entries</span></div>';
+
+  if(pastEntries.length){
+    // Render each month as collapsible folder
+    Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
+      const monthEntries=byMonth[monthKey];
+      const d=new Date(monthKey+'-01');
+      const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+      // Group by practice within month and count
+      const byPractice={};
+      monthEntries.forEach(e=>{
+        const pKey=e.pType==='adhoc'?'adhoc':e.pId;
+        if(!byPractice[pKey])byPractice[pKey]={name:e.pType==='adhoc'?'Ad Hoc':e.pName,entries:[],pType:e.pType,pId:e.pId};
+        byPractice[pKey].entries.push(e);
+      });
+
+      // Sort practices by entry count (most to least)
+      const sortedPractices=Object.values(byPractice).sort((a,b)=>b.entries.length-a.entries.length);
+
+      // Build practice summary for month header
+      const prcSummary=sortedPractices.map(p=>p.name+' ('+p.entries.length+')').join(' ');
+
+      html+='<div class="arc-month collapsed" data-month="'+monthKey+'" onclick="toggleArcMonth(this)">'+monthLabel+' <span class="month-count">'+monthEntries.length+' entries</span></div>';
+      html+='<div class="month-group collapsed" id="mg_'+monthKey+'">';
+
+      // Within month, show practice summary
+      html+='<div style="font-size:12px;color:var(--txt2);padding:8px 0;border-bottom:1px solid var(--bdr)">'+prcSummary+'</div>';
+
+      // Group entries by practice
+      sortedPractices.forEach(p=>{
+        const prcBorderClass=p.pType==='adhoc'?'prc-adhoc':(p.pId==='bupa'?'prc-bupa':(p.pId==='grove'?'prc-grove':''));
+        html+='<div class="prc-group" data-prc="'+p.pId+'">';
+        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+(p.pType==='adhoc'?'#EF4444':(p.pId==='bupa'?'var(--bupa)':'var(--grove)'))+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.entries.length+' entries)</span></div>';
+        html+='<div class="prc-group-entries">'+p.entries.map(renderEntry).join('')+'</div>';
+        html+='</div>';
+      });
+
+      html+='</div>';
+    });
+  }else{
+    html+='<div style="padding:16px;color:var(--txt3);font-size:13px">No past entries</div>';
+  }
+
   c.innerHTML=html;
+}
+
+function toggleArcMonth(el){
+  el.classList.toggle('collapsed');
+  const monthKey=el.getAttribute('data-month');
+  const group=document.getElementById('mg_'+monthKey);
+  if(group){
+    group.classList.toggle('collapsed');
+    if(!group.classList.contains('collapsed')){
+      group.style.maxHeight=group.scrollHeight+'px';
+    }
+  }
 }
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
@@ -1700,6 +1790,15 @@ async function clearTodayEntries(entity,pType){
 function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
+const curMonth=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+
+// Helper to get practice border class
+function getPrcClass(pid,pType){
+  if(pType==='adhoc')return 'prc-adhoc';
+  if(pid==='bupa')return 'prc-bupa';
+  if(pid==='grove')return 'prc-grove';
+  return '';
+}
 
 // Contracted invoices - show pending entries grouped by practice (exclude adhoc)
 const mc=document.getElementById('mInv');let mh='';
@@ -1708,7 +1807,8 @@ var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity==
 if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
-mh+='<div class="icard"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
+var prcClass=getPrcClass(pid,'contract');
+mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
 '<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Commission<strong>'+fc(cm)+'</strong></div></div>'+
 '<div class="ia">';
 if(pe.length>1){
@@ -1721,7 +1821,7 @@ mh+='<button class="ibtn gn" data-action="generate" data-pid="'+pid+'" data-y="'
 if(!mh)mh='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending contracted invoices.</p>';
 mc.innerHTML=mh;
 
-// Ad hoc invoices - group by practice
+// Ad hoc invoices - group by practice (all get red border)
 const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&e.entity===S.iEnt});
 if(!ahe.length){ac.innerHTML='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending ad hoc invoices.</p>';}
 else{
@@ -1733,7 +1833,7 @@ else{
     const totalPts=entries.reduce((s,e)=>s+e.pts,0);const totalGross=entries.reduce((s,e)=>s+e.gross,0);
     const dates=entries.map(e=>e.date);const minDate=dates[0];const maxDate=dates[dates.length-1];
     const dateRange=minDate===maxDate?fdd(minDate):fdd(minDate)+' - '+fdd(maxDate);
-    ahHtml+='<div class="icard"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
+    ahHtml+='<div class="icard prc-adhoc"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
     ahHtml+='<div class="is"><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Total<strong>'+fc(totalGross)+'</strong></div></div>';
     ahHtml+='<div class="ia">';
     if(entries.length===1){
@@ -1748,50 +1848,107 @@ else{
   ac.innerHTML=ahHtml;
 }
 
-// Past invoices - grouped by month with entity badges
+// Past invoices - grouped by month with practice colors and collapsible folders
 const pc2=document.getElementById('pInv');
 // Filter by current entity view
 const filtInv=S.invoices.filter(inv=>(inv.logoType||inv.entity)===(S.iEnt==='self'?'self':'ltd')||(inv.logoType||inv.entity)===(S.iEnt==='self'?'Self-Employed':'Ltd Company'));
-if(!filtInv.length){pc2.innerHTML='<div class="empty"><div class="emo">📄</div><p>No invoices for this entity yet.</p></div>';}
-else{
-  // Group by month
+
+// Split into recent (this month) and past
+const recentInvs=filtInv.filter(inv=>inv.date.substring(0,7)===curMonth);
+const pastInvs=filtInv.filter(inv=>inv.date.substring(0,7)!==curMonth);
+
+// Helper to render a single invoice
+function renderInv(inv){
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entLabel=entType==='ltd'?'Ltd':'Self';
+  // Determine practice color
+  let prcClass='';
+  if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
+  else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
+  else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
+  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
+}
+
+let invHtml='';
+
+// RECENT section (this month's invoices)
+invHtml+='<div class="inv-section">Recent <span class="sec-count">'+recentInvs.length+' invoice'+(recentInvs.length!==1?'s':'')+'</span></div>';
+if(recentInvs.length){
+  recentInvs.sort((a,b)=>b.date.localeCompare(a.date));
+  invHtml+='<div class="alist" style="margin-top:8px">'+recentInvs.map(renderInv).join('')+'</div>';
+}else{
+  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No invoices this month</div>';
+}
+
+// PAST INVOICES section
+invHtml+='<div class="inv-section" style="margin-top:20px">Past Invoices <span class="sec-count">'+pastInvs.length+' invoice'+(pastInvs.length!==1?'s':'')+'</span></div>';
+
+if(pastInvs.length){
+  // Group past invoices by month
   const invByMonth={};
-  const now=new Date();
-  const curMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  filtInv.sort((a,b)=>b.date.localeCompare(a.date)).forEach(inv=>{
+  pastInvs.sort((a,b)=>b.date.localeCompare(a.date)).forEach(inv=>{
     const monthKey=inv.date.substring(0,7);
     if(!invByMonth[monthKey])invByMonth[monthKey]=[];
     invByMonth[monthKey].push(inv);
   });
-  let invHtml='';
+
+  // Render each month as collapsible folder
   Object.keys(invByMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
     const monthInvs=invByMonth[monthKey];
-    const isCurrentMonth=monthKey===curMonth;
     const d=new Date(monthKey+'-01');
     const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-    const collapsed=!isCurrentMonth;
-    invHtml+='<div class="arc-month'+(collapsed?' collapsed':'')+'" data-month="'+monthKey+'">'+(isCurrentMonth?'This Month':monthLabel)+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
-    invHtml+='<div class="month-group'+(collapsed?' collapsed':'')+'" data-month="'+monthKey+'" style="max-height:'+(collapsed?'0':monthInvs.length*70)+'px">';
-    invHtml+=monthInvs.map(inv=>{
-      const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
-      const entClass='ent-'+entType;
-      const entLabel=entType==='ltd'?'Ltd':'Self';
-      return '<div class="aitem '+entClass+'" data-inv="'+inv.num+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
-    }).join('');
+
+    // Group by practice within month and count
+    const byPractice={};
+    monthInvs.forEach(inv=>{
+      const pKey=inv.isAdhoc?'adhoc':(inv.practice||'Other');
+      if(!byPractice[pKey])byPractice[pKey]={name:inv.isAdhoc?'Ad Hoc':inv.practice,invoices:[],isAdhoc:inv.isAdhoc};
+      byPractice[pKey].invoices.push(inv);
+    });
+
+    // Sort practices by invoice count (most to least)
+    const sortedPractices=Object.values(byPractice).sort((a,b)=>b.invoices.length-a.invoices.length);
+
+    // Build practice summary for month header
+    const prcSummary=sortedPractices.map(p=>p.name+' ('+p.invoices.length+')').join(' ');
+
+    invHtml+='<div class="arc-month collapsed" data-month="'+monthKey+'">'+monthLabel+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
+    invHtml+='<div class="month-group collapsed" id="invmg_'+monthKey+'">';
+
+    // Within month, show practice summary
+    invHtml+='<div style="font-size:12px;color:var(--txt2);padding:8px 0;border-bottom:1px solid var(--bdr)">'+prcSummary+'</div>';
+
+    // Group invoices by practice
+    sortedPractices.forEach(p=>{
+      let prcColor='var(--grove)';
+      if(p.isAdhoc)prcColor='#EF4444';
+      else if(p.name&&p.name.toLowerCase().includes('bupa'))prcColor='var(--bupa)';
+      invHtml+='<div class="prc-group" data-prc="'+(p.isAdhoc?'adhoc':p.name)+'">';
+      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+prcColor+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.invoices.length+' invoice'+(p.invoices.length>1?'s':'')+')</span></div>';
+      invHtml+='<div class="prc-group-entries">'+p.invoices.map(renderInv).join('')+'</div>';
+      invHtml+='</div>';
+    });
+
     invHtml+='</div>';
   });
-  pc2.innerHTML=invHtml;
-  // Add click handlers for collapsible months
-  pc2.querySelectorAll('.arc-month').forEach(hdr=>{
-    hdr.onclick=function(){
-      const mk=this.dataset.month;
-      const grp=pc2.querySelector('.month-group[data-month="'+mk+'"]');
-      const isCollapsed=this.classList.toggle('collapsed');
-      grp.classList.toggle('collapsed',isCollapsed);
-      grp.style.maxHeight=isCollapsed?'0':grp.scrollHeight+'px';
-    };
-  });
+}else{
+  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No past invoices</div>';
 }
+
+pc2.innerHTML=invHtml;
+
+// Add click handlers for collapsible months
+pc2.querySelectorAll('.arc-month').forEach(hdr=>{
+  hdr.onclick=function(){
+    const mk=this.dataset.month;
+    const grp=document.getElementById('invmg_'+mk);
+    const isCollapsed=this.classList.toggle('collapsed');
+    if(grp){
+      grp.classList.toggle('collapsed',isCollapsed);
+      if(!isCollapsed)grp.style.maxHeight=grp.scrollHeight+'px';
+    }
+  };
+});
 }
 
 // ===== INVOICE PREVIEW =====
