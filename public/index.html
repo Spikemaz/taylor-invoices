@@ -1359,7 +1359,7 @@ const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getEle
 if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null};
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
@@ -1461,7 +1461,7 @@ if(!pts)return;const gr=(pts*rate)+(airPts*air);
 // Check for duplicate (same date, practice, service, rate, entity)
 const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
-const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent};
+const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);

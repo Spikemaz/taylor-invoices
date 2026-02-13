@@ -22,6 +22,7 @@ const INVOICES_TAB_NAME = 'Invoices';
 /**
  * Setup trigger - Run this ONCE
  * Uses onChange trigger which fires for BOTH manual and programmatic edits
+ * Also tracks invoice rows to detect deletions
  */
 function setupTrigger() {
   // Remove existing triggers
@@ -34,7 +35,39 @@ function setupTrigger() {
     .onChange()
     .create();
 
-  SpreadsheetApp.getUi().alert('Setup complete!\n\nPDFs will be generated automatically when new invoices are added.');
+  // Store current invoice Drive links for deletion tracking
+  storeInvoiceDriveLinks();
+
+  SpreadsheetApp.getUi().alert('Setup complete!\n\nPDFs will be generated automatically when new invoices are added.\nPDFs will be deleted from Drive when invoice rows are deleted.');
+}
+
+/**
+ * Store current invoice Drive links in script properties for deletion tracking
+ */
+function storeInvoiceDriveLinks() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
+  if (!sheet) return;
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return;
+
+  const headers = data[0];
+  const numCol = headers.indexOf('num');
+  const driveLinkCol = headers.indexOf('driveLink');
+
+  if (numCol === -1 || driveLinkCol === -1) return;
+
+  const invoiceLinks = {};
+  for (let i = 1; i < data.length; i++) {
+    const invoiceNum = data[i][numCol];
+    const driveLink = data[i][driveLinkCol];
+    if (invoiceNum && driveLink) {
+      invoiceLinks[invoiceNum] = driveLink;
+    }
+  }
+
+  PropertiesService.getScriptProperties().setProperty('invoiceLinks', JSON.stringify(invoiceLinks));
+  Logger.log('Stored ' + Object.keys(invoiceLinks).length + ' invoice Drive links for tracking');
 }
 
 /**
@@ -42,10 +75,108 @@ function setupTrigger() {
  * This is an "installable trigger" which has more permissions than simple triggers
  */
 function onSheetChange(e) {
-  // Only process EDIT and INSERT_ROW change types
+  // Check for deleted invoices (REMOVE_ROW or when row count decreases)
+  if (e && e.changeType === 'REMOVE_ROW') {
+    checkForDeletedInvoices();
+  }
+
+  // Check for new invoices on EDIT or INSERT_ROW
   if (e && e.changeType && (e.changeType === 'EDIT' || e.changeType === 'INSERT_ROW')) {
     checkForNewInvoices();
   }
+
+  // Always update the stored invoice links after any change
+  storeInvoiceDriveLinks();
+}
+
+/**
+ * Check for deleted invoices and delete their PDFs from Google Drive
+ * Compares stored invoice links with current sheet data
+ */
+function checkForDeletedInvoices() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(100)) {
+    Logger.log('Another execution is in progress, skipping deletion check...');
+    return;
+  }
+
+  try {
+    // Get previously stored invoice links
+    const storedJson = PropertiesService.getScriptProperties().getProperty('invoiceLinks');
+    if (!storedJson) return;
+
+    const storedLinks = JSON.parse(storedJson);
+
+    // Get current invoice numbers from sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(INVOICES_TAB_NAME);
+    if (!sheet) return;
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const numCol = headers.indexOf('num');
+
+    if (numCol === -1) return;
+
+    const currentInvoiceNums = new Set();
+    for (let i = 1; i < data.length; i++) {
+      const invoiceNum = data[i][numCol];
+      if (invoiceNum) currentInvoiceNums.add(String(invoiceNum));
+    }
+
+    // Find deleted invoices (in stored but not in current)
+    Object.keys(storedLinks).forEach(invoiceNum => {
+      if (!currentInvoiceNums.has(invoiceNum)) {
+        const driveLink = storedLinks[invoiceNum];
+        Logger.log('Invoice ' + invoiceNum + ' was deleted. Attempting to delete Drive PDF...');
+        deleteDriveFileFromLink(driveLink, invoiceNum);
+      }
+    });
+
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Delete a file from Google Drive using its URL
+ * @param {string} driveLink - The Drive URL (e.g., https://drive.google.com/file/d/FILE_ID/view)
+ * @param {string} invoiceNum - The invoice number (for logging)
+ */
+function deleteDriveFileFromLink(driveLink, invoiceNum) {
+  if (!driveLink) {
+    Logger.log('No Drive link for invoice ' + invoiceNum);
+    return;
+  }
+
+  try {
+    // Extract file ID from Drive URL
+    // URLs look like: https://drive.google.com/file/d/FILE_ID/view
+    // or: https://drive.google.com/open?id=FILE_ID
+    let fileId = null;
+    const fileMatch = driveLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const idMatch = driveLink.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    fileId = fileMatch ? fileMatch[1] : (idMatch ? idMatch[1] : null);
+
+    if (fileId) {
+      const file = DriveApp.getFileById(fileId);
+      const fileName = file.getName();
+      file.setTrashed(true); // Move to trash (safer than permanent delete)
+      Logger.log('✓ Deleted Drive PDF: ' + fileName + ' (Invoice ' + invoiceNum + ')');
+    } else {
+      Logger.log('Could not extract file ID from: ' + driveLink);
+    }
+  } catch (e) {
+    Logger.log('Failed to delete Drive file for invoice ' + invoiceNum + ': ' + e.message);
+  }
+}
+
+/**
+ * Manual function to check and delete orphaned Drive PDFs
+ * Run this to clean up PDFs for invoices that no longer exist in the sheet
+ */
+function cleanupOrphanedPDFs() {
+  checkForDeletedInvoices();
+  SpreadsheetApp.getUi().alert('Cleanup complete! Check the execution log for details.');
 }
 
 /**
