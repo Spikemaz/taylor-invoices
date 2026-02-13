@@ -274,21 +274,21 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="scr" id="scr-settings">
 <div class="sh">Billing Entity</div>
 <div class="ssec"><div class="srow" onclick="editEnt()"><span class="la">Active Entity</span><span class="va" id="sEnt">Self-Employed</span></div></div>
-<div class="sh">Self-Employed Details</div>
+<div class="sh">Invoice &amp; Payment</div>
 <div class="ssec">
-<div class="srow" onclick="editField('self','name')"><span class="la">Name</span><span class="va" id="se_name">Taylor Muir</span></div>
-<div class="srow" onclick="editField('self','addr')"><span class="la">Address</span><span class="va" id="se_addr">9 Queen Cathrine Rd...</span></div>
-<div class="srow" onclick="editField('self','phone')"><span class="la">Phone</span><span class="va" id="se_phone">+44 7429 399687</span></div>
-<div class="srow" onclick="editBankField('self')"><span class="la">Bank Details</span><span class="va" id="se_bank">Lloyds ****1768</span></div>
+<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
+<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
+<div class="srow" onclick="editDefaultComm()"><span class="la">Default Commission</span><span class="va" id="sDefComm">50%</span></div>
 </div>
-<div class="sh">Ltd Company Details</div>
+<div class="sh">Invoice Appearance</div>
 <div class="ssec">
-<div class="srow" onclick="editField('ltd','name')"><span class="la">Company Name</span><span class="va" id="ltd_name">H&T Clinical Services</span></div>
-<div class="srow" onclick="editField('ltd','addr')"><span class="la">Registered Address</span><span class="va" id="ltd_addr">71-75 Shelton St...</span></div>
-<div class="srow" onclick="editField('ltd','phone')"><span class="la">Phone</span><span class="va" id="ltd_phone">+44 7429 399687</span></div>
-<div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
-<div class="srow" onclick="editCompanyNo()"><span class="la">Company Number</span><span class="va" id="ltd_compNo">Not set</span></div>
+<div class="srow" onclick="viewLogo('self')"><span class="la">Self-Employed Logo</span><span class="va">View/Change</span></div>
+<div class="srow" onclick="viewLogo('ltd')"><span class="la">Ltd Company Logo</span><span class="va">View/Change</span></div>
+<div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
 </div>
+<div class="sh">Service Types</div>
+<div class="ssec" id="svcSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addService()">+ Add Service Type</button></div>
 <div class="sh">Practice Configuration</div>
 <div class="ssec" id="pracSettings"></div>
 <div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
@@ -296,10 +296,22 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="ssec" id="dayMap"></div>
 <div class="sh">Ad Hoc Practices</div>
 <div class="ssec" id="ahPracSettings"></div>
-<div class="sh">Invoice &amp; Payment</div>
+<div class="sh">Self-Employed Details</div>
 <div class="ssec">
-<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
-<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
+<div class="srow" onclick="editField('self','name')"><span class="la">Name</span><span class="va" id="se_name">Taylor Muir</span></div>
+<div class="srow" onclick="editField('self','addr')"><span class="la">Address</span><span class="va" id="se_addr">9 Queen Cathrine Rd...</span></div>
+<div class="srow" onclick="editField('self','phone')"><span class="la">Phone</span><span class="va" id="se_phone">+44 7429 399687</span></div>
+<div class="srow" onclick="editField('self','email')"><span class="la">Email</span><span class="va" id="se_email">Not set</span></div>
+<div class="srow" onclick="editBankField('self')"><span class="la">Bank Details</span><span class="va" id="se_bank">Lloyds ****1768</span></div>
+</div>
+<div class="sh">Ltd Company Details</div>
+<div class="ssec">
+<div class="srow" onclick="editField('ltd','name')"><span class="la">Company Name</span><span class="va" id="ltd_name">H&T Clinical Services</span></div>
+<div class="srow" onclick="editField('ltd','addr')"><span class="la">Registered Address</span><span class="va" id="ltd_addr">71-75 Shelton St...</span></div>
+<div class="srow" onclick="editField('ltd','phone')"><span class="la">Phone</span><span class="va" id="ltd_phone">+44 7429 399687</span></div>
+<div class="srow" onclick="editField('ltd','email')"><span class="la">Email</span><span class="va" id="ltd_email">Not set</span></div>
+<div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
+<div class="srow" onclick="editCompanyNo()"><span class="la">Company Number</span><span class="va" id="ltd_compNo">Not set</span></div>
 </div>
 <div class="sh">Cloud Sync</div>
 <div class="ssec">
@@ -309,7 +321,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 </div>
 <div class="sh">Data</div>
 <div class="ssec">
-<div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">↓</span></div>
+<div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">📊</span></div>
+<div class="srow" onclick="clearAllData()"><span class="la">Clear All Data</span><span class="va" style="color:var(--err)">⚠️</span></div>
 </div>
 <p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with ♥ by Marcus</p>
 </div>
@@ -337,11 +350,17 @@ ahPrac:[
 {id:'bankhouse',name:'Bank House Dental Centre',addr:'80 High Street\nPrinces Risborough\nBuckinghamshire\nHP27 0AX',rate:25,air:9,active:true}
 ],
 ents:{
-self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingham\nMK18 2PZ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08'},
-ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:''}
+self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingham\nMK18 2PZ',phone:'+44 7429 399687',email:'',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08'},
+ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',email:'',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:''}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
-nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days'
+nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days',defComm:50,invoiceFooter:'Thank you for your continued support.',
+svcs:[
+{id:'hyg',name:'Hygiene',price:25,active:true},
+{id:'th',name:'Therapy',price:35,active:true},
+{id:'new',name:'New Patient',price:30,active:true},
+{id:'fv',name:'Fluoride Varnish',price:5,active:true}
+]
 };
 // Helper to get/set nextInv for current entity
 function getNextInv(){return S.ent==='ltd'?S.nextInvLtd:S.nextInvSelf;}
@@ -371,6 +390,9 @@ function loadSettings(){
     if (d.payTerms) S.payTerms = d.payTerms;
     if (d.nextInvSelf) S.nextInvSelf = d.nextInvSelf;
     if (d.nextInvLtd) S.nextInvLtd = d.nextInvLtd;
+    if (d.defComm != null) S.defComm = d.defComm;
+    if (d.invoiceFooter) S.invoiceFooter = d.invoiceFooter;
+    if (d.svcs) S.svcs = d.svcs;
     // Backwards compatibility: migrate old single nextInv to both
     if (d.nextInv && !d.nextInvSelf) { S.nextInvSelf = d.nextInv; S.nextInvLtd = 1; }
     if (d.ents) {
@@ -410,7 +432,7 @@ function save() {
       pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract' };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
-      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, svcs: S.svcs
     }));
     localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
   } catch(e) { console.error('Save error:', e); }
@@ -2000,7 +2022,7 @@ html+='</table>';
 html+='<div style="margin-top:20px;padding-top:12px;border-top:1px solid var(--bdr);font-size:11px;color:var(--txt2)">';
 html+='<div>Bank: '+ent.bank+'</div><div>Name: '+ent.bName+'</div><div>Account: '+ent.acc+'</div><div>Sort Code: '+ent.sort+'</div>';
 html+='<div style="margin-top:8px"><b>Payment Terms:</b> Payment is due within <b>'+S.payTerms+'</b> of the invoice date.</div>';
-html+='<div>Please ensure the invoice reference is quoted with payment.</div><div style="margin-top:4px">Thank you for your continued support.</div></div></div>';
+html+='<div>Please ensure the invoice reference is quoted with payment.</div><div style="margin-top:4px">'+(S.invoiceFooter||'Thank you for your continued support.')+'</div></div></div>';
 html+='<div class="brow"><button class="btn btn-s" id="_pvClose">Close</button><button class="btn btn-p" id="_pvGen">Generate PDF</button></div>';
 showModal(html);
 setTimeout(function(){
@@ -2090,7 +2112,7 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
   commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,
   logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };
 
 S.invoices.push(invData);save();
@@ -2139,7 +2161,7 @@ var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs
 var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''};
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
@@ -2177,7 +2199,7 @@ e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
 var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):''};
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData, entKey);
@@ -2280,7 +2302,7 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):''
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };
 
 S.invoices.push(invData);save();
@@ -2349,7 +2371,7 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
-  companyNo:entKey==='ltd'?(ent.companyNo||''):''
+  companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };
 
 console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.length+' entries', '£'+tg.toFixed(2), 'entity='+entKey);
@@ -2477,7 +2499,7 @@ syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Dele
 function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementById('sEnt').textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 
 function editField(entType,field){
-var ent=S.ents[entType];var labels={name:'Name',addr:'Address',phone:'Phone'};
+var ent=S.ents[entType];var labels={name:'Name',addr:'Address',phone:'Phone',email:'Email'};
 var val=ent[field]||'';var isTA=field==='addr';
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit '+(entType==='self'?'Self-Employed':'Ltd')+' '+labels[field]+'</h3>';
 if(isTA)_h+='<div class="fg"><label class="fl">'+labels[field]+'</label><textarea class="fi" id="_efVal" rows="4">'+val.replace(/\\n/g,'\n')+'</textarea></div>';
@@ -2569,6 +2591,110 @@ S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
 save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');};
 },50);
 }
+function editDefaultComm(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Default Commission Rate</h3>';
+_h+='<div class="fg"><label class="fl">Commission Percentage</label><input class="fi" id="_dcVal" type="number" min="0" max="100" value="'+(S.defComm||50)+'"></div>';
+_h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">Used as default for new practices</p>';
+_h+='<div class="brow"><button class="btn btn-s" id="_dcC">Cancel</button><button class="btn btn-p" id="_dcS">Save</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_dcC').onclick=function(){closeMod2()};
+document.getElementById('_dcS').onclick=function(){
+S.defComm=parseInt(document.getElementById('_dcVal').value)||50;
+save();closeMod2();refreshSettings();showToast('\u2713 Default commission updated');};
+},50);
+}
+function viewLogo(ent){
+var logoData=window.LOGOS&&window.LOGOS[ent];
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(ent==='self'?'Self-Employed':'Ltd Company')+' Logo</h3>';
+if(logoData){
+_h+='<div style="text-align:center;margin:16px 0;background:#f5f5f5;padding:20px;border-radius:8px"><img src="'+logoData+'" style="max-width:150px;max-height:150px"></div>';
+}else{
+_h+='<div style="text-align:center;margin:16px 0;background:#f5f5f5;padding:40px;border-radius:8px;color:var(--txt3)">No logo set</div>';
+}
+_h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">Logos are stored in the code. Contact support to change.</p>';
+_h+='<div class="brow"><button class="btn btn-p" id="_vlC">Close</button></div>';
+showModal(_h);
+setTimeout(function(){document.getElementById('_vlC').onclick=function(){closeMod2()};},50);
+}
+function editInvoiceFooter(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Invoice Footer Message</h3>';
+_h+='<div class="fg"><label class="fl">Footer Text</label><textarea class="fi" id="_ifVal" rows="3">'+(S.invoiceFooter||'Thank you for your continued support.')+'</textarea></div>';
+_h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">This message appears at the bottom of invoices</p>';
+_h+='<div class="brow"><button class="btn btn-s" id="_ifC">Cancel</button><button class="btn btn-p" id="_ifS">Save</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_ifC').onclick=function(){closeMod2()};
+document.getElementById('_ifS').onclick=function(){
+S.invoiceFooter=document.getElementById('_ifVal').value.trim()||'Thank you for your continued support.';
+save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Footer message updated');};
+},50);
+}
+function buildSvcSettings(){
+var c=document.getElementById('svcSettings');if(!c)return;
+var h='';
+(S.svcs||[]).forEach(function(s,i){
+h+='<div class="srow" onclick="editService('+i+')"><span class="la">'+s.name+'</span><span class="va">\u00a3'+s.price.toFixed(2)+'</span></div>';
+});
+if(!h)h='<div class="srow"><span class="la" style="color:var(--txt3)">No services configured</span></div>';
+c.innerHTML=h;
+}
+function editService(idx){
+var s=(S.svcs||[])[idx];if(!s)return;
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Service</h3>';
+_h+='<div class="fg"><label class="fl">Service Name</label><input class="fi" id="_esName" value="'+s.name+'"></div>';
+_h+='<div class="fg"><label class="fl">Default Price (\u00a3)</label><input class="fi" id="_esPrice" type="number" step="0.01" value="'+s.price+'"></div>';
+_h+='<div class="brow"><button class="btn btn-s" style="color:var(--err)" id="_esD">Delete</button><button class="btn btn-s" id="_esC">Cancel</button><button class="btn btn-p" id="_esS">Save</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_esC').onclick=function(){closeMod2()};
+document.getElementById('_esD').onclick=function(){
+if(confirm('Delete this service type?')){S.svcs.splice(idx,1);save();closeMod2();buildSvcSettings();showToast('Service deleted');}
+};
+document.getElementById('_esS').onclick=function(){
+s.name=document.getElementById('_esName').value.trim()||s.name;
+s.price=parseFloat(document.getElementById('_esPrice').value)||s.price;
+save();closeMod2();buildSvcSettings();showToast('\u2713 Service updated');};
+},50);
+}
+function addService(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Service Type</h3>';
+_h+='<div class="fg"><label class="fl">Service Name</label><input class="fi" id="_asName" placeholder="e.g. Whitening"></div>';
+_h+='<div class="fg"><label class="fl">Default Price (\u00a3)</label><input class="fi" id="_asPrice" type="number" step="0.01" value="25"></div>';
+_h+='<div class="brow"><button class="btn btn-s" id="_asC">Cancel</button><button class="btn btn-p" id="_asS">Add</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_asC').onclick=function(){closeMod2()};
+document.getElementById('_asS').onclick=function(){
+var name=document.getElementById('_asName').value.trim();
+var price=parseFloat(document.getElementById('_asPrice').value)||25;
+if(!name){showToast('Enter a service name','err');return;}
+S.svcs=S.svcs||[];
+S.svcs.push({id:name.toLowerCase().replace(/\s+/g,''),name:name,price:price,active:true});
+save();closeMod2();buildSvcSettings();showToast('\u2713 Service added');};
+},50);
+}
+function clearAllData(){
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(--err)">Clear All Data</h3>';
+_h+='<p style="margin:12px 0">This will permanently delete:</p>';
+_h+='<ul style="margin:8px 0 16px 20px;font-size:14px"><li>All entries</li><li>All invoices</li><li>All settings</li></ul>';
+_h+='<p style="font-size:12px;color:var(--err);margin-bottom:16px">This action cannot be undone!</p>';
+_h+='<div class="fg"><label class="fl">Type DELETE to confirm</label><input class="fi" id="_cdVal" placeholder="DELETE"></div>';
+_h+='<div class="brow"><button class="btn btn-s" id="_cdC">Cancel</button><button class="btn" style="background:var(--err);color:white" id="_cdS">Clear All</button></div>';
+showModal(_h);
+setTimeout(function(){
+document.getElementById('_cdC').onclick=function(){closeMod2()};
+document.getElementById('_cdS').onclick=function(){
+if(document.getElementById('_cdVal').value!=='DELETE'){showToast('Type DELETE to confirm','err');return;}
+localStorage.removeItem('tm_inv_settings');
+localStorage.removeItem('tm_inv_entries');
+localStorage.removeItem('tm_inv_invoices');
+localStorage.removeItem('tm_inv_pending');
+closeMod2();showToast('All data cleared - reloading...');
+setTimeout(function(){location.reload();},1500);
+};
+},50);
+}
 function addAhPracSettings(){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" placeholder="e.g. Smile Dental"></div>';
@@ -2648,6 +2774,11 @@ el=document.getElementById('ltd_compNo');if(el)el.textContent=lt.companyNo||'Not
 el=document.getElementById('sEnt');if(el)el.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
 el=document.getElementById('nInv');if(el)el.textContent='S:'+pad(S.nextInvSelf)+' L:'+pad(S.nextInvLtd);
 el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'5 working days';
+el=document.getElementById('sDefComm');if(el)el.textContent=(S.defComm||50)+'%';
+el=document.getElementById('sFooter');if(el){var ft=S.invoiceFooter||'Thank you...';el.textContent=ft.length>20?ft.substring(0,20)+'...':ft;}
+el=document.getElementById('se_email');if(el)el.textContent=se.email||'Not set';
+el=document.getElementById('ltd_email');if(el)el.textContent=lt.email||'Not set';
+buildSvcSettings();
 var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var psec=document.getElementById('pracSettings');
 if(psec){psec.innerHTML='';Object.keys(S.practices).forEach(function(k){
@@ -2809,7 +2940,7 @@ y += 14;
 doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
 doc.text('Please ensure the invoice reference (' + inv.num + ') is quoted with payment.', 40, y);
 y += 18;
-doc.text('Thank you for your continued support.', 40, y);
+doc.text(inv.footerMsg || S.invoiceFooter || 'Thank you for your continued support.', 40, y);
 
 // Footer
 doc.setDrawColor(229, 231, 235); doc.line(40, H - 50, W - 40, H - 50);

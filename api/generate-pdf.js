@@ -218,7 +218,7 @@ module.exports = async (req, res) => {
     doc.setTextColor(107, 114, 128);
     doc.text('Please ensure the invoice reference (' + inv.num + ') is quoted with payment.', 40, y);
     y += 18;
-    doc.text('Thank you for your continued support.', 40, y);
+    doc.text(inv.footerMsg || 'Thank you for your continued support.', 40, y);
 
     // Footer
     doc.setDrawColor(229, 231, 235);
