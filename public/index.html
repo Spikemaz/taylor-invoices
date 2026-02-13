@@ -21,6 +21,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .hdr-e{font-size:11px;opacity:.75;font-weight:400;display:block}
 .hdr-btn{background:rgba(255,255,255,.12);border:0;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--f)}
 .hdr-btn:active{background:rgba(255,255,255,.25)}
+.hdr-btn.act{background:rgba(255,255,255,.35);box-shadow:0 0 0 2px rgba(255,255,255,.3)}
 .screens{flex:1;overflow:hidden;position:relative}
 .scr{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px;display:none;opacity:0;transform:translateX(20px);transition:opacity .25s,transform .25s}
 .scr.act{display:block;opacity:1;transform:translateX(0)}
@@ -144,10 +145,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
 <div><div class="hdr-t" id="hdrT">Taylor Invoice Manager</div><span class="hdr-e" id="hdrE"></span></div>
 <div style="display:flex;gap:4px;align-items:center">
-<button class="hdr-btn" onclick="goHome()">Home</button>
-<button class="hdr-btn" onclick="showScreen('archive')">Archive</button>
-<button class="hdr-btn" onclick="showScreen('invoices')">Invoices</button>
-<button class="hdr-btn" onclick="showScreen('settings')">&#9881;</button>
+<button class="hdr-btn" id="navHome" onclick="goHome()">Home</button>
+<button class="hdr-btn" id="navArchive" onclick="showScreen('archive')">Archive</button>
+<button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')">Invoice</button>
+<button class="hdr-btn" id="navSettings" onclick="showScreen('settings')">&#9881;</button>
 <div class="sync-status" id="syncStatus" title="Cloud sync status"><span class="sync-dot" id="syncDot"></span></div>
 </div>
 </div>
@@ -1069,16 +1070,22 @@ function initDt(){const t=today();const e=document.getElementById('logDt');const
 function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];c.innerHTML=days.map(function(d,i){var target=S.dayMap[i];var label=target==='home'?'Home':(S.practices[target]?S.practices[target].short:'Home');return '<div class="srow" onclick="editDayMapping('+i+')"><span class="la">'+d+'</span><span class="va">'+label+' &#9656;</span></div>'}).join('');}
 
 // ===== NAVIGATION =====
+function updateNavHighlight(n){
+document.getElementById('navHome').classList.toggle('act',n==='home');
+document.getElementById('navArchive').classList.toggle('act',n==='archive');
+document.getElementById('navInvoice').classList.toggle('act',n==='invoices');
+document.getElementById('navSettings').classList.toggle('act',n==='settings');
+}
 function showScreen(n){
 const p=document.getElementById('scr-'+S.scr),nx=document.getElementById('scr-'+n);
 if(p&&S.scr!==n)p.classList.remove('act');
 if(nx)nx.classList.add('act');
 if(S.scr!==n)S.hist.push(S.scr);
-S.scr=n;upHdr(n);
+S.scr=n;upHdr(n);updateNavHighlight(n);
 if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')upHome();if(n==='settings')refreshSettings();
 }
-function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);if(p==='home')upHome();if(p==='archive')refArc();if(p==='invoices')refInv();}
-function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');upHome();}
+function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')upHome();if(p==='archive')refArc();if(p==='invoices')refInv();}
+function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');upHome();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Taylor Invoice Manager',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
 t.textContent=titles[s]||'Taylor Invoice Manager';e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
