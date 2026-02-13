@@ -214,7 +214,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
 <div class="stg" id="aoG" style="margin-top:12px"><div class="sl"><span>Airflow Add-on</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
-<div class="fg" style="margin-top:12px"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()"></div>
+<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
 <div class="banner" id="pBan" style="margin-top:12px"><h3 id="pBanT"></h3><div class="amt" id="pBanA">£0.00</div><div class="sub" id="pBanS"></div></div>
 </div>
 </div>
@@ -239,7 +239,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" style="margin-top:12px"><div class="sl"><span>Airflow (per patient)</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
 <div class="stg" id="ahApG"><div class="sl"><span>Airflow Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
-<div class="fg" style="margin-top:12px"><div class="sl" style="margin-bottom:6px"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt"></div>
+<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt" style="margin-top:6px"></div>
 </div>
 </div>
 
@@ -1211,14 +1211,18 @@ const me=getMonth(n.getFullYear(),n.getMonth());
 var entMe=me.filter(function(e){return e.entity===S.ent});
 let tc=0;entMe.forEach(function(e){tc+=e.pType==='contract'?e.gross*e.comm:e.gross});
 document.getElementById('hBanA').textContent=fc(tc);
+// Daily calc
+var td=today();
+var dayEntries=entMe.filter(function(e){return e.date===td});
+var dc=0;dayEntries.forEach(function(e){dc+=e.pType==='contract'?e.gross*e.comm:e.gross});
 // Weekly calc
 var weekStart=new Date(n);weekStart.setDate(n.getDate()-n.getDay()+1);
 var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
 var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')[0];
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wc=0;weekEntries.forEach(function(e){wc+=e.pType==='contract'?e.gross*e.comm:e.gross});
-document.getElementById('hBanS').textContent='This week: '+fc(wc)+' · This month: '+fc(tc);
-const td=today(),te=S.entries.filter(e=>e.date===td);
+document.getElementById('hBanS').textContent='This day: '+fc(dc)+' · This week: '+fc(wc);
+var te=S.entries.filter(e=>e.date===td);
 var _st;
 _st=document.getElementById('buSt')||document.getElementById('bupaSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='bupa')?' on':'');
 _st=document.getElementById('grSt')||document.getElementById('groveSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='grove')?' on':'');
