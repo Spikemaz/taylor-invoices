@@ -100,7 +100,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .inv-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
 .ibtn.gn.prc-bupa{background:var(--bupa)}.ibtn.gn.prc-grove{background:var(--grove)}.ibtn.gn.prc-adhoc{background:#EF4444}
-.sh{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px}.sh:first-child{margin-top:0}
+.sh{font-size:13px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.8px;margin:20px 0 10px;background:var(--pri-dk);padding:10px 16px;border-radius:var(--rs);margin-left:-20px;margin-right:-20px}.sh:first-child{margin-top:0}
 .frow{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
 .fc{padding:6px 14px;border-radius:20px;border:1px solid var(--bdr);background:var(--card);font-size:12px;font-weight:500;color:var(--txt2);white-space:nowrap;cursor:pointer;transition:all .15s;font-family:var(--f)}.fc.act{background:var(--pri);color:#fff;border-color:var(--pri)}
 .fc.prc-bupa{border-color:var(--bupa);color:var(--bupa)}.fc.prc-bupa.act{background:var(--bupa);color:#fff}
@@ -272,39 +272,16 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 
 <!-- SETTINGS -->
 <div class="scr" id="scr-settings">
-<div class="sh">Billing Entity</div>
-<div class="ssec"><div class="srow" onclick="editEnt()"><span class="la">Active Entity</span><span class="va" id="sEnt">Self-Employed</span></div></div>
-<div class="sh">Invoice &amp; Payment</div>
-<div class="ssec">
-<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
-<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
-<div class="srow" onclick="editDefaultComm()"><span class="la">Default Commission</span><span class="va" id="sDefComm">50%</span></div>
-</div>
-<div class="sh">Invoice Appearance</div>
-<div class="ssec">
-<div class="srow" onclick="viewLogo('self')"><span class="la">Self-Employed Logo</span><span class="va">View/Change</span></div>
-<div class="srow" onclick="viewLogo('ltd')"><span class="la">Ltd Company Logo</span><span class="va">View/Change</span></div>
-<div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
-</div>
-<div class="sh">Service Types</div>
-<div class="ssec" id="svcSettings"></div>
-<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addService()">+ Add Service Type</button></div>
-<div class="sh">Practice Configuration</div>
-<div class="ssec" id="pracSettings"></div>
-<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
-<div class="sh">Day Mapping</div>
-<div class="ssec" id="dayMap"></div>
-<div class="sh">Ad Hoc Practices</div>
-<div class="ssec" id="ahPracSettings"></div>
-<div class="sh">Self-Employed Details</div>
+<div class="sh">Self-Employed</div>
 <div class="ssec">
 <div class="srow" onclick="editField('self','name')"><span class="la">Name</span><span class="va" id="se_name">Taylor Muir</span></div>
 <div class="srow" onclick="editField('self','addr')"><span class="la">Address</span><span class="va" id="se_addr">9 Queen Cathrine Rd...</span></div>
 <div class="srow" onclick="editField('self','phone')"><span class="la">Phone</span><span class="va" id="se_phone">+44 7429 399687</span></div>
 <div class="srow" onclick="editField('self','email')"><span class="la">Email</span><span class="va" id="se_email">Not set</span></div>
 <div class="srow" onclick="editBankField('self')"><span class="la">Bank Details</span><span class="va" id="se_bank">Lloyds ****1768</span></div>
+<div class="srow" onclick="viewLogo('self')"><span class="la">Logo</span><span class="va">View/Change</span></div>
 </div>
-<div class="sh">Ltd Company Details</div>
+<div class="sh">Ltd Company</div>
 <div class="ssec">
 <div class="srow" onclick="editField('ltd','name')"><span class="la">Company Name</span><span class="va" id="ltd_name">H&T Clinical Services</span></div>
 <div class="srow" onclick="editField('ltd','addr')"><span class="la">Registered Address</span><span class="va" id="ltd_addr">71-75 Shelton St...</span></div>
@@ -312,15 +289,28 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="srow" onclick="editField('ltd','email')"><span class="la">Email</span><span class="va" id="ltd_email">Not set</span></div>
 <div class="srow" onclick="editBankField('ltd')"><span class="la">Bank Details</span><span class="va" id="ltd_bank">Lloyds ****1768</span></div>
 <div class="srow" onclick="editCompanyNo()"><span class="la">Company Number</span><span class="va" id="ltd_compNo">Not set</span></div>
+<div class="srow" onclick="viewLogo('ltd')"><span class="la">Logo</span><span class="va">View/Change</span></div>
 </div>
-<div class="sh">Cloud Sync</div>
+<div class="sh">Practices</div>
+<div class="ssec" id="pracSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
+<div class="ssec" id="ahPracSettings"></div>
+<div class="ssec" id="dayMap"></div>
+
+<div class="sh">Invoice Settings</div>
+<div class="ssec">
+<div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
+<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
+<div class="srow" onclick="editDefaultComm()"><span class="la">Default Commission</span><span class="va" id="sDefComm">50%</span></div>
+<div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
+</div>
+<div class="ssec" id="svcSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addService()">+ Add Service Type</button></div>
+<div class="sh">Cloud &amp; Data</div>
 <div class="ssec">
 <div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
 <div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
 <div class="srow" onclick="initDriveFoldersManual()"><span class="la">Setup Drive Folders</span><span class="va">📁</span></div>
-</div>
-<div class="sh">Data</div>
-<div class="ssec">
 <div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">📊</span></div>
 <div class="srow" onclick="clearAllData()"><span class="la">Clear All Data</span><span class="va" style="color:var(--err)">⚠️</span></div>
 </div>
