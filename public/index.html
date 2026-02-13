@@ -204,7 +204,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <button class="ebtn act" onclick="setPracticeEntity('self')" id="pES">Self-Employed</button>
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
-<div id="pToday"></div>
 <div class="sh">Service Type</div>
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
@@ -1217,13 +1216,6 @@ function switchEntity(t){
     const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
     if(pBanA)pBanA.textContent=fc(tg*pComm);
     if(pBanS)pBanS.textContent=fc(tg)+' gross · '+(pComm*100).toFixed(0)+'% commission';
-    // Update "already logged today" indicator
-    const tEl=document.getElementById('pToday'),td2=today();
-    if(tEl){
-      const logged=S.entries.some(e=>e.date===td2&&e.pId===S.prac&&e.entity===S.ent);
-      if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
-      else tEl.innerHTML='';
-    }
   }
 
   // Update home screen totals if visible
@@ -1255,10 +1247,6 @@ let tg=0;me.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
 document.getElementById('pBanA').textContent=fc(tg*comm);
 document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
-const tEl=document.getElementById('pToday'),td2=today();
-const logged=S.entries.some(e=>e.date===td2&&e.pId===id&&e.entity===S.ent);
-if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
-else tEl.innerHTML='';
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
@@ -1287,10 +1275,6 @@ let tg=0;me.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
 document.getElementById('pBanA').textContent=fc(tg*comm);
 document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
-const tEl=document.getElementById('pToday'),td2=today();
-const logged=S.entries.some(e=>e.date===td2&&e.pId===S.prac&&e.entity===S.ent);
-if(logged)tEl.innerHTML='<div class="rb ok">✓ Already logged today</div>';
-else tEl.innerHTML='';
 }
 
 // ===== ARCHIVE ENTRY =====
