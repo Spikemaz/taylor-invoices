@@ -295,7 +295,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 <div class="sh">Practices</div>
 <div class="ssec" id="pracSettings"></div>
 <div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
+<div class="sh">Ad Hoc Practices</div>
 <div class="ssec" id="ahPracSettings"></div>
+<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="showAddAhPractice()">+ Add New Ad Hoc Practice</button></div>
+<div class="sh">Day Mapping</div>
 <div class="ssec" id="dayMap"></div>
 
 <div class="sh">Invoice Settings</div>
@@ -2963,7 +2966,7 @@ row.innerHTML='<span class="la">'+p.name+statusBadge+'</span><span class="va">\u
 row.onclick=function(){editAhPracSettings(idx)};
 ahsec.appendChild(row);
 });
-if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);font-size:13px;padding:8px 0">No ad hoc practices. Add one above.</p>';}}
+if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);font-size:13px;padding:8px 0">No ad hoc practices yet.</p>';}}
 }
 
 function exportCSV(){
