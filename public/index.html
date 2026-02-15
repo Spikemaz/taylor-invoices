@@ -217,7 +217,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg" id="aoG" style="margin-top:12px">
 <div class="sl"><span>Add-on</span><span id="aoTypeLbl"></span></div>
 <div class="sgrid" id="aoTypeGrid" style="margin-bottom:10px">
-<button class="sbtn" onclick="selAddon('none')" data-ao="none">None</button>
 <button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
 <button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
 </div>
@@ -1354,19 +1353,26 @@ document.getElementById('pt').value='0';document.getElementById('pr').value=fc(s
 document.getElementById('aoName').value='';selAddon('none');upAmt();}
 function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
 function selAddon(type){
-S.aoType=type;
-document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
-document.querySelector('#aoTypeGrid [data-ao="'+type+'"]').classList.add('sel');
 const amtRow=document.getElementById('aoAmtRow');
 const customName=document.getElementById('aoCustomName');
 const lbl=document.getElementById('aoTypeLbl');
-if(type==='none'){
+const btn=document.querySelector('#aoTypeGrid [data-ao="'+type+'"]');
+// Toggle off if already selected, or clear selection
+if(type==='none'||(btn&&btn.classList.contains('sel'))){
+  S.aoType=null;
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
   amtRow.style.display='none';customName.style.display='none';
   document.getElementById('ao').value='£0.00';lbl.textContent='';
 }else if(type==='Airflow'){
+  S.aoType='Airflow';
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
   amtRow.style.display='block';customName.style.display='none';
   lbl.textContent='± £1';
 }else{
+  S.aoType='custom';
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
   amtRow.style.display='block';customName.style.display='block';
   lbl.textContent='± £1';
   document.getElementById('aoName').focus();
