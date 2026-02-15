@@ -237,7 +237,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <div id="aoAmtRow" style="display:none"><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
 </div>
 <div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
-<div class="banner" id="pBan" style="margin-top:12px"><h3 id="pBanT"></h3><div class="amt" id="pBanA">£0.00</div><div class="sub" id="pBanS"></div></div>
 </div>
 </div>
 
@@ -1331,13 +1330,6 @@ function switchEntity(t){
   if(S.prac&&S.practices[S.prac]){
     const p=S.practices[S.prac];
     if(!p)return;
-    const pComm=p.comm||0.35;
-    const td=today();
-    const te=S.entries.filter(e=>e.pId===S.prac&&e.entity===S.ent&&e.date===td);
-    let tg=0;te.forEach(e=>tg+=e.gross);
-    const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
-    if(pBanA)pBanA.textContent=fc(tg);
-    if(pBanS)pBanS.textContent='Net: '+fc(tg*pComm)+' ('+(pComm*100).toFixed(0)+'% profit share)';
   }
 
   // Update home screen totals if visible
@@ -1362,13 +1354,6 @@ S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
-document.getElementById('pBanT').textContent="Today's Gross Total";
-const td=today();
-const te=S.entries.filter(e=>e.pId===id&&e.entity===S.ent&&e.date===td);
-let tg=0;te.forEach(e=>tg+=e.gross);
-const comm=p.comm||0.35;
-document.getElementById('pBanA').textContent=fc(tg);
-document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% profit share)';
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
@@ -1429,15 +1414,6 @@ const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementBy
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
-function refreshPracticeBanner(){
-const p=S.practices[S.prac];if(!p)return;
-const td=today();
-const te=S.entries.filter(e=>e.pId===S.prac&&e.entity===S.ent&&e.date===td);
-let tg=0;te.forEach(e=>tg+=e.gross);
-const comm=p.comm||0.35;
-document.getElementById('pBanA').textContent=fc(tg);
-document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% profit share)';
-}
 
 // ===== ARCHIVE ENTRY =====
 function doArchive(){
@@ -1453,8 +1429,6 @@ console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts'
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';document.getElementById('aoName').value='';selAddon('none');upAmt();
-// Refresh banner and today indicator without collapsing form
-setTimeout(()=>refreshPracticeBanner(),300);
 }
 function showDupMod(ex,pts,ao){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
@@ -1484,14 +1458,12 @@ async function addToDup(id,pts,ao){
     save();
     closeMod2();
     document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
-    refreshPracticeBanner();
     showToast('Syncing...',prcClass);
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
     if(result.success){ showToast('Updated — '+e.pts+' patients',prcClass); }
   } else {
     closeMod2();
-    refreshPracticeBanner();
   }
 }
 async function replaceDup(id){
