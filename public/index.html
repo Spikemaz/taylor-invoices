@@ -95,7 +95,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ae-mid{flex:1;min-width:0}
 .ae-svc{font-size:14px;font-weight:600;color:var(--txt)}
 .ae-pts{font-size:11px;color:var(--txt3)}
-.ae-amt{font-size:16px;font-weight:700;color:var(--txt);white-space:nowrap}
+.ae-amt{display:flex;align-items:center;gap:2px;background:var(--pri-dk);padding:4px 8px;border-radius:6px;white-space:nowrap}
+.ae-g{font-size:13px;font-weight:700;color:#fca5a5}
+.ae-sep{font-size:11px;color:rgba(255,255,255,.5)}
+.ae-n{font-size:13px;font-weight:700;color:#86efac}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:#FEE2E2;color:#EF4444}
 .ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;letter-spacing:.3px}
@@ -1803,17 +1806,19 @@ function refArc(){
     const entType=e.entity==='ltd'?'Ltd':'Self';
     const entClass=e.entity==='ltd'?'ltd':'self';
     const aoInfo=e.aoType&&e.aoAmt>0?' +'+e.aoType:'';
+    const net=e.pType==='contract'?(e.gross*(1-(e.comm||0))):e.gross;
     return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
       '<div class="ae-left"><div class="ae-prc">'+prcName+'</div><div class="ae-ent '+entClass+'">'+entType+'</div></div>'+
       '<div class="ae-mid"><div class="ae-svc">'+e.svc+'</div><div class="ae-pts">'+e.pts+' pts'+aoInfo+'</div></div>'+
-      '<div class="ae-amt">'+fc(e.gross)+'</div>'+
+      '<div class="ae-amt"><span class="ae-g">'+fc(e.gross)+'</span><span class="ae-sep">/</span><span class="ae-n">'+fc(net)+'</span></div>'+
       '</div></div>';
   }
 
   let html='';
 
-  // RECENT section (today's entries) - only show if there are entries today
+  // RECENT section (today's entries) - sort by newest added first
   if(todayEntries.length){
+    todayEntries.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
     html+='<div class="arc-section">Today <span class="sec-count">'+todayEntries.length+' entries</span></div>';
     html+='<div class="alist" style="margin-top:8px">'+todayEntries.map(renderEntry).join('')+'</div>';
   }
@@ -1862,6 +1867,8 @@ function refArc(){
         // Render each day group with outline
         Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
           const dayEntries=byDay[dayKey];
+          // Sort by patient count (highest first)
+          dayEntries.sort((a,b)=>(b.pts||0)-(a.pts||0));
           const dayDate=new Date(dayKey);
           const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           const dayNum=dayDate.getDate();
