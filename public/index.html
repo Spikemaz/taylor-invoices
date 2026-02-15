@@ -29,13 +29,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .screens{flex:1;overflow:hidden;position:relative}
 .scr{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;display:none;opacity:0;transform:translateX(20px);transition:opacity .25s,transform .25s}
 .scr.act{display:block;opacity:1;transform:translateX(0)}
-.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.pcard{background:var(--card);border-radius:var(--r);padding:14px 12px;text-align:center;cursor:pointer;border:3px solid var(--bdr);transition:all .2s;box-shadow:var(--sh);position:relative}
-.pcard:active{transform:scale(.97)}.pcard .ci{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin:0 auto 6px;font-weight:700}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.pcard{background:var(--card);border-radius:var(--r);padding:24px 16px;text-align:center;cursor:pointer;border:3px solid var(--bdr);transition:all .2s;box-shadow:var(--sh);position:relative;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pcard:active{transform:scale(.97)}.pcard .ci{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px;font-weight:700}
 .pcard.bupa{border-color:var(--bupa)}.pcard.bupa .ci{background:var(--bupa-lt);color:var(--bupa)}
 .pcard.grove{border-color:var(--grove)}.pcard.grove .ci{background:var(--grove-lt);color:var(--grove)}
 .pcard.adhoc{border-color:#EF4444}.pcard.adhoc .ci{background:#FEE2E2;color:#EF4444}
-.cn{font-size:14px;font-weight:600;margin-bottom:2px}.cm{font-size:11px;color:var(--txt2)}
+.cn{font-size:16px;font-weight:600;margin-bottom:4px}.cm{font-size:12px;color:var(--txt2)}
 .cs{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--txt3)}.cs.on{background:var(--ok)}
 .banner{background:linear-gradient(135deg,var(--pri-dk),var(--pri));color:#fff;border-radius:var(--r);padding:10px 14px;margin-bottom:0}
 .banner h3{font-size:12px;font-weight:600;margin-bottom:6px;text-align:center}
