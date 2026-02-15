@@ -53,11 +53,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .sbtn .ph{display:block;font-size:11px;font-weight:400;color:var(--txt2);margin-top:2px}.sbtn.sel .ph{color:inherit}
 .stg{background:var(--card);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;border:3px solid var(--bdr)}
 .stg.prc-bupa{border-color:var(--bupa)}.stg.prc-grove{border-color:var(--grove)}.stg.prc-adhoc{border-color:#EF4444}
-.stg .sl{font-size:12px;font-weight:500;color:var(--txt2);margin-bottom:6px;display:flex;justify-content:space-between}
-.stp{display:flex;align-items:center;justify-content:center;gap:12px}
-.stpb{width:48px;height:48px;border-radius:50%;border:2px solid var(--bdr);background:var(--card);font-size:22px;font-weight:500;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--f);user-select:none;-webkit-user-select:none}
-.stpb:active{background:var(--grove-lt);border-color:var(--pri);transform:scale(.93)}
-.stpv{font-size:26px;font-weight:700;min-width:90px;text-align:center;letter-spacing:-1px;cursor:pointer;padding:4px 8px;border-radius:var(--rs);border:2px solid transparent;background:0;color:var(--txt);font-family:var(--f)}
+.stg .sl{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:flex;justify-content:center}
+.stp{display:flex;align-items:stretch;justify-content:center;gap:0}
+.stpb{flex:1;max-width:80px;height:70px;border-radius:var(--rs);border:2px solid var(--bdr);background:var(--card);font-size:28px;font-weight:500;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--f);user-select:none;-webkit-user-select:none}
+.stpb:active{background:var(--grove-lt);border-color:var(--pri);transform:scale(.97)}
+.stpv{flex:1;max-width:120px;height:70px;font-size:28px;font-weight:700;text-align:center;letter-spacing:-1px;cursor:pointer;padding:4px 8px;border-radius:var(--rs);border:3px solid var(--bdr);background:var(--bg);color:var(--txt);font-family:var(--f);display:flex;align-items:center;justify-content:center}
 .stpv:focus{outline:0;border-color:var(--pri);background:var(--grove-lt)}
 .amtd{background:var(--grove-lt);border:2px solid var(--pri);border-radius:var(--r);padding:10px 16px;text-align:center;margin:10px 0}
 .amtd .lb{font-size:11px;color:var(--pri);font-weight:500}.amtd .vl{font-size:28px;font-weight:700;color:var(--pri-dk);letter-spacing:-1px}.amtd .cl{font-size:11px;color:var(--acc);margin-top:2px}
@@ -223,12 +223,12 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="sh">Service Type</div>
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
-<div class="stg"><div class="sl"><span>Patients</span><span id="ptH"></span></div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
-<div class="stg"><div class="sl"><span>Price per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
+<div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
+<div class="stg"><div class="sl">Price per Patient</div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
 <div class="stg" id="aoG" style="margin-top:12px">
-<div class="sl"><span>Add-on</span><span id="aoTypeLbl"></span></div>
+<div class="sl">Add-on</div>
 <div class="sgrid" id="aoTypeGrid" style="margin-bottom:10px">
 <button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
 <button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
@@ -236,7 +236,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div id="aoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="aoAmtRow" style="display:none"><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
 </div>
-<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
+<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="dLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
 </div>
 </div>
 
@@ -254,23 +254,23 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="sbtn sel" onclick="selAhSvc('Hygiene')" data-s="Hygiene">Hygiene<span class="ph" id="ahHH">£25/pt</span></button>
 <button class="sbtn" onclick="selAhSvc('Perio')" data-s="Perio">Perio<span class="ph">£160/pt</span></button>
 </div>
-<div class="stg"><div class="sl"><span>Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">−</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
-<div class="stg"><div class="sl"><span>Rate per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
+<div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">−</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
+<div class="stg"><div class="sl">Rate per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
 <button class="abtn" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" id="ahAoG" style="margin-top:12px">
-<div class="sl"><span>Add-on</span><span id="ahAoTypeLbl"></span></div>
+<div class="sl">Add-on</div>
 <div class="sgrid" id="ahAoTypeGrid" style="margin-bottom:10px">
 <button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow">Airflow</button>
 <button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom">Custom</button>
 </div>
 <div id="ahAoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="ahAoAmtRow" style="display:none">
-<div class="stg"><div class="sl"><span>Add-on per Patient</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
-<div class="stg"><div class="sl"><span>Add-on Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+<div class="stg"><div class="sl">Add-on per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
+<div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
 </div>
 </div>
-<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="margin-top:6px"></div>
+<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="ahDLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="margin-top:6px"></div>
 </div>
 </div>
 
