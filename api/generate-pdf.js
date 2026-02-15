@@ -181,7 +181,7 @@ module.exports = async (req, res) => {
     if (!inv.isAdhoc) {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(107, 114, 128);
-      doc.text('Commission @ ' + (inv.commRate || '0') + '%', 300, y);
+      doc.text('Profit Share ' + (inv.commRate || '0') + '%', 300, y);
       y += 22;
     }
 
