@@ -16,8 +16,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 #app{height:100%;display:flex;flex-direction:column;padding-top:var(--st);padding-bottom:var(--sb)}
 .hdr{background:var(--pri-dk);color:#fff;padding:8px 10px;display:flex;align-items:center;gap:6px;z-index:100;min-height:56px;box-sizing:border-box}
 .hdr-left{display:flex;align-items:center;gap:6px;min-width:80px;flex-shrink:1}
-.hdr-back{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;font-size:16px;padding:0;cursor:pointer;border-radius:8px;transition:background .2s;width:36px;height:36px;display:none;align-items:center;justify-content:center;flex-shrink:0}
-.hdr-back:active{background:rgba(255,255,255,.25)}.hdr-back.vis{display:flex}
+.hdr-back{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;font-size:16px;padding:0;cursor:pointer;border-radius:8px;transition:background .2s;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.hdr-back:active{background:rgba(255,255,255,.25)}
 .hdr-brand{display:flex;flex-direction:column;line-height:1.15;justify-content:center;flex-shrink:1;flex:1;min-width:0}
 .hdr-t{font-size:14px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tm{font-size:8px;font-weight:400;opacity:.7;vertical-align:top;position:relative;top:-1px;margin-left:1px}
 .hdr-e{font-size:9px;opacity:.7;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -185,7 +185,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div id="app">
 <div class="hdr">
 <div class="hdr-left">
-<button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
+<button class="hdr-back" id="backBtn">£</button>
 <div class="hdr-brand">
 <span class="hdr-t" id="hdrT">Books IQ<span class="tm">™</span></span>
 <span class="hdr-e" id="hdrE">Self-Employed</span>
@@ -1252,7 +1252,7 @@ function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classL
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
-b.classList.toggle('vis',s!=='home');}
+b.innerHTML=s==='home'?'£':'&#8592;';b.onclick=s==='home'?null:goBack;}
 
 // ===== HOME =====
 function upHome(){
