@@ -34,9 +34,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .cn{font-size:15px;font-weight:600;margin-bottom:4px}.cm{font-size:12px;color:var(--txt2)}
 .cs{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--txt3)}.cs.on{background:var(--ok)}
 .banner{background:linear-gradient(135deg,var(--pri-dk),var(--pri));color:#fff;border-radius:var(--r);padding:12px 16px;margin-bottom:4px}
-.banner h3{font-size:11px;font-weight:500;opacity:.8;margin-bottom:6px}.banner .amt{font-size:24px;font-weight:700;letter-spacing:-1px}.banner .sub{font-size:11px;opacity:.8;margin-top:2px}
-.hb-row{margin-bottom:4px}.hb-lbl{font-size:11px;opacity:.7;margin-right:6px}.hb-val{font-size:14px;font-weight:600}
-.hb-split{display:flex;gap:12px}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:10px;opacity:.7}.hb-col .hb-val{font-size:12px;font-weight:600}
+.banner h3{font-size:13px;font-weight:600;margin-bottom:8px;text-align:center}.banner .amt{font-size:24px;font-weight:700;letter-spacing:-1px}.banner .sub{font-size:11px;opacity:.8;margin-top:2px}
+.hb-row{margin-bottom:6px;text-align:center}.hb-lbl{font-size:11px;font-weight:600;opacity:.85;display:block;margin-bottom:2px}.hb-val{font-size:16px;font-weight:700}
+.hb-split{display:flex;gap:12px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:10px;font-weight:600;opacity:.85;margin-bottom:2px}.hb-col .hb-val{font-size:14px;font-weight:700}
 .esw{display:flex;background:var(--card);border-radius:var(--rs);padding:3px;border:1px solid var(--bdr);margin-bottom:8px}
 .ebtn{flex:1;padding:8px 12px;border:0;background:0;font-size:12px;font-weight:500;color:var(--txt2);border-radius:6px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri);color:#fff}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
@@ -191,9 +191,9 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd Company</button>
 </div>
 <div class="banner" id="hBan">
-<h3 id="hBanM">Combined Income · February 2026</h3>
-<div class="hb-row" id="hBanMonth"><span class="hb-lbl">Monthly:</span><span class="hb-val">Gross £0 · Net £0</span></div>
-<div class="hb-split"><div class="hb-col" id="hBanDay"><span class="hb-lbl">Today:</span><span class="hb-val">G £0 · N £0</span></div><div class="hb-col" id="hBanWeek"><span class="hb-lbl">Weekly:</span><span class="hb-val">G £0 · N £0</span></div></div>
+<h3 id="hBanM">February 2026</h3>
+<div class="hb-row" id="hBanMonth"><span class="hb-lbl">Monthly</span><span class="hb-val">Gross £0 · Net £0</span></div>
+<div class="hb-split"><div class="hb-col" id="hBanDay"><span class="hb-lbl">Daily</span><span class="hb-val">Gross £0 · Net £0</span></div><div class="hb-col" id="hBanWeek"><span class="hb-lbl">Weekly</span><span class="hb-val">Gross £0 · Net £0</span></div></div>
 </div>
 <div class="pgrid">
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
@@ -383,6 +383,7 @@ function setNextInv(n){if(S.ent==='ltd')S.nextInvLtd=n;else S.nextInvSelf=n;}
 
 // ===== HELPERS =====
 const fc=v=>'£'+Math.abs(v).toFixed(2);
+const fw=v=>'£'+Math.floor(Math.abs(v));
 const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
@@ -1228,13 +1229,13 @@ b.classList.toggle('vis',s!=='home');}
 function upHome(){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid');return;}
 const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-document.getElementById('hBanM').textContent='Combined Income · '+mn;
+document.getElementById('hBanM').textContent=mn;
 const me=getMonth(n.getFullYear(),n.getMonth());
 var entMe=me.filter(function(e){return e.entity===S.ent});
 // Monthly gross and net
 let mGross=0,mNet=0;
 entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
-document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly:</span><span class="hb-val">Gross '+fc(mGross)+' · Net '+fc(mNet)+'</span>';
+document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-val">Gross '+fw(mGross)+' · Net '+fw(mNet)+'</span>';
 // Daily calc
 var td=today();
 var dayEntries=entMe.filter(function(e){return e.date===td});
@@ -1247,8 +1248,8 @@ var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wGross=0,wNet=0;
 weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
-document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Today:</span><span class="hb-val">G '+fc(dGross)+' · N '+fc(dNet)+'</span>';
-document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly:</span><span class="hb-val">G '+fc(wGross)+' · N '+fc(wNet)+'</span>';
+document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Daily</span><span class="hb-val">Gross '+fw(dGross)+' · Net '+fw(dNet)+'</span>';
+document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly</span><span class="hb-val">Gross '+fw(wGross)+' · Net '+fw(wNet)+'</span>';
 var te=S.entries.filter(e=>e.date===td);
 var _st;
 _st=document.getElementById('buSt')||document.getElementById('bupaSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='bupa')?' on':'');
