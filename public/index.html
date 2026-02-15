@@ -15,8 +15,8 @@
 html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%;overflow:hidden;-webkit-font-smoothing:antialiased}
 #app{height:100%;display:flex;flex-direction:column;padding-top:var(--st);padding-bottom:var(--sb)}
 .hdr{background:var(--pri-dk);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:100;height:52px;box-sizing:border-box}
-.hdr-back{background:0;border:0;color:#fff;font-size:18px;padding:6px;margin:-6px;cursor:pointer;display:none;border-radius:50%;transition:background .2s;flex-shrink:0}
-.hdr-back:active{background:rgba(255,255,255,.15)}.hdr-back.vis{display:flex}
+.hdr-back{background:0;border:0;color:#fff;font-size:18px;padding:6px;cursor:pointer;border-radius:50%;transition:background .2s,opacity .2s;flex-shrink:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none}
+.hdr-back:active{background:rgba(255,255,255,.15)}.hdr-back.vis{opacity:1;pointer-events:auto}
 .hdr-brand{display:flex;flex-direction:column;line-height:1.2;height:32px;justify-content:center;overflow:hidden;flex-shrink:0;min-width:70px}
 .hdr-t{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}.tm{font-size:9px;font-weight:400;opacity:.7;vertical-align:top;position:relative;top:-2px;margin-left:1px}
 .hdr-e{font-size:10px;opacity:.7;font-weight:500}
