@@ -20,10 +20,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .hdr-brand{display:flex;flex-direction:column;line-height:1.2;height:32px;justify-content:center;overflow:hidden;flex-shrink:0;min-width:70px}
 .hdr-t{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}.tm{font-size:9px;font-weight:400;opacity:.7;vertical-align:top;position:relative;top:-2px;margin-left:1px}
 .hdr-e{font-size:10px;opacity:.7;font-weight:500}
-.hdr-nav{display:flex;gap:4px;align-items:center;margin-left:auto}
-.hdr-btn{background:rgba(255,255,255,.15);border:0;color:#fff;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--f)}
+.hdr-nav{display:flex;gap:6px;align-items:center;margin-left:auto}
+.hdr-btn{background:rgba(255,255,255,.15);border:0;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--f);min-height:34px}
 .hdr-btn:active{background:rgba(255,255,255,.25)}
 .hdr-btn.act{background:rgba(255,255,255,.35);box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+.hdr-btn.sm{padding:6px 10px;font-size:14px;min-height:30px}
 .screens{flex:1;overflow:hidden;position:relative}
 .scr{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;display:none;opacity:0;transform:translateX(20px);transition:opacity .25s,transform .25s}
 .scr.act{display:block;opacity:1;transform:translateX(0)}
@@ -185,7 +186,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-btn" id="navHome" onclick="goHome()">Home</button>
 <button class="hdr-btn" id="navArchive" onclick="showScreen('archive')">Archive</button>
 <button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')">Invoice</button>
-<button class="hdr-btn" id="navSettings" onclick="showScreen('settings')">&#9881;</button>
+<button class="hdr-btn sm" id="navSettings" onclick="showScreen('settings')">&#9881;</button>
 </div>
 </div>
 
