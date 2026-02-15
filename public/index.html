@@ -1805,17 +1805,13 @@ function refArc(){
 
   let html='';
 
-  // RECENT section (today's entries)
-  html+='<div class="arc-section">Recent <span class="sec-count">'+todayEntries.length+' entries</span></div>';
+  // RECENT section (today's entries) - only show if there are entries today
   if(todayEntries.length){
+    html+='<div class="arc-section">Today <span class="sec-count">'+todayEntries.length+' entries</span></div>';
     html+='<div class="alist" style="margin-top:8px">'+todayEntries.map(renderEntry).join('')+'</div>';
-  }else{
-    html+='<div style="padding:16px;color:var(--txt3);font-size:13px">No entries today</div>';
   }
 
-  // PAST ENTRIES section
-  html+='<div class="arc-section" style="margin-top:20px">Past Entries <span class="sec-count">'+pastEntries.length+' entries</span></div>';
-
+  // Monthly folders (no separate "Past Entries" header - just show months directly)
   if(pastEntries.length){
     // Render each month as collapsible folder
     Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
@@ -1854,8 +1850,6 @@ function refArc(){
 
       html+='</div>';
     });
-  }else{
-    html+='<div style="padding:16px;color:var(--txt3);font-size:13px">No past entries</div>';
   }
 
   c.innerHTML=html;
