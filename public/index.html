@@ -246,8 +246,18 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="sl"><span>Rate per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
 <button class="abtn" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
-<div class="stg" style="margin-top:12px"><div class="sl"><span>Airflow (per patient)</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
-<div class="stg" id="ahApG"><div class="sl"><span>Airflow Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+<div class="stg" id="ahAoG" style="margin-top:12px">
+<div class="sl"><span>Add-on</span><span id="ahAoTypeLbl"></span></div>
+<div class="sgrid" id="ahAoTypeGrid" style="margin-bottom:10px">
+<button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow">Airflow</button>
+<button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom">Custom</button>
+</div>
+<div id="ahAoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
+<div id="ahAoAmtRow" style="display:none">
+<div class="stg"><div class="sl"><span>Add-on per Patient</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
+<div class="stg"><div class="sl"><span>Add-on Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+</div>
+</div>
 <div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="margin-top:6px"></div>
 </div>
 </div>
@@ -1477,10 +1487,12 @@ let ahSvc='Hygiene';
 function popAh(){const s=document.getElementById('ahSel');s.innerHTML='<option value="">Choose a practice...</option>';S.ahPrac.filter(p=>p.active).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.appendChild(o);});document.getElementById('ahForm').style.display='none';document.getElementById('ahES').className='ebtn'+(S.ent==='self'?' act':'');document.getElementById('ahEL').className='ebtn'+(S.ent==='ltd'?' act':'');}
 function onAhChange(){const id=document.getElementById('ahSel').value;if(!id){document.getElementById('ahForm').style.display='none';return;}
 const p=S.ahPrac.find(x=>x.id===id);if(!p)return;document.getElementById('ahForm').style.display='block';
-document.getElementById('arv').value=fc(p.rate);document.getElementById('aao').value=fc(p.air||0);
+document.getElementById('arv').value=fc(p.rate);document.getElementById('aao').value='£0.00';
 document.getElementById('ap').value='0';document.getElementById('aap').value='0';
 document.getElementById('ahHH').textContent=fc(p.rate)+'/pt';
-document.getElementById('ahApG').style.display=p.air>0?'block':'none';
+// Reset add-on selector
+selAhAddon('none');
+document.getElementById('ahAoName').value='';
 // Apply Ad Hoc (red) color to stepper groups and date input
 document.querySelectorAll('#ahForm .stg').forEach(el=>{
   el.classList.remove('prc-bupa','prc-grove','prc-adhoc');
@@ -1499,6 +1511,38 @@ function selAhSvc(nm){ahSvc=nm;document.querySelectorAll('#ahSGrid .sbtn').forEa
 if(nm==='Perio')document.getElementById('arv').value='£160.00';
 else{const id=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===id);if(p)document.getElementById('arv').value=fc(p.rate);}
 upAhAmt();}
+let ahAoType=null;
+function selAhAddon(type){
+const amtRow=document.getElementById('ahAoAmtRow');
+const customName=document.getElementById('ahAoCustomName');
+const lbl=document.getElementById('ahAoTypeLbl');
+const btn=document.querySelector('#ahAoTypeGrid [data-ao="'+type+'"]');
+// Toggle off if already selected, or clear selection
+if(type==='none'||(btn&&btn.classList.contains('sel'))){
+  ahAoType=null;
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  amtRow.style.display='none';customName.style.display='none';
+  document.getElementById('aao').value='£0.00';document.getElementById('aap').value='0';lbl.textContent='';
+}else if(type==='Airflow'){
+  ahAoType='Airflow';
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  btn.classList.add('sel','prc-adhoc');
+  amtRow.style.display='block';customName.style.display='none';
+  lbl.textContent='± £1';
+  // Set default airflow rate from practice
+  const pId=document.getElementById('ahSel').value;
+  const p=S.ahPrac.find(x=>x.id===pId);
+  if(p&&p.air)document.getElementById('aao').value=fc(p.air);
+}else{
+  ahAoType='custom';
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  btn.classList.add('sel','prc-adhoc');
+  amtRow.style.display='block';customName.style.display='block';
+  lbl.textContent='± £1';
+  document.getElementById('ahAoName').focus();
+}
+upAhAmt();
+}
 function adjAh(id,d){const el=document.getElementById(id);if(id==='ap'||id==='aap'){const mx=id==='aap'?parseInt(document.getElementById('ap').value)||0:999;el.value=Math.max(0,Math.min(mx,(parseInt(el.value)||0)+d));}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAhAmt();}
 function upAhAmt(){const pts=parseInt(document.getElementById('ap').value)||0,rate=pc(document.getElementById('arv').value),air=pc(document.getElementById('aao').value),airPts=parseInt(document.getElementById('aap').value)||0;
 const t=(pts*rate)+(airPts*air);document.getElementById('ahTot').textContent=fc(t);document.getElementById('ahArcBtn').disabled=pts===0;}
@@ -1508,11 +1552,13 @@ if(!pts)return;const gr=(pts*rate)+(airPts*air);
 // Check for duplicate (same date, practice, service, rate, entity)
 const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
-const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:airPts>0?'Airflow':null,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,createdAt:new Date().toISOString()};
+// Get add-on type name (Airflow, custom name, or null)
+const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoName').value||'Add-on'):ahAoType):null;
+const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
-document.getElementById('ap').value='0';document.getElementById('aap').value='0';upAhAmt();}
+document.getElementById('ap').value='0';document.getElementById('aap').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
 function showAhDupMod(ex,pts,air,airPts){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
