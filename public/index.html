@@ -324,7 +324,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="ssec">
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
 <div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
-<div class="srow" onclick="editDefaultComm()"><span class="la">Default Commission</span><span class="va" id="sDefComm">50%</span></div>
+<div class="srow" onclick="editDefaultComm()"><span class="la">Default Profit Share</span><span class="va" id="sDefComm">50%</span></div>
 <div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
 </div>
 <div class="ssec" id="svcSettings"></div>
@@ -1305,7 +1305,7 @@ function switchEntity(t){
     let tg=0;te.forEach(e=>tg+=e.gross);
     const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
     if(pBanA)pBanA.textContent=fc(tg);
-    if(pBanS)pBanS.textContent='Net: '+fc(tg*pComm)+' ('+(pComm*100).toFixed(0)+'% comm)';
+    if(pBanS)pBanS.textContent='Net: '+fc(tg*pComm)+' ('+(pComm*100).toFixed(0)+'% profit share)';
   }
 
   // Update home screen totals if visible
@@ -1336,7 +1336,7 @@ const te=S.entries.filter(e=>e.pId===id&&e.entity===S.ent&&e.date===td);
 let tg=0;te.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
 document.getElementById('pBanA').textContent=fc(tg);
-document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% comm)';
+document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% profit share)';
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
@@ -1393,7 +1393,7 @@ upAmt();
 }
 function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value);
 const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
-const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Commission @'+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
+const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Profit Share '+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
@@ -1404,7 +1404,7 @@ const te=S.entries.filter(e=>e.pId===S.prac&&e.entity===S.ent&&e.date===td);
 let tg=0;te.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
 document.getElementById('pBanA').textContent=fc(tg);
-document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% comm)';
+document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% profit share)';
 }
 
 // ===== ARCHIVE ENTRY =====
@@ -1625,7 +1625,7 @@ _h+='<div class="fg"><label class="fl">Short Name (for display)</label><input cl
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="npAddr" rows="2" placeholder="Full address"></textarea></div>';
 // Contracted-only fields
 _h+='<div id="npContractFields">';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="npComm" type="number" value="35" min="0" max="100"></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="npComm" type="number" value="35" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="npDays" placeholder="e.g. 1,4"></div></div>';
 _h+='<div class="fg"><label class="fl">Services (name:price)</label><input class="fi" id="npSvcs" placeholder="Hygiene:70,Perio:160"></div>';
 _h+='</div>';
@@ -2006,7 +2006,7 @@ var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
 var prcClass=getPrcClass(pid,'contract');
 mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
-'<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Commission<strong>'+fc(cm)+'</strong></div></div>'+
+'<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Profit Share<strong>'+fc(cm)+'</strong></div></div>'+
 '<div class="ia">';
 if(pe.length>1){
   mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
@@ -2280,7 +2280,7 @@ Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
 Object.entries(addons).forEach(([aType,aAmt])=>{html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+aType+'</td><td style="padding:6px 4px;font-size:12px">Add-on</td><td colspan="2"></td><td style="text-align:right;padding:6px 4px;font-size:12px">'+aAmt.toFixed(2)+'</td></tr>';});
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Gross Total</td><td style="text-align:right;padding:6px 4px;font-size:13px;font-weight:700">'+fc(tg)+'</td></tr>';
-html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Commission @'+(pComm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
+html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Profit Share '+(pComm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Balance Due</td><td style="text-align:right;padding:6px 4px;font-size:15px;font-weight:700;color:var(--pri-dk)">'+fc(cm)+'</td></tr>';
 html+='</table>';
 html+='<div style="margin-top:20px;padding-top:12px;border-top:1px solid var(--bdr);font-size:11px;color:var(--txt2)">';
@@ -2664,7 +2664,7 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="'+((p.comm||0)*100).toFixed(0)+'" min="0" max="100"></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="'+((p.comm||0)*100).toFixed(0)+'" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" value="'+svcsStr+'"></div>';
@@ -2688,7 +2688,7 @@ _h+='<div class="fg"><label class="fl">Short Name (for display)</label><input cl
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="2" placeholder="Full address..."></textarea></div>';
 // Contracted-only fields
 _h+='<div id="ePContractFields">';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Commission %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" placeholder="e.g. 1,3,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price)</label><input class="fi" id="ePSvcs" placeholder="e.g. Hygiene:70, Perio:160"></div>';
 _h+='</div>';
@@ -2858,8 +2858,8 @@ save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');}
 },50);
 }
 function editDefaultComm(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Default Commission Rate</h3>';
-_h+='<div class="fg"><label class="fl">Commission Percentage</label><input class="fi" id="_dcVal" type="number" min="0" max="100" value="'+(S.defComm||50)+'"></div>';
+var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Default Profit Share Rate</h3>';
+_h+='<div class="fg"><label class="fl">Profit Share Percentage</label><input class="fi" id="_dcVal" type="number" min="0" max="100" value="'+(S.defComm||50)+'"></div>';
 _h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">Used as default for new practices</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_dcC">Cancel</button><button class="btn btn-p" id="_dcS">Save</button></div>';
 showModal(_h);
@@ -2867,7 +2867,7 @@ setTimeout(function(){
 document.getElementById('_dcC').onclick=function(){closeMod2()};
 document.getElementById('_dcS').onclick=function(){
 S.defComm=parseInt(document.getElementById('_dcVal').value)||50;
-save();closeMod2();refreshSettings();showToast('\u2713 Default commission updated');};
+save();closeMod2();refreshSettings();showToast('\u2713 Default profit share updated');};
 },50);
 }
 function viewLogo(ent){
@@ -3069,7 +3069,7 @@ if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);fon
 
 function exportCSV(){
 if(!S.entries.length){showToast('No data to export');return;}
-let csv='Date,Practice,Service,Patients,Price,Addon,Gross,Commission%,CommissionAmt,Status,InvoiceNo\n';
+let csv='Date,Practice,Service,Patients,Price,Addon,Gross,ProfitShare%,ProfitShareAmt,Status,InvoiceNo\n';
 S.entries.forEach(e=>{csv+=e.date+','+e.pName+','+e.svc+','+e.pts+','+e.uPrice+','+(e.aoAmt||0)+','+e.gross+','+(e.comm*100).toFixed(0)+'%,'+e.commAmt+','+e.invSt+','+(e.invNo||'')+' \n';});
 const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taylor_invoices_backup.csv';a.click();showToast('✓ CSV downloaded');}
 
@@ -3178,7 +3178,7 @@ y += 18;
 
 if (!inv.isAdhoc) {
   doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
-  doc.text('Commission @ ' + (inv.commRate || '0') + '%', 300, y);
+  doc.text('Profit Share ' + (inv.commRate || '0') + '%', 300, y);
   y += 22;
 }
 
