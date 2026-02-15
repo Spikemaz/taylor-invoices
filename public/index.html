@@ -58,7 +58,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .stp{display:flex;align-items:stretch;justify-content:center;gap:0}
 .stpb{flex:1;max-width:80px;height:70px;border-radius:var(--rs);border:2px solid var(--bdr);background:var(--card);font-size:28px;font-weight:500;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--f);user-select:none;-webkit-user-select:none}
 .stpb:active{background:var(--pri-bg);border-color:var(--pri);transform:scale(.97)}
-.stpv{flex:1;max-width:120px;height:70px;font-size:28px;font-weight:700;text-align:center;letter-spacing:-1px;cursor:pointer;padding:4px 8px;border-radius:var(--rs);border:3px solid var(--bdr);background:var(--bg);color:var(--txt);font-family:var(--f);display:flex;align-items:center;justify-content:center}
+.stpv{flex:1;max-width:120px;height:70px;font-size:16px;font-weight:700;text-align:center;letter-spacing:-1px;cursor:pointer;padding:4px 8px;border-radius:var(--rs);border:3px solid var(--bdr);background:var(--bg);color:var(--txt);font-family:var(--f);display:flex;align-items:center;justify-content:center}
 .stpv:focus{outline:0;border-color:var(--pri);background:var(--pri-bg)}
 .amtd{background:var(--pri-bg);border:3px solid var(--pri);border-radius:var(--r);padding:10px 16px;text-align:center;margin:10px 0}
 .amtd .lb{font-size:11px;color:var(--pri);font-weight:500}.amtd .vl{font-size:28px;font-weight:700;color:var(--pri-dk);letter-spacing:-1px}.amtd .cl{font-size:11px;color:var(--acc);margin-top:2px}
@@ -231,7 +231,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
 <div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
-<div class="stg"><div class="sl">Price per Patient</div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
+<div class="stg"><div class="sl">Price per Patient</div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
 <div class="stg" id="aoG" style="margin-top:12px">
@@ -241,7 +241,10 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
 </div>
 <div id="aoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
-<div id="aoAmtRow" style="display:none"><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
+<div id="aoAmtRow" style="display:none">
+<div class="stg"><div class="sl">Add-on Rate<span id="aoTypeLbl" style="margin-left:8px;font-weight:400;opacity:.7"></span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£9.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
+<div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adj('aoPts',-1)">−</button><input class="stpv" id="aoPts" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('aoPts',1)">+</button></div></div>
+</div>
 </div>
 <div class="stg" style="margin-top:12px"><div class="sl">Date<span id="dLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
 </div>
@@ -262,7 +265,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="sbtn" onclick="selAhSvc('Perio')" data-s="Perio">Perio<span class="ph">£160/pt</span></button>
 </div>
 <div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">−</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
-<div class="stg"><div class="sl">Rate per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
+<div class="stg"><div class="sl">Rate per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
 <button class="abtn prc-adhoc" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd prc-adhoc" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" id="ahAoG" style="margin-top:12px">
@@ -273,7 +276,7 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 <div id="ahAoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="ahAoAmtRow" style="display:none">
-<div class="stg"><div class="sl">Add-on per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
+<div class="stg"><div class="sl">Add-on per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
 <div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
 </div>
 </div>
@@ -1395,9 +1398,10 @@ if(prcClass)arcBtn.classList.add(prcClass);
 const amtd=document.querySelector('#logForm .amtd');
 if(amtd){amtd.classList.remove('prc-bupa','prc-grove','prc-adhoc');if(prcClass)amtd.classList.add(prcClass);}
 document.getElementById('logForm').style.display='block';
-document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';
+document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';
 document.getElementById('aoName').value='';selAddon('none');upAmt();}
-function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
+function fmtPrice(el){const v=pc(el.value);el.value=fc(v);}
+function adj(id,d){const el=document.getElementById(id);if(id==='pt'||id==='aoPts'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
 function selAddon(type){
 const amtRow=document.getElementById('aoAmtRow');
 const customName=document.getElementById('aoCustomName');
@@ -1410,7 +1414,7 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   S.aoType=null;
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
   amtRow.style.display='none';customName.style.display='none';
-  document.getElementById('ao').value='£0.00';lbl.textContent='';
+  document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';lbl.textContent='';
 }else if(type==='Airflow'){
   S.aoType='Airflow';
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
@@ -1427,8 +1431,8 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
 }
 upAmt();
 }
-function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value);
-const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
+function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),aoRate=pc(document.getElementById('ao').value),aoPts=parseInt(document.getElementById('aoPts').value)||0;
+const ao=aoRate*aoPts;const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Profit Share '+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
@@ -1438,16 +1442,17 @@ function upAhDLbl(){const el=document.getElementById('ahDt');document.getElement
 function doArchive(){
 const p=S.practices[S.prac];if(!p||!S.svc)return;
 const pComm=p.comm||0.35;
-const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value),dt=document.getElementById('logDt').value;
+const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),aoRate=pc(document.getElementById('ao').value),aoPts=parseInt(document.getElementById('aoPts').value)||0,dt=document.getElementById('logDt').value;
+const ao=aoRate*aoPts;
 if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
 const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').value||'Add-on'):S.aoType):null;
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
-document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';document.getElementById('aoName').value='';selAddon('none');upAmt();
+document.getElementById('pt').value='0';document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
