@@ -44,6 +44,11 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .hb-split{display:flex;gap:10px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:8px;font-weight:600;opacity:.85;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:16px;font-weight:800;letter-spacing:-.5px;display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
 .esw{display:flex;background:var(--card);border-radius:var(--rs);padding:2px;border:1px solid var(--bdr);margin-bottom:6px}
 .ebtn{flex:1;padding:6px 10px;border:0;background:0;font-size:11px;font-weight:500;color:var(--txt2);border-radius:5px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri);color:#fff}
+.msum{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:var(--card);border-radius:var(--rs);border:1px solid var(--bdr);margin-bottom:10px}
+.msl{font-size:11px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px}
+.msv{font-size:15px;font-weight:700;color:var(--txt)}
+.msd{font-size:13px;color:var(--txt3)}
+.msn{color:var(--pri-dk)}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
 .sbtn{padding:10px 12px;border:3px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--pri-bg);color:var(--pri-dk)}
@@ -227,6 +232,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn act" onclick="setPracticeEntity('self')" id="pES">Self-Employed</button>
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
+<div class="msum" id="pracMSum"><span class="msl">Monthly</span><span class="msv" id="pracMGross">£0</span><span class="msd">/</span><span class="msv msn" id="pracMNet">£0</span></div>
 <div class="sh">Service Type</div>
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
@@ -1370,10 +1376,20 @@ S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
+// Update monthly summary for this practice
+upPracMSum(id,p.comm||0);
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
+}
+function upPracMSum(pId,comm){
+const now=new Date();const y=now.getFullYear();const m=now.getMonth();
+const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId;});
+let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
+const net=gross*(1-comm);
+document.getElementById('pracMGross').textContent=fc(gross);
+document.getElementById('pracMNet').textContent=fc(net);
 }
 function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
 const prcClass=p.type==='adhoc'?'prc-adhoc':(S.prac==='bupa'?'prc-bupa':(S.prac==='grove'?'prc-grove':''));
@@ -1452,6 +1468,7 @@ const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract'
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
+upPracMSum(S.prac,pComm);
 document.getElementById('pt').value='0';document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
@@ -1482,6 +1499,7 @@ async function addToDup(id,pts,ao){
     save();
     closeMod2();
     document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
+    upPracMSum(e.pId,e.comm);
     showToast('Syncing...',prcClass);
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
