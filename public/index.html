@@ -18,7 +18,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .hdr-back{background:0;border:0;color:#fff;font-size:18px;padding:6px;margin:-6px;cursor:pointer;display:none;border-radius:50%;transition:background .2s}
 .hdr-back:active{background:rgba(255,255,255,.15)}.hdr-back.vis{display:flex}
 .hdr-brand{display:flex;flex-direction:column;line-height:1.2}
-.hdr-t{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.hdr-t{font-size:15px;font-weight:700;letter-spacing:-.3px}.tm{font-size:7px;font-weight:500;opacity:.6;vertical-align:super;margin-left:2px}
 .hdr-e{font-size:10px;opacity:.7;font-weight:500}
 .hdr-nav{display:flex;gap:4px;align-items:center;margin-left:auto}
 .hdr-btn{background:rgba(255,255,255,.15);border:0;color:#fff;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--f)}
@@ -175,7 +175,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="hdr">
 <button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
 <div class="hdr-brand">
-<span class="hdr-t" id="hdrT">Taylor Invoice Manager</span>
+<span class="hdr-t" id="hdrT">Invoice Manager<sup class="tm">TM</sup></span>
 <span class="hdr-e" id="hdrE">Self-Employed</span>
 </div>
 <div class="hdr-nav">
