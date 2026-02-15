@@ -84,13 +84,18 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
 .alist{display:flex;flex-direction:column;gap:6px}
-.aitem{background:var(--card);border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid var(--bdr);cursor:pointer;transition:all .15s}
+.aitem{background:var(--card);border-radius:6px;padding:10px 12px;display:flex;align-items:center;gap:12px;border-left:4px solid var(--bdr);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
 .aitem.prc-bupa{border-left-color:var(--bupa)}.aitem.prc-grove{border-left-color:var(--grove)}.aitem.prc-adhoc{border-left-color:#EF4444}
-.ae-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.ae-left{min-width:50px;text-align:center}
+.ae-prc{font-size:13px;font-weight:700;color:var(--txt)}
+.ae-ent{font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:2px;display:inline-block}
+.ae-ent.self{background:#E0F7FA;color:#0891B2}
+.ae-ent.ltd{background:#DCFCE7;color:#166534}
+.ae-mid{flex:1;min-width:0}
 .ae-svc{font-size:14px;font-weight:600;color:var(--txt)}
-.ae-pts{font-size:12px;color:var(--txt3);margin-left:auto}
-.ae-amt{font-size:15px;font-weight:700;color:var(--txt);margin-left:12px;white-space:nowrap}
+.ae-pts{font-size:11px;color:var(--txt3)}
+.ae-amt{font-size:16px;font-weight:700;color:var(--txt);white-space:nowrap}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:#FEE2E2;color:#EF4444}
 .ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;letter-spacing:.3px}
@@ -1794,10 +1799,13 @@ function refArc(){
   // Helper to render a single entry - simplified for mobile
   function renderEntry(e){
     const prcClass=getPrcClass(e);
-    const entBadge=e.entity==='ltd'?'<span class="ent-badge ltd">Ltd</span>':'';
+    const prcName=e.pType==='adhoc'?e.pName:(e.pId==='bupa'?'Bupa':(e.pId==='grove'?'Grove':e.pName));
+    const entType=e.entity==='ltd'?'Ltd':'Self';
+    const entClass=e.entity==='ltd'?'ltd':'self';
     const aoInfo=e.aoType&&e.aoAmt>0?' +'+e.aoType:'';
     return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
-      '<div class="ae-main"><span class="ae-svc">'+e.svc+'</span>'+entBadge+'<span class="ae-pts">'+e.pts+'pts'+aoInfo+'</span></div>'+
+      '<div class="ae-left"><div class="ae-prc">'+prcName+'</div><div class="ae-ent '+entClass+'">'+entType+'</div></div>'+
+      '<div class="ae-mid"><div class="ae-svc">'+e.svc+'</div><div class="ae-pts">'+e.pts+' pts'+aoInfo+'</div></div>'+
       '<div class="ae-amt">'+fc(e.gross)+'</div>'+
       '</div></div>';
   }
