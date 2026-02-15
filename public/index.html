@@ -83,16 +83,17 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .ubtn{background:rgba(255,255,255,.2);border:0;color:#fff;padding:4px 12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;font-family:var(--f);margin-left:8px}
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
-.alist{display:flex;flex-direction:column;gap:8px}
-.aitem{background:var(--card);border-radius:var(--rs);padding:14px 16px;display:flex;align-items:center;gap:12px;border:3px solid var(--bdr);cursor:pointer;transition:all .15s}
+.alist{display:flex;flex-direction:column;gap:6px}
+.aitem{background:var(--card);border-radius:6px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-left:4px solid var(--bdr);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
-.aitem.prc-bupa{border-color:var(--bupa)}.aitem.prc-grove{border-color:var(--grove)}.aitem.prc-adhoc{border-color:#EF4444}
-.aitem .db{min-width:44px;text-align:center}.aitem .db .dy{font-size:18px;font-weight:700;line-height:1}.aitem .db .mo{font-size:10px;color:var(--txt2);text-transform:uppercase;font-weight:500}
-.aitem .dt{flex:1}.aitem .dt .sv{font-size:14px;font-weight:600}.aitem .dt .pt{font-size:12px;color:var(--txt2)}
-.aitem .ac{text-align:right}.aitem .ac .gr{font-size:15px;font-weight:700}.aitem .ac .co{font-size:11px;color:var(--acc)}
+.aitem.prc-bupa{border-left-color:var(--bupa)}.aitem.prc-grove{border-left-color:var(--grove)}.aitem.prc-adhoc{border-left-color:#EF4444}
+.ae-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.ae-svc{font-size:14px;font-weight:600;color:var(--txt)}
+.ae-pts{font-size:12px;color:var(--txt3);margin-left:auto}
+.ae-amt{font-size:15px;font-weight:700;color:var(--txt);margin-left:12px;white-space:nowrap}
 .pbadge{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
 .pbadge.bupa{background:var(--bupa-lt);color:var(--bupa)}.pbadge.grove{background:var(--grove-lt);color:var(--grove)}.pbadge.adhoc{background:#FEE2E2;color:#EF4444}
-.ent-badge{font-size:10px;font-weight:700;padding:4px 8px;border-radius:4px;margin-left:8px;letter-spacing:.3px}
+.ent-badge{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;letter-spacing:.3px}
 .ent-badge.self{background:#E0F7FA;color:#0891B2}.ent-badge.ltd{background:#DCFCE7;color:#166534}
 .arc-section{font-size:16px;font-weight:700;color:var(--txt);padding:16px 0 10px;margin-top:12px;border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:8px}
 .arc-section:first-child{margin-top:0}
@@ -1790,17 +1791,15 @@ function refArc(){
     return '';
   }
 
-  // Helper to render a single entry
+  // Helper to render a single entry - simplified for mobile
   function renderEntry(e){
-    const ed=new Date(e.date);
-    const col=e.pType==='adhoc'?'adhoc':e.pId;
-    const entLabel=e.entity==='ltd'?'Ltd':'Self';
-    const entBadgeClass=e.entity==='ltd'?'ltd':'self';
     const prcClass=getPrcClass(e);
+    const entBadge=e.entity==='ltd'?'<span class="ent-badge ltd">Ltd</span>':'';
+    const aoInfo=e.aoType&&e.aoAmt>0?' +'+e.aoType:'';
     return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
-      '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
-      '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + '+(e.aoType||'Add-on'):'')+'</div></div>'+
-      '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
+      '<div class="ae-main"><span class="ae-svc">'+e.svc+'</span>'+entBadge+'<span class="ae-pts">'+e.pts+'pts'+aoInfo+'</span></div>'+
+      '<div class="ae-amt">'+fc(e.gross)+'</div>'+
+      '</div></div>';
   }
 
   let html='';
@@ -1856,10 +1855,13 @@ function refArc(){
         Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
           const dayEntries=byDay[dayKey];
           const dayDate=new Date(dayKey);
-          const dayLabel=dayDate.getDate()+' '+dayDate.toLocaleString('en-GB',{month:'short'});
+          const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const dayNum=dayDate.getDate();
+          const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+          const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
           html+='<div class="day-group" style="border:2px solid '+prcColor+';border-radius:var(--rs);margin:6px 0;overflow:hidden">';
-          html+='<div style="background:'+prcColor+';color:#fff;padding:4px 10px;font-size:11px;font-weight:600">'+dayLabel+' <span style="opacity:.7;font-weight:400">('+dayEntries.length+' entries)</span></div>';
-          html+='<div style="padding:4px">'+dayEntries.map(renderEntry).join('')+'</div>';
+          html+='<div style="background:'+prcColor+';color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
+          html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
           html+='</div>';
         });
         html+='</div>';
