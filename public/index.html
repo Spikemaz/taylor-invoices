@@ -1291,12 +1291,12 @@ function switchEntity(t){
     const p=S.practices[S.prac];
     if(!p)return;
     const pComm=p.comm||0.35;
-    const n=new Date();
-    const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&e.entity===S.ent);
-    let tg=0;me.forEach(e=>tg+=e.gross);
+    const td=today();
+    const te=S.entries.filter(e=>e.pId===S.prac&&e.entity===S.ent&&e.date===td);
+    let tg=0;te.forEach(e=>tg+=e.gross);
     const pBanA=document.getElementById('pBanA'),pBanS=document.getElementById('pBanS');
-    if(pBanA)pBanA.textContent=fc(tg*pComm);
-    if(pBanS)pBanS.textContent=fc(tg)+' gross · '+(pComm*100).toFixed(0)+'% commission';
+    if(pBanA)pBanA.textContent=fc(tg);
+    if(pBanS)pBanS.textContent='Net: '+fc(tg*pComm)+' ('+(pComm*100).toFixed(0)+'% comm)';
   }
 
   // Update home screen totals if visible
@@ -1321,13 +1321,13 @@ S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
-const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-document.getElementById('pBanT').textContent=p.short+' — '+mn;
-const me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===id&&e.entity===S.ent);
-let tg=0;me.forEach(e=>tg+=e.gross);
+document.getElementById('pBanT').textContent="Today's Gross Total";
+const td=today();
+const te=S.entries.filter(e=>e.pId===id&&e.entity===S.ent&&e.date===td);
+let tg=0;te.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
-document.getElementById('pBanA').textContent=fc(tg*comm);
-document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
+document.getElementById('pBanA').textContent=fc(tg);
+document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% comm)';
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
@@ -1381,11 +1381,12 @@ function upDLbl(){const el=document.getElementById('logDt');document.getElementB
 function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 function refreshPracticeBanner(){
 const p=S.practices[S.prac];if(!p)return;
-const n=new Date(),me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&e.entity===S.ent);
-let tg=0;me.forEach(e=>tg+=e.gross);
+const td=today();
+const te=S.entries.filter(e=>e.pId===S.prac&&e.entity===S.ent&&e.date===td);
+let tg=0;te.forEach(e=>tg+=e.gross);
 const comm=p.comm||0.35;
-document.getElementById('pBanA').textContent=fc(tg*comm);
-document.getElementById('pBanS').textContent=fc(tg)+' gross · '+(comm*100).toFixed(0)+'% commission';
+document.getElementById('pBanA').textContent=fc(tg);
+document.getElementById('pBanS').textContent='Net: '+fc(tg*comm)+' ('+(comm*100).toFixed(0)+'% comm)';
 }
 
 // ===== ARCHIVE ENTRY =====
