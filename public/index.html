@@ -1357,22 +1357,24 @@ const amtRow=document.getElementById('aoAmtRow');
 const customName=document.getElementById('aoCustomName');
 const lbl=document.getElementById('aoTypeLbl');
 const btn=document.querySelector('#aoTypeGrid [data-ao="'+type+'"]');
+// Get practice color class
+const prcClass=S.prac==='bupa'?'prc-bupa':(S.prac==='grove'?'prc-grove':'prc-adhoc');
 // Toggle off if already selected, or clear selection
 if(type==='none'||(btn&&btn.classList.contains('sel'))){
   S.aoType=null;
-  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
   amtRow.style.display='none';customName.style.display='none';
   document.getElementById('ao').value='£0.00';lbl.textContent='';
 }else if(type==='Airflow'){
   S.aoType='Airflow';
-  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
-  btn.classList.add('sel');
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  btn.classList.add('sel',prcClass);
   amtRow.style.display='block';customName.style.display='none';
   lbl.textContent='± £1';
 }else{
   S.aoType='custom';
-  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
-  btn.classList.add('sel');
+  document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  btn.classList.add('sel',prcClass);
   amtRow.style.display='block';customName.style.display='block';
   lbl.textContent='± £1';
   document.getElementById('aoName').focus();
