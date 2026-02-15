@@ -35,8 +35,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .cs{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--txt3)}.cs.on{background:var(--ok)}
 .banner{background:linear-gradient(135deg,var(--pri-dk),var(--pri));color:#fff;border-radius:var(--r);padding:12px 16px;margin-bottom:4px}
 .banner h3{font-size:13px;font-weight:600;margin-bottom:10px;text-align:center}
-.hb-row{margin-bottom:8px;text-align:center}.hb-lbl{font-size:10px;font-weight:500;opacity:.7;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.hb-nums{font-size:22px;font-weight:700;letter-spacing:-1px;text-shadow:0 1px 2px rgba(0,0,0,.3)}.hb-nums .g{color:#fecaca}.hb-nums .n{color:#bbf7d0}
-.hb-split{display:flex;gap:16px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:9px;font-weight:500;opacity:.7;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:16px;font-weight:700;letter-spacing:-.5px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.hb-row{margin-bottom:10px;text-align:center}.hb-lbl{font-size:10px;font-weight:600;opacity:.85;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}.hb-nums{font-size:26px;font-weight:800;letter-spacing:-1px;display:inline-flex;align-items:center;gap:6px;background:rgba(0,0,0,.25);padding:4px 14px;border-radius:8px}.hb-nums .g{color:#fca5a5;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .n{color:#86efac;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .sep{color:rgba(255,255,255,.5);font-weight:400}
+.hb-split{display:flex;gap:12px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:9px;font-weight:600;opacity:.85;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:18px;font-weight:800;letter-spacing:-.5px;display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.25);padding:3px 10px;border-radius:6px}
 .esw{display:flex;background:var(--card);border-radius:var(--rs);padding:3px;border:1px solid var(--bdr);margin-bottom:8px}
 .ebtn{flex:1;padding:8px 12px;border:0;background:0;font-size:12px;font-weight:500;color:var(--txt2);border-radius:6px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri);color:#fff}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
@@ -192,8 +192,8 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 <div class="banner" id="hBan">
 <h3 id="hBanM">February 2026</h3>
-<div class="hb-row" id="hBanMonth"><span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">£0</span> / <span class="n">£0</span></span></div>
-<div class="hb-split"><div class="hb-col" id="hBanDay"><span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">£0</span> / <span class="n">£0</span></span></div><div class="hb-col" id="hBanWeek"><span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">£0</span> / <span class="n">£0</span></span></div></div>
+<div class="hb-row" id="hBanMonth"><span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div>
+<div class="hb-split"><div class="hb-col" id="hBanDay"><span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div><div class="hb-col" id="hBanWeek"><span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div></div>
 </div>
 <div class="pgrid">
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
@@ -1235,7 +1235,7 @@ var entMe=me.filter(function(e){return e.entity===S.ent});
 // Monthly gross and net
 let mGross=0,mNet=0;
 entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
-document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">'+fw(mGross)+'</span> / <span class="n">'+fw(mNet)+'</span></span>';
+document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">'+fw(mGross)+'</span><span class="sep">/</span><span class="n">'+fw(mNet)+'</span></span>';
 // Daily calc
 var td=today();
 var dayEntries=entMe.filter(function(e){return e.date===td});
@@ -1248,8 +1248,8 @@ var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wGross=0,wNet=0;
 weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
-document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">'+fw(dGross)+'</span> / <span class="n">'+fw(dNet)+'</span></span>';
-document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">'+fw(wGross)+'</span> / <span class="n">'+fw(wNet)+'</span></span>';
+document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">'+fw(dGross)+'</span><span class="sep">/</span><span class="n">'+fw(dNet)+'</span></span>';
+document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">'+fw(wGross)+'</span><span class="sep">/</span><span class="n">'+fw(wNet)+'</span></span>';
 var te=S.entries.filter(e=>e.date===td);
 var _st;
 _st=document.getElementById('buSt')||document.getElementById('bupaSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='bupa')?' on':'');
