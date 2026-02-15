@@ -144,12 +144,21 @@ module.exports = async (req, res) => {
       y += 22;
     });
 
-    // Add-ons (grouped by type)
+    // Add-ons (grouped by type with price/qty)
     const addons = inv.addons || {};
-    Object.entries(addons).forEach(([aType, aAmt]) => {
+    Object.entries(addons).forEach(([aType, addon]) => {
       doc.setTextColor(26, 26, 26);
-      doc.text(aType + ' Add-on', 50, y + 4);
-      doc.text('\u00a3' + aAmt.toFixed(2), W - 50, y + 4, { align: 'right' });
+      // Handle both new format {pts, price, total} and old format (just amount)
+      if (typeof addon === 'object' && addon.pts !== undefined) {
+        doc.text(aType + ' Add-on', 50, y + 4);
+        doc.text('\u00a3' + (addon.price || 0).toFixed(2), 260, y + 4);
+        doc.text(String(addon.pts || 0), 390, y + 4, { align: 'right' });
+        doc.text('\u00a3' + (addon.total || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
+      } else {
+        // Old format: addon is just the total amount
+        doc.text(aType + ' Add-on', 50, y + 4);
+        doc.text('\u00a3' + (addon || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
+      }
       doc.setDrawColor(229, 231, 235);
       doc.line(40, y + 10, W - 40, y + 10);
       y += 22;

@@ -2309,9 +2309,9 @@ if(!me.length)return;
 const pComm=p.comm||0.35;
 // Group by service
 const svcs={};me.forEach(e=>{if(!svcs[e.svc])svcs[e.svc]={pts:0,price:e.uPrice,total:0};svcs[e.svc].pts+=e.pts;svcs[e.svc].total+=e.pts*e.uPrice;});
-// Add-ons (group by type)
-const addons={};me.forEach(e=>{if(e.aoAmt>0){const aType=e.aoType||'Add-on';if(!addons[aType])addons[aType]=0;addons[aType]+=e.aoAmt;}});
-let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a);
+// Add-ons (group by type with price/qty)
+const addons={};me.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 const mn=new Date(y,m).toLocaleString('en-GB',{month:'long',year:'numeric'});
@@ -2328,7 +2328,7 @@ html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2
 html+='<table style="width:100%;border-collapse:collapse;margin:12px 0"><tr style="border-bottom:2px solid var(--txt)"><th style="text-align:left;padding:6px 4px;font-size:11px">Item</th><th style="text-align:left;padding:6px 4px;font-size:11px">Description</th><th style="text-align:right;padding:6px 4px;font-size:11px">Price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Subtotal</th></tr>';
 Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
-Object.entries(addons).forEach(([aType,aAmt])=>{html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+aType+'</td><td style="padding:6px 4px;font-size:12px">Add-on</td><td colspan="2"></td><td style="text-align:right;padding:6px 4px;font-size:12px">'+aAmt.toFixed(2)+'</td></tr>';});
+Object.entries(addons).forEach(([aType,a])=>{html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+aType+' Add-on</td><td style="padding:6px 4px;font-size:12px">'+fc(a.price)+'/pt</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+a.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+a.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+a.total.toFixed(2)+'</td></tr>';});
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Gross Total</td><td style="text-align:right;padding:6px 4px;font-size:13px;font-weight:700">'+fc(tg)+'</td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Profit Share '+(pComm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Balance Due</td><td style="text-align:right;padding:6px 4px;font-size:15px;font-weight:700;color:var(--pri-dk)">'+fc(cm)+'</td></tr>';
@@ -2413,9 +2413,9 @@ const svcs={};entries.forEach(e=>{
   svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;
 });
 
-// Add-ons (group by type)
-const addons={};entries.forEach(e=>{if(e.aoAmt>0){const aType=e.aoType||'Add-on';if(!addons[aType])addons[aType]=0;addons[aType]+=e.aoAmt;}});
-let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a);
+// Add-ons (group by type with price/qty)
+const addons={};entries.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 
@@ -2474,10 +2474,11 @@ if(minDate===maxDate){
 }
 
 var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;});
-var airTotal=0;me.forEach(function(e){if(e.aoAmt>0)airTotal+=e.aoAmt;});
+var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.aoType||'Add-on';var rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+var airTotal=0;Object.values(addons).forEach(function(a){airTotal+=a.total;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
