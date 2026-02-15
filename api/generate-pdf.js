@@ -144,8 +144,18 @@ module.exports = async (req, res) => {
       y += 22;
     });
 
-    // Airflow add-on if present
-    if (inv.airTotal > 0) {
+    // Add-ons (grouped by type)
+    const addons = inv.addons || {};
+    Object.entries(addons).forEach(([aType, aAmt]) => {
+      doc.setTextColor(26, 26, 26);
+      doc.text(aType + ' Add-on', 50, y + 4);
+      doc.text('\u00a3' + aAmt.toFixed(2), W - 50, y + 4, { align: 'right' });
+      doc.setDrawColor(229, 231, 235);
+      doc.line(40, y + 10, W - 40, y + 10);
+      y += 22;
+    });
+    // Fallback for old invoices without addons object
+    if (Object.keys(addons).length === 0 && inv.airTotal > 0) {
       doc.setTextColor(26, 26, 26);
       doc.text('Airflow Add-on', 50, y + 4);
       doc.text('\u00a3' + inv.airTotal.toFixed(2), W - 50, y + 4, { align: 'right' });

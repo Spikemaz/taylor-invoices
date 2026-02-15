@@ -214,7 +214,16 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="sl"><span>Price per Patient</span><span>± £5</span></div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
-<div class="stg" id="aoG" style="margin-top:12px"><div class="sl"><span>Airflow Add-on</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
+<div class="stg" id="aoG" style="margin-top:12px">
+<div class="sl"><span>Add-on</span><span id="aoTypeLbl"></span></div>
+<div class="sgrid" id="aoTypeGrid" style="margin-bottom:10px">
+<button class="sbtn" onclick="selAddon('none')" data-ao="none">None</button>
+<button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
+<button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
+</div>
+<div id="aoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
+<div id="aoAmtRow" style="display:none"><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
+</div>
 <div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="dLbl">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px"></div>
 <div class="banner" id="pBan" style="margin-top:12px"><h3 id="pBanT"></h3><div class="amt" id="pBanA">£0.00</div><div class="sub" id="pBanS"></div></div>
 </div>
@@ -1341,8 +1350,29 @@ const dtInput=document.getElementById('logDt');
 dtInput.classList.remove('prc-bupa','prc-grove','prc-adhoc');
 if(prcClass)dtInput.classList.add(prcClass);
 document.getElementById('logForm').style.display='block';
-document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';upAmt();}
+document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';
+document.getElementById('aoName').value='';selAddon('none');upAmt();}
 function adj(id,d){const el=document.getElementById(id);if(id==='pt'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
+function selAddon(type){
+S.aoType=type;
+document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>b.classList.remove('sel'));
+document.querySelector('#aoTypeGrid [data-ao="'+type+'"]').classList.add('sel');
+const amtRow=document.getElementById('aoAmtRow');
+const customName=document.getElementById('aoCustomName');
+const lbl=document.getElementById('aoTypeLbl');
+if(type==='none'){
+  amtRow.style.display='none';customName.style.display='none';
+  document.getElementById('ao').value='£0.00';lbl.textContent='';
+}else if(type==='Airflow'){
+  amtRow.style.display='block';customName.style.display='none';
+  lbl.textContent='± £1';
+}else{
+  amtRow.style.display='block';customName.style.display='block';
+  lbl.textContent='± £1';
+  document.getElementById('aoName').focus();
+}
+upAmt();
+}
 function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getElementById('pr').value),ao=pc(document.getElementById('ao').value);
 const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Commission @'+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
@@ -1366,11 +1396,12 @@ const pts=parseInt(document.getElementById('pt').value)||0,pr=pc(document.getEle
 if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:ao>0?'Airflow':null,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
+const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').value||'Add-on'):S.aoType):null;
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
-document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';upAmt();
+document.getElementById('pt').value='0';document.getElementById('ao').value='£0.00';document.getElementById('aoName').value='';selAddon('none');upAmt();
 // Refresh banner and today indicator without collapsing form
 setTimeout(()=>refreshPracticeBanner(),300);
 }
@@ -1661,7 +1692,7 @@ function refArc(){
     const prcClass=getPrcClass(e);
     return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
       '<div class="db"><div class="dy">'+ed.getDate()+'</div><div class="mo">'+ed.toLocaleString('en-GB',{month:'short'})+'</div></div>'+
-      '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + Airflow':'')+'</div></div>'+
+      '<div class="dt"><div class="sv">'+e.svc+' <span class="pbadge '+col+'">'+e.pName+'</span><span class="ent-badge '+entBadgeClass+'">'+entLabel+'</span></div><div class="pt">'+e.pts+' patients @ '+fc(e.uPrice)+(e.aoType&&e.aoAmt>0?' + '+(e.aoType||'Add-on'):'')+'</div></div>'+
       '<div class="ac"><div class="gr">'+fc(e.gross)+'</div>'+(e.pType==='contract'?'<div class="co">'+(e.comm*100).toFixed(0)+'%: '+fc(e.commAmt)+'</div>':'')+'</div></div></div>';
   }
 
@@ -1742,7 +1773,8 @@ _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" t
 _h+='<div class="fg"><label class="fl">Service</label><input class="fi" id="edSvc" value="'+e.svc+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Patients</label><input class="fi" id="edPts" type="number" value="'+e.pts+'"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
-_h+='<div class="fg"><label class="fl">Airflow Add-on (£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div>';
+_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Add-on Type</label><input class="fi" id="edAoType" value="'+(e.aoType||'')+'"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Add-on (£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div></div>';
 _h+='<div class="brow"><button class="btn btn-d" id="_edDel">Delete</button><button class="btn btn-s" id="_edCancel">Cancel</button><button class="btn btn-p" id="_edSave">Save</button></div>';
 showModal(_h,prcClass);
 setTimeout(function(){
@@ -1760,7 +1792,8 @@ async function saveEntry(id){
   e.pts=parseInt(document.getElementById('edPts').value)||0;
   e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
   e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;
-  e.aoType=e.aoAmt>0?'Airflow':null;
+  const aoTypeVal=document.getElementById('edAoType').value.trim();
+  e.aoType=e.aoAmt>0?(aoTypeVal||'Add-on'):null;
   e.gross=(e.pts*e.uPrice)+e.aoAmt;
   e.comm=parseFloat(e.comm)||0;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
@@ -2171,8 +2204,9 @@ if(!me.length)return;
 const pComm=p.comm||0.35;
 // Group by service
 const svcs={};me.forEach(e=>{if(!svcs[e.svc])svcs[e.svc]={pts:0,price:e.uPrice,total:0};svcs[e.svc].pts+=e.pts;svcs[e.svc].total+=e.pts*e.uPrice;});
-// Airflow
-let airTotal=0;me.forEach(e=>{if(e.aoAmt>0)airTotal+=e.aoAmt;});
+// Add-ons (group by type)
+const addons={};me.forEach(e=>{if(e.aoAmt>0){const aType=e.aoType||'Add-on';if(!addons[aType])addons[aType]=0;addons[aType]+=e.aoAmt;}});
+let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 const mn=new Date(y,m).toLocaleString('en-GB',{month:'long',year:'numeric'});
@@ -2189,7 +2223,7 @@ html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2
 html+='<table style="width:100%;border-collapse:collapse;margin:12px 0"><tr style="border-bottom:2px solid var(--txt)"><th style="text-align:left;padding:6px 4px;font-size:11px">Item</th><th style="text-align:left;padding:6px 4px;font-size:11px">Description</th><th style="text-align:right;padding:6px 4px;font-size:11px">Price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Subtotal</th></tr>';
 Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
-if(airTotal>0)html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">Airflow</td><td style="padding:6px 4px;font-size:12px">Add-on</td><td colspan="2"></td><td style="text-align:right;padding:6px 4px;font-size:12px">'+airTotal.toFixed(2)+'</td></tr>';
+Object.entries(addons).forEach(([aType,aAmt])=>{html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+aType+'</td><td style="padding:6px 4px;font-size:12px">Add-on</td><td colspan="2"></td><td style="text-align:right;padding:6px 4px;font-size:12px">'+aAmt.toFixed(2)+'</td></tr>';});
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Gross Total</td><td style="text-align:right;padding:6px 4px;font-size:13px;font-weight:700">'+fc(tg)+'</td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px">Commission @'+(pComm*100).toFixed(0)+'%</td><td style="text-align:right;padding:6px 4px;font-size:12px"></td></tr>';
 html+='<tr><td colspan="3"></td><td style="text-align:right;padding:6px 4px;font-size:12px;font-weight:600">Balance Due</td><td style="text-align:right;padding:6px 4px;font-size:15px;font-weight:700;color:var(--pri-dk)">'+fc(cm)+'</td></tr>';
@@ -2274,7 +2308,9 @@ const svcs={};entries.forEach(e=>{
   svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;
 });
 
-let airTotal=0;entries.forEach(e=>{if(e.aoAmt>0)airTotal+=e.aoAmt;});
+// Add-ons (group by type)
+const addons={};entries.forEach(e=>{if(e.aoAmt>0){const aType=e.aoType||'Add-on';if(!addons[aType])addons[aType]=0;addons[aType]+=e.aoAmt;}});
+let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 
@@ -2285,7 +2321,7 @@ const invData={
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
-  commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,
+  commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,addons:addons,
   logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length,
   companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };
