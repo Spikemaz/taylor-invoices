@@ -240,7 +240,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" style="margin-top:12px"><div class="sl"><span>Airflow (per patient)</span><span>± £1</span></div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
 <div class="stg" id="ahApG"><div class="sl"><span>Airflow Patients</span></div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
-<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt" style="margin-top:6px"></div>
+<div class="stg" style="margin-top:12px"><div class="sl"><span>Date</span><span id="ahDLbl">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="margin-top:6px"></div>
 </div>
 </div>
 
@@ -366,6 +366,7 @@ const fc=v=>'£'+Math.abs(v).toFixed(2);
 const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+const fdnDay=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
 const pad=n=>String(n).padStart(5,'0');
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
@@ -1346,7 +1347,8 @@ function upAmt(){const pts=parseInt(document.getElementById('pt').value)||0,pr=p
 const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Commission @'+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
-function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdd(el.value);}
+function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
+function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 function refreshPracticeBanner(){
 const p=S.practices[S.prac];if(!p)return;
 const n=new Date(),me=getMonth(n.getFullYear(),n.getMonth()).filter(e=>e.pId===S.prac&&e.entity===S.ent);
