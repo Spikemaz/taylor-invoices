@@ -59,10 +59,16 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .stpb:active{background:var(--grove-lt);border-color:var(--pri);transform:scale(.97)}
 .stpv{flex:1;max-width:120px;height:70px;font-size:28px;font-weight:700;text-align:center;letter-spacing:-1px;cursor:pointer;padding:4px 8px;border-radius:var(--rs);border:3px solid var(--bdr);background:var(--bg);color:var(--txt);font-family:var(--f);display:flex;align-items:center;justify-content:center}
 .stpv:focus{outline:0;border-color:var(--pri);background:var(--grove-lt)}
-.amtd{background:var(--grove-lt);border:2px solid var(--pri);border-radius:var(--r);padding:10px 16px;text-align:center;margin:10px 0}
+.amtd{background:var(--grove-lt);border:3px solid var(--pri);border-radius:var(--r);padding:10px 16px;text-align:center;margin:10px 0}
 .amtd .lb{font-size:11px;color:var(--pri);font-weight:500}.amtd .vl{font-size:28px;font-weight:700;color:var(--pri-dk);letter-spacing:-1px}.amtd .cl{font-size:11px;color:var(--acc);margin-top:2px}
+.amtd.prc-bupa{background:var(--bupa-lt);border-color:var(--bupa)}.amtd.prc-bupa .lb,.amtd.prc-bupa .cl{color:var(--bupa)}.amtd.prc-bupa .vl{color:var(--bupa)}
+.amtd.prc-grove{background:var(--grove-lt);border-color:var(--grove)}.amtd.prc-grove .lb,.amtd.prc-grove .cl{color:var(--grove)}.amtd.prc-grove .vl{color:var(--pri-dk)}
+.amtd.prc-adhoc{background:#FEE2E2;border-color:#EF4444}.amtd.prc-adhoc .lb,.amtd.prc-adhoc .cl{color:#EF4444}.amtd.prc-adhoc .vl{color:#DC2626}
 .abtn{width:100%;padding:14px;background:var(--pri);color:#fff;border:0;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;font-family:var(--f);margin-top:6px}
 .abtn:active{background:var(--pri-dk);transform:scale(.98)}.abtn:disabled{opacity:.5;cursor:not-allowed}
+.abtn.prc-bupa{background:var(--bupa)}.abtn.prc-bupa:active{background:#004080}
+.abtn.prc-grove{background:var(--grove)}.abtn.prc-grove:active{background:var(--pri-dk)}
+.abtn.prc-adhoc{background:#EF4444}.abtn.prc-adhoc:active{background:#DC2626}
 .toast{position:fixed;bottom:calc(20px + var(--sb));left:50%;transform:translateX(-50%) translateY(100px);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:1000;transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;box-shadow:var(--shl);max-width:calc(100vw - 40px);font-family:var(--f)}
 .toast.show{transform:translateX(-50%) translateY(0)}.toast.ok{background:var(--pri-dk);color:#fff}.toast.err{background:var(--err);color:#fff}
 .toast.prc-bupa{background:var(--bupa)}.toast.prc-grove{background:var(--grove)}.toast.prc-adhoc{background:#EF4444}
@@ -256,8 +262,8 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 <div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adjAh('ap',-1)">−</button><input class="stpv" id="ap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('ap',1)">+</button></div></div>
 <div class="stg"><div class="sl">Rate per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><input class="stpv" id="arv" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
-<button class="abtn" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
-<div class="amtd" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
+<button class="abtn prc-adhoc" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
+<div class="amtd prc-adhoc" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" id="ahAoG" style="margin-top:12px">
 <div class="sl">Add-on</div>
 <div class="sgrid" id="ahAoTypeGrid" style="margin-bottom:10px">
@@ -1375,6 +1381,12 @@ document.querySelectorAll('#logForm .stg').forEach(el=>{
 const dtInput=document.getElementById('logDt');
 dtInput.classList.remove('prc-bupa','prc-grove','prc-adhoc');
 if(prcClass)dtInput.classList.add(prcClass);
+// Apply practice color to Archive button and Total Amount
+const arcBtn=document.getElementById('arcBtn');
+arcBtn.classList.remove('prc-bupa','prc-grove','prc-adhoc');
+if(prcClass)arcBtn.classList.add(prcClass);
+const amtd=document.querySelector('#logForm .amtd');
+if(amtd){amtd.classList.remove('prc-bupa','prc-grove','prc-adhoc');if(prcClass)amtd.classList.add(prcClass);}
 document.getElementById('logForm').style.display='block';
 document.getElementById('pt').value='0';document.getElementById('pr').value=fc(sv.p);document.getElementById('ao').value='£0.00';
 document.getElementById('aoName').value='';selAddon('none');upAmt();}
