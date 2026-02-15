@@ -1347,8 +1347,14 @@ function setEntity(t){switchEntity(t);}
 function setPracticeEntity(t){switchEntity(t);}
 function setAhEntity(t){switchEntity(t);}
 
-// Invoice entity is separate (for viewing invoices from either entity)
-function setInvEnt(t){S.iEnt=t;document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');refInv();}
+// Invoice entity - also updates input entity and header for consistency
+function setInvEnt(t){
+  S.iEnt=t;
+  switchEntity(t); // Also update input entity and header
+  document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');
+  refInv();
+}
 
 // ===== PRACTICE LOGGING =====
 function openPractice(id){
@@ -1712,6 +1718,10 @@ function filtArcEnt(f){
   document.getElementById('arcEAll').className='ebtn'+(f==='all'?' act':'');
   document.getElementById('arcES').className='ebtn'+(f==='self'?' act':'');
   document.getElementById('arcEL').className='ebtn'+(f==='ltd'?' act':'');
+  // Also update input entity when selecting a specific entity (not 'all')
+  if(f!=='all'){
+    switchEntity(f);
+  }
   refArc();
 }
 function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(c=>{var txt=c.textContent.toLowerCase().replace(/\s+/g,'');c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));});refArc();}
