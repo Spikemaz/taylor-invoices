@@ -1841,10 +1841,28 @@ function refArc(){
 
       // Group entries by practice
       sortedPractices.forEach(p=>{
-        const prcBorderClass=p.pType==='adhoc'?'prc-adhoc':(p.pId==='bupa'?'prc-bupa':(p.pId==='grove'?'prc-grove':''));
+        const prcColor=p.pType==='adhoc'?'#EF4444':(p.pId==='bupa'?'var(--bupa)':'var(--grove)');
         html+='<div class="prc-group" data-prc="'+p.pId+'">';
-        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+(p.pType==='adhoc'?'#EF4444':(p.pId==='bupa'?'var(--bupa)':'var(--grove)'))+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.entries.length+' entries)</span></div>';
-        html+='<div class="prc-group-entries">'+p.entries.map(renderEntry).join('')+'</div>';
+        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+prcColor+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.entries.length+' entries)</span></div>';
+        html+='<div class="prc-group-entries">';
+        // Group entries by day within practice
+        const byDay={};
+        p.entries.forEach(e=>{
+          const dayKey=e.date;
+          if(!byDay[dayKey])byDay[dayKey]=[];
+          byDay[dayKey].push(e);
+        });
+        // Render each day group with outline
+        Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+          const dayEntries=byDay[dayKey];
+          const dayDate=new Date(dayKey);
+          const dayLabel=dayDate.getDate()+' '+dayDate.toLocaleString('en-GB',{month:'short'});
+          html+='<div class="day-group" style="border:2px solid '+prcColor+';border-radius:var(--rs);margin:6px 0;overflow:hidden">';
+          html+='<div style="background:'+prcColor+';color:#fff;padding:4px 10px;font-size:11px;font-weight:600">'+dayLabel+' <span style="opacity:.7;font-weight:400">('+dayEntries.length+' entries)</span></div>';
+          html+='<div style="padding:4px">'+dayEntries.map(renderEntry).join('')+'</div>';
+          html+='</div>';
+        });
+        html+='</div>';
         html+='</div>';
       });
 
