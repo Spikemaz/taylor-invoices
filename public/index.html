@@ -181,7 +181,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="hdr-left">
 <button class="hdr-back" id="backBtn" onclick="goBack()">&#8592;</button>
 <div class="hdr-brand">
-<span class="hdr-t" id="hdrT">Invoice Manager<span class="tm">™</span></span>
+<span class="hdr-t" id="hdrT">Invoice App<span class="tm">™</span></span>
 <span class="hdr-e" id="hdrE">Self-Employed</span>
 </div>
 </div>
@@ -1245,8 +1245,8 @@ if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')upHome();if(n
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')upHome();if(p==='archive')refArc();if(p==='invoices')refInv();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');upHome();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
-const titles={home:'Invoice Manager™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
-t.innerHTML=s==='home'?'Invoice Manager<span class="tm">™</span>':(titles[s]||'Invoice Manager™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
+const titles={home:'Invoice App™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
+t.innerHTML=s==='home'?'Invoice App<span class="tm">™</span>':(titles[s]||'Invoice App™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
 b.classList.toggle('vis',s!=='home');}
 
 // ===== HOME =====
