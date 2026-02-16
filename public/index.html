@@ -3112,7 +3112,9 @@ await genCpInvMulti(pid,entries);
 async function genCpInvMulti(pid,entries){
 const p=S.practices[pid];if(!p)return;
 const pComm=p.comm||0.35;
-const ent=S.ents[S.iEnt];
+// Use entity from first entry (all selected entries should be same entity)
+const entType=entries[0].entity||'self';
+const ent=S.ents[entType];
 const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 
 // Mark all entries as invoiced
@@ -3136,15 +3138,15 @@ if(minDate===maxDate){
   }
 }
 
-// Group services
+// Group services by date+service+price
 const svcs={};entries.forEach(e=>{
-  const key=e.svc+'@'+e.uPrice;
-  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  const key=e.date+'@'+e.svc+'@'+e.uPrice;
+  if(!svcs[key])svcs[key]={date:e.date,name:e.svc,pts:0,price:e.uPrice,total:0};
   svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;
 });
 
-// Add-ons (group by type with price/qty)
-const addons={};entries.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+// Add-ons (group by date+type)
+const addons={};entries.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const key=e.date+'@'+aType;const rate=e.aoAmt/e.aoPatients;if(!addons[key])addons[key]={date:e.date,type:aType,pts:0,price:rate,total:0};addons[key].pts+=e.aoPatients;addons[key].total+=e.aoAmt;}});
 let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
@@ -3152,13 +3154,13 @@ const cm=tg*pComm;
 const invData={
   num:invNum,date:today(),practice:p.short,practiceName:p.name,
   practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,
-  entity:S.iEnt==='self'?'Self-Employed':'Ltd',
+  entity:entType==='self'?'Self-Employed':'Ltd',
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
   commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,addons:addons,
-  logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
+  logoType:entType,payTerms:S.payTerms,entryCount:entries.length,
+  companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
   createdAt:new Date().toISOString()
 };
 
@@ -3166,7 +3168,7 @@ S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
 
 for(const e of entries){
-  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
+  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);
 }
 
 const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
