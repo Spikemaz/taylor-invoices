@@ -42,10 +42,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .banner h3{font-size:12px;font-weight:600;margin-bottom:6px;text-align:center}
 .hb-row{margin-bottom:6px;text-align:center}.hb-lbl{font-size:9px;font-weight:600;opacity:.85;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.hb-nums{font-size:24px;font-weight:800;letter-spacing:-1px;display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);padding:3px 12px;border-radius:6px}.hb-nums .g{color:#fca5a5;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .n{color:#86efac;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .sep{color:rgba(255,255,255,.5);font-weight:400}
 .hb-split{display:flex;gap:10px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:8px;font-weight:600;opacity:.85;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:16px;font-weight:800;letter-spacing:-.5px;display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
-.entbox{background:var(--card);border-radius:var(--rs);border:1px solid var(--bdr);margin-bottom:8px;overflow:hidden}
-.esw{display:flex;padding:2px}
-.ebtn{flex:1;padding:6px 10px;border:0;background:0;font-size:11px;font-weight:500;color:var(--txt2);border-radius:5px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri-dk);color:#fff}
-.msum{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:linear-gradient(135deg,var(--pri-dk),var(--pri))}
+.entbox{background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);margin-bottom:8px;overflow:hidden}
+.esw{display:flex;padding:3px}
+.ebtn{flex:1;padding:6px 10px;border:0;background:rgba(255,255,255,.15);font-size:11px;font-weight:500;color:rgba(255,255,255,.8);border-radius:5px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:rgba(255,255,255,.95);color:var(--pri-dk)}
+.msum{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:rgba(0,0,0,.15)}
 .msl{font-size:8px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
 .ms-nums{display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
 .msv{font-size:14px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
@@ -438,6 +438,23 @@ const pad=n=>String(n).padStart(5,'0');
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
+
+// Animated counter - smoothly transitions between values
+function animateValue(el,start,end,duration=400){
+const range=end-start;
+if(range===0)return;
+const startTime=performance.now();
+const step=(now)=>{
+const elapsed=now-startTime;
+const progress=Math.min(elapsed/duration,1);
+// Ease out cubic for smooth deceleration
+const eased=1-Math.pow(1-progress,3);
+const current=start+range*eased;
+el.textContent=fc(current);
+if(progress<1)requestAnimationFrame(step);
+};
+requestAnimationFrame(step);
+}
 
 // ===== PERSISTENCE (Cloud-First) =====
 // Pending operations queue for failed cloud syncs
@@ -1400,13 +1417,22 @@ const svcNames=Object.keys(p.svcs).sort((a,b)=>(svcUsage[b]||0)-(svcUsage[a]||0)
 svcNames.forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
 }
-function upPracMSum(pId,comm){
+function upPracMSum(pId,comm,animate=false){
 const now=new Date();const y=now.getFullYear();const m=now.getMonth();
 const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId;});
 let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
 const net=gross*(1-comm);
-document.getElementById('pracMGross').textContent=fc(gross);
-document.getElementById('pracMNet').textContent=fc(net);
+const gEl=document.getElementById('pracMGross');
+const nEl=document.getElementById('pracMNet');
+if(animate){
+const oldGross=pc(gEl.textContent);
+const oldNet=pc(nEl.textContent);
+animateValue(gEl,oldGross,gross);
+animateValue(nEl,oldNet,net);
+}else{
+gEl.textContent=fc(gross);
+nEl.textContent=fc(net);
+}
 }
 function selSvc(nm){const p=S.practices[S.prac];if(!p||!p.svcs)return;S.svc=nm;const sv=p.svcs[nm];if(!sv)return;
 const prcClass=p.type==='adhoc'?'prc-adhoc':(S.prac==='bupa'?'prc-bupa':(S.prac==='grove'?'prc-grove':''));
@@ -1485,7 +1511,7 @@ const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract'
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
-upPracMSum(S.prac,pComm);
+upPracMSum(S.prac,pComm,true);
 document.getElementById('ptIn').value='0';document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
@@ -1516,7 +1542,7 @@ async function addToDup(id,pts,ao){
     save();
     closeMod2();
     document.getElementById('ptIn').value='0';document.getElementById('ao').value='£0.00';upAmt();
-    upPracMSum(e.pId,e.comm);
+    upPracMSum(e.pId,e.comm,true);
     showToast('Syncing...',prcClass);
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
@@ -1542,7 +1568,7 @@ const prcClass=entry.pType==='adhoc'?'prc-adhoc':(entry.pId==='bupa'?'prc-bupa':
 t.className='toast '+prcClass;t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(S.undoE.pId==='bupa'?'prc-bupa':(S.undoE.pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);if(S.prac)openPractice(S.prac);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const pId=S.undoE.pId;const comm=S.undoE.comm||0;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(pId==='bupa'?'prc-bupa':(pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);if(S.prac&&S.prac===pId)upPracMSum(pId,comm,true);}}
 function showToast(msg,prcClass){const t=document.getElementById('toast');t.className='toast'+(prcClass?' '+prcClass:' ok');t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
