@@ -441,6 +441,9 @@ svcs:[
 // Helper to get/set nextInv for current entity
 function getNextInv(){return S.ent==='ltd'?S.nextInvLtd:S.nextInvSelf;}
 function setNextInv(n){if(S.ent==='ltd')S.nextInvLtd=n;else S.nextInvSelf=n;}
+// Invoice screen uses S.iEnt (invoice entity toggle)
+function getNextInvI(){return S.iEnt==='ltd'?S.nextInvLtd:S.nextInvSelf;}
+function setNextInvI(n){if(S.iEnt==='ltd')S.nextInvLtd=n;else S.nextInvSelf=n;}
 
 // ===== HELPERS =====
 const fc=v=>'£'+Math.abs(v).toFixed(2);
@@ -455,15 +458,15 @@ const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.get
 const today=()=>new Date().toISOString().split('T')[0];
 
 // Animated counter - smoothly transitions between values
-function animateValue(el,start,end,duration=800){
+function animateValue(el,start,end,duration=1200){
 const range=end-start;
 if(range===0){el.textContent=fc(end);return;}
 const startTime=performance.now();
 const step=(now)=>{
 const elapsed=now-startTime;
 const progress=Math.min(elapsed/duration,1);
-// Ease out cubic for smooth deceleration
-const eased=1-Math.pow(1-progress,3);
+// Ease out quart for even smoother deceleration
+const eased=1-Math.pow(1-progress,4);
 const current=start+range*eased;
 el.textContent=fc(current);
 if(progress<1)requestAnimationFrame(step);
@@ -1309,16 +1312,32 @@ document.getElementById('navArchive').classList.toggle('act',n==='archive');
 document.getElementById('navInvoice').classList.toggle('act',n==='invoices');
 document.getElementById('navSettings').classList.toggle('act',n==='settings');
 }
+// Reset home values to zero then animate - for smooth transitions every time
+function animateHomeFromZero(){
+document.getElementById('hDayG').textContent='£0.00';
+document.getElementById('hDayN').textContent='£0.00';
+document.getElementById('hWeekG').textContent='£0.00';
+document.getElementById('hWeekN').textContent='£0.00';
+document.getElementById('hMonthG').textContent='£0.00';
+document.getElementById('hMonthN').textContent='£0.00';
+setTimeout(()=>upHome(true),50);
+}
+// Reset practice summary to zero then animate
+function animatePracticeFromZero(pId,comm){
+document.getElementById('pracMGross').textContent='£0.00';
+document.getElementById('pracMNet').textContent='£0.00';
+setTimeout(()=>upPracMSum(pId,comm,true),50);
+}
 function showScreen(n){
 const p=document.getElementById('scr-'+S.scr),nx=document.getElementById('scr-'+n);
 if(p&&S.scr!==n)p.classList.remove('act');
 if(nx)nx.classList.add('act');
 if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
-if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')upHome(true);if(n==='settings')refreshSettings();
+if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();
 }
-function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')upHome(true);if(p==='archive')refArc();if(p==='invoices')refInv();}
-function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');upHome(true);}
+function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
+function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
@@ -1445,10 +1464,8 @@ S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
-// Set zeros then animate monthly summary for reactive feel
-document.getElementById('pracMGross').textContent='£0.00';
-document.getElementById('pracMNet').textContent='£0.00';
-setTimeout(()=>upPracMSum(id,p.comm||0,true),100);
+// Animate monthly summary from zero for reactive feel
+animatePracticeFromZero(id,p.comm||0);
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){
@@ -2311,8 +2328,8 @@ async function deleteInvoiceWithDrive(idx){
 // ===== INVOICE PREVIEW =====
 function previewInv(pid,y,m){
 const p=S.practices[pid];if(!p)return;
-const ent=S.ents[S.iEnt],me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.entity===S.iEnt});
-if(!me.length)return;
+const ent=S.ents[S.iEnt],me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.entity===S.iEnt&&e.invSt==='pending'});
+if(!me.length){showToast('No pending entries to preview');return;}
 const pComm=p.comm||0.35;
 // Group by service
 const svcs={};me.forEach(e=>{if(!svcs[e.svc])svcs[e.svc]={pts:0,price:e.uPrice,total:0};svcs[e.svc].pts+=e.pts;svcs[e.svc].total+=e.pts*e.uPrice;});
@@ -2331,7 +2348,7 @@ html+='<div style="text-align:right"><div style="font-size:18px;font-weight:700"
 html+='<div style="font-size:20px;font-weight:700;color:var(--pri)">Invoice</div></div>';
 html+='<div style="border-top:3px solid var(--pri-dk);padding-top:12px;display:flex;justify-content:space-between;margin-bottom:16px">';
 html+='<div><div style="font-size:11px;font-weight:600;color:var(--txt2)">Bill To:</div><div style="font-size:13px;font-weight:600">'+p.name+'</div><div style="font-size:11px;white-space:pre-line;color:var(--txt2)">'+p.addr.replace(/\n/g,'\n')+'</div></div>';
-html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2)">Invoice No: <b>'+pad(getNextInv())+'</b></div><div style="font-size:11px;color:var(--txt2)">Date: <b>'+fdd(today())+'</b></div><div style="font-size:11px;color:var(--txt2)">Period: <b>'+mn+'</b></div></div></div>';
+html+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2)">Invoice No: <b>'+pad(getNextInvI())+'</b></div><div style="font-size:11px;color:var(--txt2)">Date: <b>'+fdd(today())+'</b></div><div style="font-size:11px;color:var(--txt2)">Period: <b>'+mn+'</b></div></div></div>';
 html+='<table style="width:100%;border-collapse:collapse;margin:12px 0"><tr style="border-bottom:2px solid var(--txt)"><th style="text-align:left;padding:6px 4px;font-size:11px">Item</th><th style="text-align:left;padding:6px 4px;font-size:11px">Description</th><th style="text-align:right;padding:6px 4px;font-size:11px">Price</th><th style="text-align:right;padding:6px 4px;font-size:11px">Qty</th><th style="text-align:right;padding:6px 4px;font-size:11px">Subtotal</th></tr>';
 Object.keys(svcs).forEach(nm=>{const s=svcs[nm];
 html+='<tr style="border-bottom:1px solid var(--bdr)"><td style="padding:6px 4px;font-size:12px">'+nm+'</td><td style="padding:6px 4px;font-size:12px">'+fc(s.price)+' '+(p.svcs[nm]?p.svcs[nm].d:'per patient')+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.price.toFixed(2)+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.pts+'</td><td style="text-align:right;padding:6px 4px;font-size:12px">'+s.total.toFixed(2)+'</td></tr>';});
@@ -2390,7 +2407,7 @@ async function genCpInvMulti(pid,entries){
 const p=S.practices[pid];if(!p)return;
 const pComm=p.comm||0.35;
 const ent=S.ents[S.iEnt];
-const invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 
 // Mark all entries as invoiced
 entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
@@ -2449,7 +2466,7 @@ const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 showToast('Generating invoice...',prcClass);
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass);
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 // ===== GENERATE PDF (uses jsPDF-like approach via canvas) =====
@@ -2459,7 +2476,7 @@ var pComm=p.comm||0.35;
 var ent=S.ents[S.iEnt];
 var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
 if(!me.length){showToast('No entries to invoice');return;}
-var invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+var invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 me.forEach(function(e){e.invSt='invoiced';e.invNo=invNum;});save();
 
 // Determine period based on dates
@@ -2495,7 +2512,7 @@ showToast('Generating invoice...',prcClass2);
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass2);
 refInv();
-document.getElementById('nInv').textContent=pad(getNextInv());
+document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 async function genAhInv(id){
@@ -2531,7 +2548,7 @@ updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 // Show entry selection modal for multi-entry ad hoc invoice
@@ -2575,7 +2592,7 @@ await genAhInvMulti(entries);
 async function genAhInvMulti(entries){
 if(!entries.length)return;
 const ent=S.ents[S.iEnt];
-const invNum=pad(getNextInv());setNextInv(getNextInv()+1);
+const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 const pName=entries[0].pName;
 const pAddr=entries[0].adhocAddr||'';
 
@@ -2640,7 +2657,7 @@ for(const e of entries){
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 // Generate invoice for multiple ad hoc entries with specific entity (for auto-combine)
@@ -2710,7 +2727,7 @@ for(const e of entries){
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated ('+entries.length+' entries combined)','prc-adhoc');
-refInv();document.getElementById('nInv').textContent=pad(getNextInv());
+refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 // ===== SETTINGS =====

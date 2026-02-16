@@ -76,18 +76,32 @@ function storeInvoiceDriveLinks() {
  * This is an "installable trigger" which has more permissions than simple triggers
  */
 function onSheetChange(e) {
-  // Check for deleted invoices (REMOVE_ROW or when row count decreases)
-  if (e && e.changeType === 'REMOVE_ROW') {
-    checkForDeletedInvoices();
+  const changeType = e ? e.changeType : 'UNKNOWN';
+  Logger.log('=== onSheetChange triggered ===');
+  Logger.log('  changeType: ' + changeType);
+  Logger.log('  source: ' + (e && e.source ? e.source.getName() : 'unknown'));
+
+  // ALWAYS check for deleted invoices on ANY change
+  // API deletions via batchUpdate may fire as 'OTHER' or different changeType
+  checkForDeletedInvoices();
+
+  // ALWAYS process Trash tab to move PDFs to Trash folder
+  // This catches deletions made by the Vercel API
+  try {
+    processTrashTab();
+  } catch (trashErr) {
+    Logger.log('Error processing Trash tab: ' + trashErr.message);
   }
 
-  // Check for new invoices on EDIT or INSERT_ROW
-  if (e && e.changeType && (e.changeType === 'EDIT' || e.changeType === 'INSERT_ROW')) {
+  // Check for new invoices on EDIT, INSERT_ROW, or OTHER (API changes)
+  if (changeType === 'EDIT' || changeType === 'INSERT_ROW' || changeType === 'OTHER') {
     checkForNewInvoices();
   }
 
   // Always update the stored invoice links after any change
   storeInvoiceDriveLinks();
+
+  Logger.log('=== onSheetChange complete ===');
 }
 
 /**
@@ -142,37 +156,50 @@ function checkForDeletedInvoices() {
  * Move a file from Google Drive to the Trash folder (not Google's built-in trash)
  * @param {string} driveLink - The Drive URL (e.g., https://drive.google.com/file/d/FILE_ID/view)
  * @param {string} invoiceNum - The invoice number (for logging)
+ * @returns {boolean} true if successful, false if failed
  */
 function deleteDriveFileFromLink(driveLink, invoiceNum) {
   if (!driveLink) {
     Logger.log('No Drive link for invoice ' + invoiceNum);
-    return;
+    return false;
   }
+
+  Logger.log('deleteDriveFileFromLink called for invoice ' + invoiceNum);
+  Logger.log('  driveLink: ' + driveLink);
 
   try {
     // Extract file ID from Drive URL
     // URLs look like: https://drive.google.com/file/d/FILE_ID/view
     // or: https://drive.google.com/open?id=FILE_ID
+    // or: https://drive.google.com/file/d/FILE_ID/view?usp=drivesdk
     let fileId = null;
     const fileMatch = driveLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const idMatch = driveLink.match(/[?&]id=([a-zA-Z0-9_-]+)/);
     fileId = fileMatch ? fileMatch[1] : (idMatch ? idMatch[1] : null);
 
+    Logger.log('  Extracted fileId: ' + fileId);
+
     if (fileId) {
       const file = DriveApp.getFileById(fileId);
       const fileName = file.getName();
+      Logger.log('  Found file: ' + fileName);
 
       // Get or create Trash folder inside Taylor Invoices
       const trashFolder = getOrCreateTrashFolder();
+      Logger.log('  Trash folder: ' + trashFolder.getName() + ' (' + trashFolder.getId() + ')');
 
       // Move file to Trash folder instead of Google's trash
       file.moveTo(trashFolder);
-      Logger.log('✓ Moved to Trash: ' + fileName + ' (Invoice ' + invoiceNum + ')');
+      Logger.log('✓ SUCCESS: Moved "' + fileName + '" to Trash folder (Invoice ' + invoiceNum + ')');
+      return true;
     } else {
-      Logger.log('Could not extract file ID from: ' + driveLink);
+      Logger.log('✗ FAILED: Could not extract file ID from: ' + driveLink);
+      return false;
     }
   } catch (e) {
-    Logger.log('Failed to move Drive file to Trash for invoice ' + invoiceNum + ': ' + e.message);
+    Logger.log('✗ ERROR moving Drive file for invoice ' + invoiceNum + ': ' + e.message);
+    Logger.log('  Stack: ' + e.stack);
+    return false;
   }
 }
 
@@ -206,6 +233,132 @@ function getOrCreateTrashFolder() {
 function cleanupOrphanedPDFs() {
   checkForDeletedInvoices();
   SpreadsheetApp.getUi().alert('Cleanup complete! Check the execution log for details.');
+}
+
+/**
+ * Process the Trash tab and move any PDFs to the Trash folder
+ * This catches any deletions that the onChange trigger missed
+ * Run manually or schedule with a time-driven trigger
+ */
+function processTrashTab() {
+  Logger.log('=== processTrashTab() starting ===');
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Trash');
+  if (!sheet) {
+    Logger.log('No Trash tab found - nothing to process');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  Logger.log('Trash tab has ' + data.length + ' rows (including header)');
+
+  if (data.length < 2) {
+    Logger.log('No items in Trash tab (only header or empty)');
+    return 0;
+  }
+
+  const headers = data[0];
+  Logger.log('Trash tab headers: ' + JSON.stringify(headers));
+
+  // Find column indexes - handle both old format and new format
+  // Old: deletedAt, dataType, originalData
+  // New: deletedAt, dataType, originalData, processed
+  let dataTypeCol = headers.indexOf('dataType');
+  let originalDataCol = headers.indexOf('originalData');
+  let processedCol = headers.indexOf('processed');
+
+  // If headers not found by name, use fixed positions (fallback)
+  if (dataTypeCol === -1) dataTypeCol = 1;  // Column B
+  if (originalDataCol === -1) originalDataCol = 2;  // Column C
+
+  Logger.log('Column indexes - dataType: ' + dataTypeCol + ', originalData: ' + originalDataCol + ', processed: ' + processedCol);
+
+  // Add 'processed' column header if it doesn't exist
+  if (processedCol === -1) {
+    // Add header to column D
+    processedCol = 3;
+    sheet.getRange(1, processedCol + 1).setValue('processed');
+    Logger.log('Added "processed" column header at column D');
+  }
+
+  let processedCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const dataType = row[dataTypeCol];
+    const originalDataJson = row[originalDataCol];
+    const alreadyProcessed = row[processedCol];
+
+    Logger.log('Row ' + (i+1) + ': dataType=' + dataType + ', processed=' + alreadyProcessed);
+
+    // Skip if already processed
+    if (alreadyProcessed === true || alreadyProcessed === 'TRUE' || alreadyProcessed === 'true') {
+      Logger.log('  Skipping - already processed');
+      skippedCount++;
+      continue;
+    }
+
+    if (dataType === 'invoice' && originalDataJson) {
+      try {
+        const originalData = JSON.parse(originalDataJson);
+        Logger.log('  Invoice #' + originalData.num + ', driveLink: ' + (originalData.driveLink ? 'present' : 'missing'));
+
+        if (originalData.driveLink) {
+          Logger.log('  Attempting to move PDF to Trash folder...');
+          const success = deleteDriveFileFromLink(originalData.driveLink, originalData.num);
+
+          // Mark as processed regardless of success (to avoid retry loops)
+          sheet.getRange(i + 1, processedCol + 1).setValue(true);
+          Logger.log('  Marked as processed');
+
+          if (success !== false) {
+            processedCount++;
+          }
+        } else {
+          // No driveLink - mark as processed anyway
+          sheet.getRange(i + 1, processedCol + 1).setValue(true);
+          Logger.log('  No driveLink - marked as processed');
+        }
+      } catch (e) {
+        Logger.log('  ERROR parsing/processing: ' + e.message);
+        errorCount++;
+        // Mark as processed to avoid infinite retry
+        sheet.getRange(i + 1, processedCol + 1).setValue('error: ' + e.message);
+      }
+    } else if (dataType === 'entry') {
+      // Entries don't have Drive files - just mark as processed
+      sheet.getRange(i + 1, processedCol + 1).setValue(true);
+      Logger.log('  Entry type - marked as processed (no Drive file)');
+    }
+  }
+
+  Logger.log('=== processTrashTab() complete ===');
+  Logger.log('Processed: ' + processedCount + ', Skipped: ' + skippedCount + ', Errors: ' + errorCount);
+  return processedCount;
+}
+
+/**
+ * Setup a time-driven trigger to process the Trash tab every hour
+ * This catches any deletions the onChange trigger missed
+ */
+function setupTrashProcessor() {
+  // Remove existing trash processor triggers
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(trigger => {
+    if (trigger.getHandlerFunction() === 'processTrashTab') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // Create hourly trigger
+  ScriptApp.newTrigger('processTrashTab')
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  SpreadsheetApp.getUi().alert('Trash processor scheduled to run hourly.\n\nThis will move any deleted invoice PDFs to the Trash folder in Google Drive.');
 }
 
 /**
@@ -515,6 +668,120 @@ function diagnosticTest() {
 
   ui.alert('Diagnostic Results', results.join('\n'), ui.ButtonSet.OK);
   Logger.log(results.join('\n'));
+}
+
+/**
+ * TRASH DIAGNOSTIC - Run this to debug trash functionality
+ */
+function trashDiagnostic() {
+  const ui = SpreadsheetApp.getUi();
+  let results = [];
+
+  results.push('=== TRASH DIAGNOSTIC ===\n');
+
+  // Step 1: Check Trash tab
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Trash');
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      results.push('✓ Trash tab found with ' + data.length + ' rows');
+
+      if (data.length > 0) {
+        results.push('  Headers: ' + JSON.stringify(data[0]));
+      }
+
+      if (data.length > 1) {
+        results.push('\n  Recent trash items:');
+        for (let i = 1; i < Math.min(data.length, 4); i++) {
+          const row = data[i];
+          results.push('  Row ' + (i+1) + ': type=' + row[1] + ', processed=' + row[3]);
+          // Try to parse originalData to get invoice num
+          try {
+            const orig = JSON.parse(row[2]);
+            results.push('    Invoice: #' + orig.num + ', driveLink: ' + (orig.driveLink ? 'YES' : 'NO'));
+          } catch (e) {
+            results.push('    Could not parse originalData');
+          }
+        }
+      }
+    } else {
+      results.push('✗ Trash tab NOT found');
+    }
+  } catch (e) {
+    results.push('✗ Error checking Trash tab: ' + e.message);
+  }
+
+  // Step 2: Check Trash folder in Drive
+  try {
+    results.push('\n--- Checking Drive Trash folder ---');
+    const trashFolder = getOrCreateTrashFolder();
+    results.push('✓ Trash folder: ' + trashFolder.getName());
+    results.push('  URL: ' + trashFolder.getUrl());
+
+    const files = trashFolder.getFiles();
+    let fileCount = 0;
+    let fileNames = [];
+    while (files.hasNext() && fileCount < 5) {
+      const file = files.next();
+      fileNames.push(file.getName());
+      fileCount++;
+    }
+    results.push('  Files in Trash folder: ' + fileCount + (fileCount >= 5 ? '+' : ''));
+    if (fileNames.length > 0) {
+      results.push('  Recent: ' + fileNames.join(', '));
+    }
+  } catch (e) {
+    results.push('✗ Error checking Trash folder: ' + e.message);
+  }
+
+  // Step 3: Check stored invoice links
+  try {
+    results.push('\n--- Stored Invoice Links ---');
+    const storedJson = PropertiesService.getScriptProperties().getProperty('invoiceLinks');
+    if (storedJson) {
+      const links = JSON.parse(storedJson);
+      const count = Object.keys(links).length;
+      results.push('✓ ' + count + ' invoice links stored');
+      if (count > 0) {
+        const keys = Object.keys(links).slice(0, 3);
+        keys.forEach(k => results.push('  #' + k + ': ' + (links[k] ? 'has link' : 'no link')));
+      }
+    } else {
+      results.push('! No invoice links stored (run setupTrigger to initialize)');
+    }
+  } catch (e) {
+    results.push('✗ Error checking stored links: ' + e.message);
+  }
+
+  // Step 4: Check triggers
+  try {
+    results.push('\n--- Triggers ---');
+    const triggers = ScriptApp.getProjectTriggers();
+    results.push('Total triggers: ' + triggers.length);
+    triggers.forEach(t => {
+      results.push('  ' + t.getHandlerFunction() + ' (' + t.getEventType() + ')');
+    });
+    if (triggers.length === 0) {
+      results.push('! No triggers - run setupTrigger()');
+    }
+  } catch (e) {
+    results.push('✗ Error checking triggers: ' + e.message);
+  }
+
+  ui.alert('Trash Diagnostic Results', results.join('\n'), ui.ButtonSet.OK);
+  Logger.log(results.join('\n'));
+}
+
+/**
+ * Manual test - process trash tab now
+ */
+function testProcessTrash() {
+  const ui = SpreadsheetApp.getUi();
+  ui.alert('Processing Trash tab now...\n\nCheck Executions log for details.');
+
+  const count = processTrashTab();
+
+  ui.alert('Done!\n\nProcessed ' + count + ' items.\n\nCheck the Trash folder in Google Drive and the execution log for details.');
 }
 
 /**

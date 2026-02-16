@@ -47,6 +47,9 @@ function getSheetId(entity) {
 }
 
 // Column mappings
+// NOTE: PDF deletion is handled by Apps Script (processTrashTab or onChange trigger)
+// because the service account doesn't own the files - Taylor does.
+// The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'airTotal', 'logoType', 'payTerms', 'isAdhoc', 'driveLink', 'createdAt'];
 const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'createdAt'];
@@ -302,16 +305,11 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
   // Move to Trash tab before deleting
   await moveToTrash(sheets, sheetId, 'invoice', deletedData);
 
-  // Get Drive link from sheet if not provided
+  // Note: PDF will be moved to Trash folder by Apps Script (processTrashTab)
+  // which reads the Trash tab. The service account can't move files it doesn't own.
   const driveLinkToDelete = driveLink || deletedData.driveLink;
-
-  // Note: PDF deletion is handled by Apps Script onChange trigger
-  // which will move the PDF to the Trash folder in Google Drive
-  // The service account cannot delete files, but Apps Script can move them
-  let driveNote = '';
   if (driveLinkToDelete) {
-    driveNote = ' (PDF will be moved to Trash folder by Apps Script)';
-    console.log('Invoice has Drive link - Apps Script will move PDF to Trash:', driveLinkToDelete);
+    console.log('Invoice', num, 'has Drive link - Apps Script will move PDF to Trash:', driveLinkToDelete);
   }
 
   const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
@@ -337,15 +335,21 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
   });
 
   // Log the deletion with full previous data
+  const hasPdf = !!driveLinkToDelete;
   await writeLog(sheets, sheetId, {
     action: 'DELETE',
     dataType: 'invoice',
     recordId: num,
-    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount} (moved to Trash)${driveNote}`,
+    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount} (moved to Trash tab${hasPdf ? ', PDF pending Apps Script cleanup' : ''})`,
     previousData: deletedData
   });
 
-  return res.status(200).json({ success: true, message: 'Invoice moved to Trash', num });
+  return res.status(200).json({
+    success: true,
+    message: `Invoice #${num} moved to Trash${hasPdf ? ' (PDF will be moved by Apps Script)' : ''}`,
+    num,
+    hasPdf
+  });
 }
 
 async function syncEntries(sheets, sheetId, { entries }, res) {

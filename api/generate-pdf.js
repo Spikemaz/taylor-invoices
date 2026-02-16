@@ -45,8 +45,8 @@ module.exports = async (req, res) => {
     // Add logo (top left)
     if (logoData) {
       try {
-        // Logo at top left, 60x60 points
-        doc.addImage(logoData, 'JPEG', 40, y, 60, 60);
+        // Logo at top left, 100x100 points (larger for better visibility)
+        doc.addImage(logoData, 'JPEG', 40, y, 100, 100);
       } catch (logoErr) {
         console.error('Logo error:', logoErr);
       }
@@ -72,18 +72,18 @@ module.exports = async (req, res) => {
       doc.text(inv.entPhone, W - 40, addrY + addrLines.length * 12, { align: 'right' });
     }
 
-    // INVOICE title (starts below logo area)
+    // INVOICE title (starts below logo area - logo is 100pt tall starting at y=40)
     doc.setTextColor(45, 106, 79); // Primary green
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 40, 120);
+    doc.text('INVOICE', 40, 160);
 
     // Green line (below INVOICE title)
     doc.setFillColor(27, 67, 50); // Dark green
-    doc.rect(40, 128, W - 80, 3, 'F');
+    doc.rect(40, 168, W - 80, 3, 'F');
 
     // Bill To section
-    y = 150;
+    y = 190;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(107, 114, 128);
@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
     doc.text('Entity:  ' + (inv.entity || ''), W - 40, y + 42, { align: 'right' });
 
     // Table header
-    y = 250;
+    y = 290;
     doc.setFillColor(27, 67, 50);
     doc.rect(40, y, W - 80, 22, 'F');
     doc.setFontSize(10);
@@ -206,7 +206,7 @@ module.exports = async (req, res) => {
     doc.text('\u00a3' + (inv.amount || 0).toFixed(2), W - 50, y, { align: 'right' });
 
     // Bank details section
-    y = Math.max(y + 40, 560);
+    y = Math.max(y + 40, 600);
     doc.setDrawColor(229, 231, 235);
     doc.line(40, y, W - 40, y);
     y += 16;
