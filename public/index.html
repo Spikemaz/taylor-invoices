@@ -1281,22 +1281,22 @@ const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 document.getElementById('hBanM').textContent=mn;
 const me=getMonth(n.getFullYear(),n.getMonth());
 var entMe=me.filter(function(e){return e.entity===S.ent});
-// Monthly gross and net
+// Monthly gross and net (net = what Taylor keeps after commission)
 let mGross=0,mNet=0;
-entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
+entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
 document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">'+fw(mGross)+'</span><span class="sep">/</span><span class="n">'+fw(mNet)+'</span></span>';
 // Daily calc
 var td=today();
 var dayEntries=entMe.filter(function(e){return e.date===td});
 var dGross=0,dNet=0;
-dayEntries.forEach(function(e){dGross+=e.gross;dNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
+dayEntries.forEach(function(e){dGross+=e.gross;dNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
 // Weekly calc
 var weekStart=new Date(n);weekStart.setDate(n.getDate()-n.getDay()+1);
 var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
 var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')[0];
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wGross=0,wNet=0;
-weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
+weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
 document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">'+fw(dGross)+'</span><span class="sep">/</span><span class="n">'+fw(dNet)+'</span></span>';
 document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">'+fw(wGross)+'</span><span class="sep">/</span><span class="n">'+fw(wNet)+'</span></span>';
 var te=S.entries.filter(e=>e.date===td);
@@ -1358,8 +1358,8 @@ function switchEntity(t){
     if(!p)return;
   }
 
-  // Update home screen totals if visible
-  if(S.scr==='home')upHome();
+  // Always update home screen totals when entity changes
+  upHome();
 }
 
 // Aliases for backwards compatibility - all call the unified function
