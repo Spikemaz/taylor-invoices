@@ -275,18 +275,17 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:6px"><div class="lb">Total</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
 <div class="stg" id="aoG" style="margin-top:12px">
-<div class="sl">Add-on</div>
-<div class="sgrid" id="aoTypeGrid" style="margin-bottom:10px">
-<button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
-<button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
+<div class="stp" id="aoTypeGrid">
+<button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow" style="flex:1">Airflow</button>
+<button class="sbtn" onclick="selAddon('custom')" data-ao="custom" style="flex:1">Custom</button>
 </div>
-<div id="aoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
+</div>
+<div id="aoCustomName" style="display:none;margin-top:6px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="aoAmtRow" style="display:none">
 <div class="stg"><div class="sl">Add-on Rate<span id="aoTypeLbl" style="margin-left:8px;font-weight:400;opacity:.7"></span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£9.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
 <div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adj('aoPts',-1)">−</button><input class="stpv" id="aoPts" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('aoPts',1)">+</button></div></div>
 </div>
-</div>
-<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="dLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="border:none"></div>
+<div class="stg" style="margin-top:12px"><div class="stp"><div class="stpv" style="flex:1;cursor:pointer" onclick="document.getElementById('logDt').showPicker()"><span class="stpl">Date<span id="dLbl" style="margin-left:6px;font-weight:400;opacity:.7">Today</span></span><input type="date" id="logDt" onchange="upDLbl()" style="border:none;background:transparent;font-size:18px;font-weight:700;text-align:center;width:100%;cursor:pointer"></div></div></div>
 </div>
 </div>
 
@@ -310,18 +309,17 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="abtn prc-adhoc" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd prc-adhoc" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
 <div class="stg" id="ahAoG" style="margin-top:12px">
-<div class="sl">Add-on</div>
-<div class="sgrid" id="ahAoTypeGrid" style="margin-bottom:10px">
-<button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow">Airflow</button>
-<button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom">Custom</button>
+<div class="stp" id="ahAoTypeGrid">
+<button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow" style="flex:1">Airflow</button>
+<button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom" style="flex:1">Custom</button>
 </div>
-<div id="ahAoCustomName" style="display:none;margin-bottom:10px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
+</div>
+<div id="ahAoCustomName" style="display:none;margin-top:6px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="ahAoAmtRow" style="display:none">
 <div class="stg"><div class="sl">Add-on per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
 <div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
 </div>
-</div>
-<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="ahDLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="border:none"></div>
+<div class="stg" style="margin-top:12px"><div class="stp"><div class="stpv" style="flex:1;cursor:pointer" onclick="document.getElementById('ahDt').showPicker()"><span class="stpl">Date<span id="ahDLbl" style="margin-left:6px;font-weight:400;opacity:.7">Today</span></span><input type="date" id="ahDt" onchange="upAhDLbl()" style="border:none;background:transparent;font-size:18px;font-weight:700;text-align:center;width:100%;cursor:pointer"></div></div></div>
 </div>
 </div>
 
