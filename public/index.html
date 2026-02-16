@@ -208,10 +208,10 @@ input[type="date"].fi{min-width:100%;display:block}
 .sync-dot.offline{background:var(--err)}
 .sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
 .sync-info{flex:1;display:flex;flex-direction:column;gap:2px}
-.sync-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--pri-lt);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
-.sync-btn:hover{background:var(--pri)}
+.sync-btn{width:36px;height:36px;border-radius:8px;border:2px solid var(--bdr);background:var(--bg);color:var(--pri);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-weight:600}
+.sync-btn:hover{background:var(--pri-lt);color:#fff;border-color:var(--pri-lt)}
 .sync-btn:active{transform:scale(.95)}
-.sync-btn.syncing{animation:spin 1s linear infinite;background:var(--warn)}
+.sync-btn.syncing{animation:spin 1s linear infinite;background:var(--warn);border-color:var(--warn);color:#fff}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .sync-label{font-size:13px;font-weight:600;color:var(--txt)}
 .sync-time{font-size:11px;color:var(--txt2)}
