@@ -53,6 +53,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .msd{font-size:12px;color:rgba(255,255,255,.5);font-weight:400}
 .msg{color:#fca5a5}
 .msn{color:#86efac}
+.totbox{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;background:var(--card);border-radius:var(--r);border:1px solid var(--bdr)}
+.totl{font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+.tot-nums{display:inline-flex;align-items:center;gap:6px;background:var(--bg);padding:6px 14px;border-radius:8px}
+.totv{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+.totd{font-size:16px;color:var(--txt3);font-weight:400}
+.totg{color:#dc2626}
+.totn{color:#16a34a}
 .hsum{padding:6px 10px;background:rgba(0,0,0,.15)}
 .hsum-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
 .hsum-lbl{font-size:10px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
@@ -329,7 +336,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><div class="stpv" onclick="document.getElementById('ptIn').focus()"><span class="stpl">Patients</span><input id="ptIn" class="stpvin" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"></div><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><div class="stpv" onclick="document.getElementById('prIn').focus()"><span class="stpl">Price/Patient</span><input id="prIn" class="stpvin" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
-<div class="amtd" style="margin-top:6px"><div class="lb">Total</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
+<div class="totbox" style="margin-top:6px"><span class="totl">Total</span><span class="tot-nums"><span class="totv totg" id="totA">£0.00</span><span class="totd">/</span><span class="totv totn" id="totN">£0.00</span></span></div>
 <div class="sgrid" id="aoTypeGrid" style="margin-top:12px">
 <button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
 <button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
@@ -1940,7 +1947,7 @@ upAmt();
 }
 function upAmt(){const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('aoIn').value),aoPts=parseInt(document.getElementById('aoPtsIn').value)||0;
 const ao=aoRate*aoPts;const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
-const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Profit Share '+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
+const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;const net=t*pComm;document.getElementById('totN').textContent=fc(net);}
 document.getElementById('arcBtn').disabled=pts===0;}
 function upDLbl(){const el=document.getElementById('logDt');document.getElementById('dLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
