@@ -920,21 +920,32 @@ async function syncPracticesToCloud() {
     active: p.active !== false,  // Default to true
     color: p.color || 'grove'  // Practice color for styling
   }));
-  // Ad Hoc practices
-  const adhocPractices = (S.ahPrac || []).map(p => ({
-    id: p.id,
-    short: p.name ? p.name.split(' ')[0] : p.id,
-    name: p.name || p.id,
-    type: 'adhoc',
-    addr: p.addr || '',
-    comm: 0,
-    services: {},
-    days: [],
-    rate: p.rate || 0,
-    air: p.air || 0,
-    active: p.active !== false,
-    color: 'adhoc'  // Ad hoc always uses adhoc color
-  }));
+  // Ad Hoc practices - convert rate/air to services format if needed
+  const adhocPractices = (S.ahPrac || []).map(p => {
+    // Build services object from svcs (new format) or rate/air (old format)
+    let services = {};
+    if (p.svcs && Object.keys(p.svcs).length > 0) {
+      services = p.svcs;
+    } else if (p.rate > 0 || p.air > 0) {
+      // Convert old format to services
+      if (p.rate > 0) services['Standard'] = { p: p.rate, d: 'per patient' };
+      if (p.air > 0) services['Airflow'] = { p: p.air, d: 'per patient airflow' };
+    }
+    return {
+      id: p.id,
+      short: p.short || (p.name ? p.name.split(' ')[0] : p.id),
+      name: p.name || p.id,
+      type: 'adhoc',
+      addr: p.addr || '',
+      comm: 0,  // Ad hoc = 0% commission (billed directly)
+      services: services,
+      days: [],
+      rate: p.rate || 0,
+      air: p.air || 0,
+      active: p.active !== false,
+      color: p.color || 'adhoc'
+    };
+  });
   const practices = [...contractPractices, ...adhocPractices];
   console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
   console.log('[Practices Sync] Sending practices:', practices.map(p => `${p.id}:${p.type}`).join(', '));
