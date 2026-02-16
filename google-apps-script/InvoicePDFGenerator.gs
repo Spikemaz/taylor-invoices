@@ -472,6 +472,11 @@ function generatePDFFromVercel(rowData, headers) {
     try { inv.svcs = JSON.parse(inv.svcs); } catch(e) { inv.svcs = {}; }
   }
 
+  // Parse addons JSON if it exists
+  if (inv.addons && typeof inv.addons === 'string') {
+    try { inv.addons = JSON.parse(inv.addons); } catch(e) { inv.addons = {}; }
+  }
+
   // Get logo base64 (we need to fetch this or store it)
   // For now, we'll let Vercel handle the logo via logoType
   const payload = {
@@ -493,9 +498,12 @@ function generatePDFFromVercel(rowData, headers) {
     gross: parseFloat(inv.gross) || 0,
     commRate: parseFloat(inv.commRate) || 0,
     svcs: inv.svcs,
+    addons: inv.addons || {},
     airTotal: parseFloat(inv.airTotal) || 0,
     logoType: inv.logoType || inv.entity || 'self',
     payTerms: inv.payTerms,
+    footerMsg: inv.footerMsg || 'Thank you for your continued support.',
+    companyNo: inv.companyNo || '',
     isAdhoc: inv.isAdhoc
   };
 

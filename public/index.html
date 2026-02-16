@@ -2209,7 +2209,29 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry
 // Show warning if entry is already invoiced
 if(e.invSt==='invoiced'&&e.invNo){_h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';}
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
-_h+='<div class="fg"><label class="fl">Service</label><input class="fi" id="edSvc" value="'+e.svc+'"></div>';
+// Service dropdown - get services for this practice
+var svcOptions='';
+var practiceServices=[];
+var currentSvcInList=false;
+if(e.pType==='adhoc'){
+  // Ad hoc has Hygiene/Therapy
+  practiceServices=['Hygiene','Therapy'];
+}else if(S.practices[e.pId]&&S.practices[e.pId].svcs){
+  practiceServices=Object.keys(S.practices[e.pId].svcs);
+}
+practiceServices.forEach(function(svc){
+  var sel=(svc===e.svc)?' selected':'';
+  if(svc===e.svc)currentSvcInList=true;
+  svcOptions+='<option value="'+svc+'"'+sel+'>'+svc+'</option>';
+});
+// If current service not in list, it's custom - add as option
+if(!currentSvcInList&&e.svc){
+  svcOptions+='<option value="'+e.svc+'" selected>'+e.svc+'</option>';
+}
+svcOptions+='<option value="_custom_">Custom...</option>';
+_h+='<div class="fg"><label class="fl">Service</label><select class="fi" id="edSvc" onchange="onEditSvcChange()">'+svcOptions+'</select></div>';
+// Custom service name (hidden by default)
+_h+='<div class="fg" id="edSvcCustomRow" style="display:none"><label class="fl">Custom Service Name</label><input class="fi" id="edSvcCustom" placeholder="e.g. Whitening"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Patients</label><input class="fi" id="edPts" type="number" value="'+e.pts+'"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
 // Add-on dropdown with None/Airflow/Custom options
@@ -2228,6 +2250,17 @@ var canB=document.getElementById('_edCancel');if(canB)canB.onclick=function(){cl
 var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){saveEntry(id)};
 },50);
 }
+// Handle service change in edit modal
+function onEditSvcChange(){
+var sel=document.getElementById('edSvc').value;
+var customRow=document.getElementById('edSvcCustomRow');
+if(sel==='_custom_'){
+  customRow.style.display='block';
+  document.getElementById('edSvcCustom').focus();
+}else{
+  customRow.style.display='none';
+}
+}
 // Handle add-on type change in edit modal
 function onEditAddonChange(){
 var sel=document.getElementById('edAoType').value;
@@ -2245,7 +2278,13 @@ async function saveEntry(id){
   const invoiceNum=e.invNo;
   // Get form values
   e.date=document.getElementById('edDt').value;
-  e.svc=document.getElementById('edSvc').value;
+  // Handle service - check for custom selection
+  var svcVal=document.getElementById('edSvc').value;
+  if(svcVal==='_custom_'){
+    e.svc=document.getElementById('edSvcCustom').value.trim()||'Service';
+  }else{
+    e.svc=svcVal;
+  }
   e.pts=parseInt(document.getElementById('edPts').value)||0;
   e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
   // Handle add-on - new structure with type, rate, and patients
@@ -2843,9 +2882,11 @@ var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
 if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
-var airTotal=(e.aoPatients||0)*(e.aoAmt||0);
+var addons={};
+var airTotal=e.aoAmt||0;
+if(e.aoType&&e.aoAmt>0){var aType=e.aoType||'Add-on';var aoPts=e.aoPatients||1;var aoPrice=e.aoAmt/aoPts;addons[aType]={pts:aoPts,price:aoPrice,total:e.aoAmt};}
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData, entKey);
@@ -2913,8 +2954,20 @@ entries.forEach(e=>{
   svcs[key].total+=e.pts*e.uPrice;
 });
 
-// Calculate totals
-let airTotal=0;entries.forEach(e=>{airTotal+=(e.aoPatients||0)*(e.aoAmt||0);});
+// Calculate totals and addons
+const addons={};
+let airTotal=0;
+entries.forEach(e=>{
+  if(e.aoType&&e.aoAmt>0){
+    const aType=e.aoType||'Add-on';
+    const aoPts=e.aoPatients||1;
+    const aoPrice=e.aoAmt/aoPts;
+    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0};
+    addons[aType].pts+=aoPts;
+    addons[aType].total+=e.aoAmt;
+    airTotal+=e.aoAmt;
+  }
+});
 const tg=entries.reduce((s,e)=>s+e.gross,0);
 
 // Determine period description
@@ -2946,7 +2999,7 @@ const invData={
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
-  commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:S.iEnt,
+  commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
   companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };
@@ -2986,8 +3039,20 @@ entries.forEach(e=>{
   svcs[key].total+=e.pts*e.uPrice;
 });
 
-// Calculate totals
-let airTotal=0;entries.forEach(e=>{airTotal+=(e.aoPatients||0)*(e.aoAmt||0);});
+// Calculate totals and addons
+const addons={};
+let airTotal=0;
+entries.forEach(e=>{
+  if(e.aoType&&e.aoAmt>0){
+    const aType=e.aoType||'Add-on';
+    const aoPts=e.aoPatients||1;
+    const aoPrice=e.aoAmt/aoPts;
+    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0};
+    addons[aType].pts+=aoPts;
+    addons[aType].total+=e.aoAmt;
+    airTotal+=e.aoAmt;
+  }
+});
 const tg=entries.reduce((s,e)=>s+e.gross,0);
 
 // Determine period description
@@ -3015,7 +3080,7 @@ const invData={
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
-  commRate:'N/A',svcs:svcs,airTotal:airTotal,logoType:entKey,
+  commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
   companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
 };

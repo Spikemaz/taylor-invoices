@@ -51,7 +51,7 @@ function getSheetId(entity) {
 // because the service account doesn't own the files - Taylor does.
 // The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'createdAt'];
-const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'airTotal', 'logoType', 'payTerms', 'isAdhoc', 'driveLink', 'createdAt'];
+const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'createdAt'];
 const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
@@ -288,7 +288,7 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
 async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:X',
+    range: 'Invoices!A:AA',
   });
 
   const rows = response.data.values || [];
@@ -398,7 +398,7 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:X',
+    range: 'Invoices!A:AA',
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
@@ -419,7 +419,7 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
 async function updateInvoice(sheets, sheetId, { num, updates }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:X',
+    range: 'Invoices!A:AA',
   });
 
   const rows = response.data.values || [];
@@ -446,7 +446,7 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `Invoices!A${rowIndex + 1}:X${rowIndex + 1}`,
+    range: `Invoices!A${rowIndex + 1}:AA${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [updatedRow] }
   });
@@ -470,7 +470,7 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
 async function triggerPdfRegeneration(sheets, sheetId, { num }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:X',
+    range: 'Invoices!A:AA',
   });
 
   const rows = response.data.values || [];
@@ -497,7 +497,7 @@ async function triggerPdfRegeneration(sheets, sheetId, { num }, res) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `Invoices!A${rowIndex + 1}:X${rowIndex + 1}`,
+    range: `Invoices!A${rowIndex + 1}:AA${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [currentRow] }
   });
@@ -557,7 +557,7 @@ async function syncInvoices(sheets, sheetId, { invoices }, res) {
   if (rows.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Invoices!A:X',
+      range: 'Invoices!A:AA',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows }
@@ -571,7 +571,7 @@ async function syncInvoices(sheets, sheetId, { invoices }, res) {
 async function loadAll(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:S' }),
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:X' })
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
   ]);
 
   const entriesRows = entriesRes.data.values || [];
@@ -817,7 +817,7 @@ async function loadSettings(sheets, sheetId, res) {
 async function getDashboard(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:S' }),
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:X' })
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
   ]);
 
   const entriesRows = entriesRes.data.values || [];
