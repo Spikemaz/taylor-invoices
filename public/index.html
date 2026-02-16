@@ -1344,7 +1344,9 @@ if(p&&S.scr!==n)p.classList.remove('act');
 if(nx)nx.classList.add('act');
 if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
-if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();
+if(n==='archive'){resetArcFilters();refArc();}
+if(n==='invoices'){resetInvFilters();refInv();}
+if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
@@ -1870,6 +1872,14 @@ upHome();
 // ===== ARCHIVE SCREEN =====
 let arcFilter='all';
 let arcEntFilter='all';
+function resetArcFilters(){
+  arcFilter='all';arcEntFilter='all';
+  document.getElementById('arcEAll').className='ebtn act';
+  document.getElementById('arcES').className='ebtn';
+  document.getElementById('arcEL').className='ebtn';
+  document.querySelectorAll('#aFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
+  document.getElementById('hdrE').textContent='All';
+}
 function filtArcEnt(f){
   arcEntFilter=f;
   document.getElementById('arcEAll').className='ebtn'+(f==='all'?' act':'');
@@ -2078,6 +2088,14 @@ async function delEntry(id){
 
 // ===== INVOICES =====
 let invPracFilter='all';
+function resetInvFilters(){
+  S.iEnt='all';invPracFilter='all';
+  document.getElementById('iEA').className='ebtn act';
+  document.getElementById('iES').className='ebtn';
+  document.getElementById('iEL').className='ebtn';
+  document.querySelectorAll('#iFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
+  document.getElementById('hdrE').textContent='All';
+}
 function filtInv(f){
   invPracFilter=f;
   document.querySelectorAll('#iFilt .fc').forEach(c=>{
