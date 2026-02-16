@@ -338,12 +338,10 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="entbox">
 <div class="esw"><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
 </div>
-<div class="sh">Contracted Invoices</div>
+<div class="sh">Awaiting Approval</div>
 <div id="mInv"></div>
-<div class="sh">Ad Hoc Invoices</div>
 <div id="ahInv"></div>
-<div class="sh">Past Invoices</div>
-<div id="pInv"><div class="empty"><div class="emo">&#128196;</div><p>Generated invoices will appear here.</p></div></div>
+<div id="pInv"></div>
 </div>
 
 <!-- SETTINGS -->
@@ -2158,8 +2156,8 @@ if(recentInvs.length){
   invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No invoices this month</div>';
 }
 
-// PAST INVOICES section
-invHtml+='<div class="inv-section" style="margin-top:20px">Past Invoices <span class="sec-count">'+pastInvs.length+' invoice'+(pastInvs.length!==1?'s':'')+'</span></div>';
+// PREVIOUS section
+invHtml+='<div class="inv-section" style="margin-top:20px">Previous <span class="sec-count">'+pastInvs.length+' invoice'+(pastInvs.length!==1?'s':'')+'</span></div>';
 
 if(pastInvs.length){
   // Group past invoices by month
@@ -2210,7 +2208,7 @@ if(pastInvs.length){
     invHtml+='</div>';
   });
 }else{
-  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No past invoices</div>';
+  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No previous invoices</div>';
 }
 
 pc2.innerHTML=invHtml;
