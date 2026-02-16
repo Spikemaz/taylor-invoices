@@ -180,8 +180,8 @@ input[type="date"].fi{min-width:100%;display:block}
 .sgrp .sh:first-child{border-top:0}
 .sgrp .ssec{border:0;border-radius:0;margin:0}
 .sgrp .ssec+.sh{margin-top:0}
-.sgrp-business{border-color:var(--pri)}
-.sgrp-business .sgrp-hdr{background:var(--pri);color:#fff}
+.sgrp-business{border-color:var(--pri-dk)}
+.sgrp-business .sgrp-hdr{background:var(--pri-dk);color:#fff}
 .sgrp-practices{border-color:var(--bupa)}
 .sgrp-practices .sgrp-hdr{background:var(--bupa);color:#fff}
 .sgrp-invoice{border-color:var(--warn)}
@@ -208,14 +208,29 @@ input[type="date"].fi{min-width:100%;display:block}
 .sync-dot.offline{background:var(--err)}
 .sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
 .sync-info{flex:1;display:flex;flex-direction:column;gap:2px}
-.sync-btn{width:36px;height:36px;border-radius:8px;border:2px solid var(--bdr);background:var(--bg);color:var(--pri);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-weight:600}
-.sync-btn:hover{background:var(--pri-lt);color:#fff;border-color:var(--pri-lt)}
+.sync-btn{width:36px;height:36px;border-radius:8px;border:2px solid var(--bdr);background:var(--bg);color:var(--pri-dk);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-weight:600}
+.sync-btn:hover{background:var(--pri-dk);color:#fff;border-color:var(--pri-dk)}
 .sync-btn:active{transform:scale(.95)}
 .sync-btn.syncing{animation:spin 1s linear infinite;background:var(--warn);border-color:var(--warn);color:#fff}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .sync-label{font-size:13px;font-weight:600;color:var(--txt)}
 .sync-time{font-size:11px;color:var(--txt2)}
-.load-overlay{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
+.splash{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:linear-gradient(135deg,var(--pri-dk) 0%,var(--pri) 100%);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;opacity:1;transition:opacity .4s ease-out}
+.splash.fade-out{opacity:0;pointer-events:none}
+.splash-logo{width:120px;height:120px;background:#fff;border-radius:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,.2);animation:splash-pop .6s cubic-bezier(.34,1.56,.64,1) forwards}
+.splash-logo svg{width:80px;height:80px}
+.splash-brand{text-align:center;animation:splash-fade .6s ease-out .2s both}
+.splash-brand h1{font-size:28px;font-weight:800;color:#fff;margin:0;letter-spacing:-1px}
+.splash-brand span{font-size:11px;color:rgba(255,255,255,.7);font-weight:500;letter-spacing:2px;text-transform:uppercase}
+.splash-loader{display:flex;gap:6px;animation:splash-fade .4s ease-out .4s both}
+.splash-dot{width:8px;height:8px;background:rgba(255,255,255,.4);border-radius:50%;animation:splash-bounce 1.4s ease-in-out infinite}
+.splash-dot:nth-child(2){animation-delay:.2s}
+.splash-dot:nth-child(3){animation-delay:.4s}
+@keyframes splash-pop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes splash-fade{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes splash-bounce{0%,80%,100%{transform:scale(1);background:rgba(255,255,255,.4)}40%{transform:scale(1.3);background:rgba(255,255,255,.9)}}
+.load-overlay{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
+.load-overlay.show{display:flex}
 .load-overlay.hidden{opacity:0;pointer-events:none}
 .load-spinner{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--pri);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -230,10 +245,30 @@ input[type="date"].fi{min-width:100%;display:block}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-<!-- Loading overlay - shown during initial cloud load -->
+<!-- Splash screen - shown briefly on startup -->
+<div class="splash" id="splash">
+<div class="splash-logo">
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M50 10C28 10 10 28 10 50s18 40 40 40 40-18 40-40S72 10 50 10z" fill="#009E60"/>
+<path d="M35 35h30v8H35zM35 48h30v8H35zM35 61h20v8H35z" fill="#fff"/>
+<circle cx="70" cy="65" r="12" fill="#006d42"/>
+<path d="M66 65l4 4 8-8" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</div>
+<div class="splash-brand">
+<h1>Books IQ</h1>
+<span>Invoice Manager</span>
+</div>
+<div class="splash-loader">
+<div class="splash-dot"></div>
+<div class="splash-dot"></div>
+<div class="splash-dot"></div>
+</div>
+</div>
+<!-- Loading overlay - shown if cloud sync takes too long -->
 <div class="load-overlay" id="loadOverlay">
 <div class="load-spinner"></div>
-<div class="load-text" id="loadText">Loading from cloud...</div>
+<div class="load-text" id="loadText">Syncing data...</div>
 </div>
 <!-- Pending operations bar -->
 <div class="pending-bar" id="pendingBar">
@@ -658,22 +693,36 @@ async function retryPending() {
   }
 }
 
-// Show/hide loading overlay
+// Show/hide loading overlay (used for long operations after initial load)
 function showLoading(msg) {
   const overlay = document.getElementById('loadOverlay');
   const text = document.getElementById('loadText');
   if (text) text.textContent = msg || 'Loading...';
-  if (overlay) overlay.classList.remove('hidden');
+  if (overlay) {
+    overlay.classList.add('show');
+    overlay.classList.remove('hidden');
+  }
 }
 
 function hideLoading() {
   const overlay = document.getElementById('loadOverlay');
-  if (overlay) overlay.classList.add('hidden');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    setTimeout(() => overlay.classList.remove('show'), 300);
+  }
 }
 
 function showLoadError(msg) {
+  // Hide splash if still showing
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.classList.add('fade-out');
+    setTimeout(() => splash.style.display = 'none', 400);
+  }
+  // Show error overlay
   const overlay = document.getElementById('loadOverlay');
   if (overlay) {
+    overlay.classList.add('show');
     overlay.innerHTML = '<div class="load-error"><div class="msg">' + msg + '</div><button onclick="location.reload()">Retry</button></div>';
   }
 }
@@ -698,6 +747,32 @@ function updateSyncStatus(online, syncing = false) {
     else if (!online) time.textContent = 'Changes saved locally';
     else time.textContent = 'Last sync: --';
   }
+}
+
+// Auto-detect online/offline status and retry pending operations
+window.addEventListener('online', () => {
+  console.log('[Network] Back online');
+  updateSyncStatus(true);
+  showToast('Back online');
+  // Auto-retry pending operations after a brief delay
+  if (pendingOps.length > 0) {
+    setTimeout(() => {
+      console.log('[Network] Auto-retrying', pendingOps.length, 'pending operations');
+      retryPending();
+    }, 1500);
+  }
+});
+
+window.addEventListener('offline', () => {
+  console.log('[Network] Gone offline');
+  updateSyncStatus(false);
+  showToast('You are offline - changes will sync when connected', 'err');
+});
+
+// Check initial online status
+if (!navigator.onLine) {
+  isOnline = false;
+  console.log('[Network] Starting offline');
 }
 
 async function apiCall(endpoint, data) {
@@ -1360,77 +1435,83 @@ async function runDataMigrations() {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', async ()=>{
-  console.log('DOMContentLoaded: Starting, S.practices=', S.practices);
-  // Load settings from localStorage (quick - entity preference, day map, etc)
+  console.log('DOMContentLoaded: Starting');
+
+  // STEP 1: Load from localStorage INSTANTLY (no waiting)
   loadSettings();
-  console.log('After loadSettings: S.practices=', S.practices);
   initDt();
   buildDayMap();
   updatePendingBar();
 
-  // Cloud-first: Load all data from cloud with loading overlay
-  showLoading('Connecting to cloud...');
-  try {
-    const success = await loadFromCloud();
-    console.log('After loadFromCloud: success=', success, 'S.practices=', S.practices);
-    if (success) {
-      // Run data migrations after cloud load
-      await runDataMigrations();
-      hideLoading();
-      // Show home screen
-      document.getElementById('scr-home').classList.add('act');
-      S.scr='home'; upHdr('home');
-      console.log('Before upHome: S.practices=', S.practices, 'typeof=', typeof S.practices);
+  // STEP 2: Show UI immediately with cached data
+  document.getElementById('scr-home').classList.add('act');
+  S.scr='home'; upHdr('home');
 
-      // Smart auto-open based on day
-      const day = new Date().getDay();
-      const t = S.dayMap[day];
-      console.log('Auto-open check: day=', day, 't=', t, 'S.practices[t]=', S.practices[t]);
+  // Initialize home values
+  document.getElementById('hDayG').textContent='£0.00';
+  document.getElementById('hDayN').textContent='£0.00';
+  document.getElementById('hWeekG').textContent='£0.00';
+  document.getElementById('hWeekN').textContent='£0.00';
+  document.getElementById('hMonthG').textContent='£0.00';
+  document.getElementById('hMonthN').textContent='£0.00';
 
-      // Set home values to zero initially (will animate when user returns to home)
-      document.getElementById('hDayG').textContent='£0.00';
-      document.getElementById('hDayN').textContent='£0.00';
-      document.getElementById('hWeekG').textContent='£0.00';
-      document.getElementById('hWeekN').textContent='£0.00';
-      document.getElementById('hMonthG').textContent='£0.00';
-      document.getElementById('hMonthN').textContent='£0.00';
+  // STEP 3: Fade out splash after minimum display time (for smooth animation)
+  const splashMinTime = 800; // ms - let animation complete
+  const splashStart = Date.now();
 
-      if (t && t !== 'home' && S.practices && S.practices[t]) {
-        // Auto-open practice - home will animate when user returns
-        openPractice(t);
-      } else {
-        // Staying on home - animate after brief delay
-        setTimeout(()=>upHome(true), 200);
-      }
-      // Retry any pending operations
-      if (pendingOps.length > 0) {
-        setTimeout(retryPending, 2000);
-      }
+  // STEP 4: Sync from cloud in background
+  const syncPromise = loadFromCloud();
+
+  // Wait for both: minimum splash time AND cloud sync
+  const [success] = await Promise.all([
+    syncPromise,
+    new Promise(resolve => setTimeout(resolve, splashMinTime))
+  ]);
+
+  // STEP 5: Hide splash with fade animation
+  const splash = document.getElementById('splash');
+  splash.classList.add('fade-out');
+  setTimeout(() => splash.style.display = 'none', 400);
+
+  if (success) {
+    // Run data migrations after cloud load
+    await runDataMigrations();
+
+    // Smart auto-open based on day
+    const day = new Date().getDay();
+    const t = S.dayMap[day];
+    console.log('Auto-open check: day=', day, 't=', t);
+
+    if (t && t !== 'home' && S.practices && S.practices[t]) {
+      openPractice(t);
     } else {
-      showLoadError('Failed to load from cloud. Check your connection.');
+      upHome(true);
     }
-  } catch (e) {
-    console.error('Startup error:', e);
-    showLoadError('Connection error: ' + e.message);
+
+    // Retry any pending operations
+    if (pendingOps.length > 0) {
+      setTimeout(retryPending, 2000);
+    }
+  } else {
+    // Cloud failed - still show UI with cached data, show warning
+    upHome(true);
+    showToast('Offline - using cached data', 'err');
   }
+
   scheduleMidnightReset();
 });
 
 // Load all data from cloud (entries, invoices, practices, settings)
 async function loadFromCloud() {
   try {
-    showLoading('Loading practices...');
+    console.log('[Cloud] Loading practices and settings...');
     // Load practices first
     await Promise.all([
       loadPracticesFromCloud(),
       loadSettingsFromCloudFn()
     ]);
 
-    // Drive folders are now created by Google Apps Script when saving PDFs
-    // (Apps Script uses your personal Drive quota instead of service account)
-    // initDriveFolders(); // Disabled - service account has no Drive quota
-
-    showLoading('Loading entries & invoices...');
+    console.log('[Cloud] Loading entries & invoices...');
     // Load entries/invoices for both entities in parallel
     const [selfData, ltdData] = await Promise.all([
       apiCall('sheets-sync', { action: 'load_all', entity: 'self' }),
@@ -2978,7 +3059,8 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
   commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,addons:addons,
   logoType:S.iEnt,payTerms:S.payTerms,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
+  createdAt:new Date().toISOString()
 };
 
 S.invoices.push(invData);save();
@@ -3029,7 +3111,7 @@ var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.a
 var airTotal=0;Object.values(addons).forEach(function(a){airTotal+=a.total;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
@@ -3069,7 +3151,7 @@ var addons={};
 var airTotal=e.aoAmt||0;
 if(e.aoType&&e.aoAmt>0){var aType=e.aoType||'Add-on';var aoPts=e.aoPatients||1;var aoPrice=e.aoAmt/aoPts;addons[e.date+'@'+aType]={date:e.date,type:aType,pts:aoPts,price:aoPrice,total:e.aoAmt};}
 var tg=e.gross;
-var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
+var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData, entKey);
@@ -3185,7 +3267,8 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
+  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
+  createdAt:new Date().toISOString()
 };
 
 S.invoices.push(invData);save();
@@ -3267,7 +3350,8 @@ const invData={
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
-  companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''
+  companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
+  createdAt:new Date().toISOString()
 };
 
 console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.length+' entries', '£'+tg.toFixed(2), 'entity='+entKey);
