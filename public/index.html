@@ -2088,10 +2088,12 @@ mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.sh
 '<div class="ia">';
 if(pe.length>1){
   mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
+  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button>';
 }else{
   mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
+  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Generate PDF</button>';
 }
-mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button></div></div>';
+mh+='</div></div>';
 });
 if(!mh)mh='';
 mc.innerHTML=mh;
@@ -2109,7 +2111,7 @@ else{
     const dates=entries.map(e=>e.date);const minDate=dates[0];const maxDate=dates[dates.length-1];
     const dateRange=minDate===maxDate?fdd(minDate):fdd(minDate)+' - '+fdd(maxDate);
     ahHtml+='<div class="icard prc-adhoc"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
-    ahHtml+='<div class="is"><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Total<strong>'+fc(totalGross)+'</strong></div></div>';
+    ahHtml+='<div class="is"><div class="ist">Entries<strong>'+entries.length+'</strong></div><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Gross<strong>'+fc(totalGross)+'</strong></div></div>';
     ahHtml+='<div class="ia">';
     if(entries.length===1){
       ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
@@ -2391,7 +2393,7 @@ pe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='</label>';
 });
 html+='</div>';
-html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genCpMulti(\''+pid+'\')">Generate Invoice</button></div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genCpMulti(\''+pid+'\')">Combine Invoice</button></div>';
 showModal(html);
 }
 
@@ -2570,7 +2572,7 @@ ahe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='</label>';
 });
 html+='</div>';
-html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genAhMulti(\''+pId+'\')">Generate Invoice</button></div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genAhMulti(\''+pId+'\')">Combine Invoice</button></div>';
 showModal(html);
 }
 
