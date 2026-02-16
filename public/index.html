@@ -1345,7 +1345,9 @@ function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementB
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
-t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
+t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
+// For archive screen, respect the archive entity filter
+if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}else{e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 b.innerHTML=s==='home'?'£':'&#8592;';b.onclick=s==='home'?null:goBack;b.classList.toggle('home',s==='home');}
 
 // ===== HOME =====
@@ -1860,8 +1862,10 @@ function filtArcEnt(f){
   document.getElementById('arcEAll').className='ebtn'+(f==='all'?' act':'');
   document.getElementById('arcES').className='ebtn'+(f==='self'?' act':'');
   document.getElementById('arcEL').className='ebtn'+(f==='ltd'?' act':'');
-  // Also update input entity when selecting a specific entity (not 'all')
-  if(f!=='all'){
+  // Update header entity display
+  if(f==='all'){
+    document.getElementById('hdrE').textContent='All';
+  }else{
     switchEntity(f);
   }
   refArc();
