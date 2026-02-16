@@ -1615,7 +1615,7 @@ document.getElementById('ahHH').textContent=fc(p.rate)+'/pt';
 // Reset add-on selector
 selAhAddon('none');
 document.getElementById('ahAoName').value='';
-// Apply Ad Hoc (red) color to stepper groups and date input
+// Apply Ad Hoc (red) color to all form elements
 document.querySelectorAll('#ahForm .stg').forEach(el=>{
   el.classList.remove('prc-bupa','prc-grove','prc-adhoc');
   el.classList.add('prc-adhoc');
@@ -1623,12 +1623,24 @@ document.querySelectorAll('#ahForm .stg').forEach(el=>{
 const ahDtInput=document.getElementById('ahDt');
 ahDtInput.classList.remove('prc-bupa','prc-grove','prc-adhoc');
 ahDtInput.classList.add('prc-adhoc');
+// Apply red to all service buttons (unselected state)
+document.querySelectorAll('#ahSGrid .sbtn').forEach(b=>{
+  b.classList.remove('prc-bupa','prc-grove');
+  b.classList.add('prc-adhoc');
+});
+// Apply red to add-on type buttons
+document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{
+  b.classList.remove('prc-bupa','prc-grove');
+  b.classList.add('prc-adhoc');
+});
+// Set initial service selection (Hygiene) with red color
+selAhSvc('Hygiene');
 upAhAmt();initDt();}
 function selAhSvc(nm){ahSvc=nm;document.querySelectorAll('#ahSGrid .sbtn').forEach(b=>{
   const isSel=b.getAttribute('data-s')===nm;
   b.classList.toggle('sel',isSel);
-  b.classList.remove('prc-bupa','prc-grove','prc-adhoc');
-  if(isSel)b.classList.add('prc-adhoc');
+  b.classList.remove('prc-bupa','prc-grove');
+  b.classList.add('prc-adhoc');
 });
 if(nm==='Perio')document.getElementById('arvIn').value='£160.00';
 else{const id=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===id);if(p)document.getElementById('arvIn').value=fc(p.rate);}
@@ -1642,13 +1654,13 @@ const btn=document.querySelector('#ahAoTypeGrid [data-ao="'+type+'"]');
 // Toggle off if already selected, or clear selection
 if(type==='none'||(btn&&btn.classList.contains('sel'))){
   ahAoType=null;
-  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
   amtRow.style.display='none';customName.style.display='none';
   document.getElementById('aao').value='£0.00';document.getElementById('aap').value='0';lbl.textContent='';
 }else if(type==='Airflow'){
   ahAoType='Airflow';
-  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
-  btn.classList.add('sel','prc-adhoc');
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
+  btn.classList.add('sel');
   amtRow.style.display='block';customName.style.display='none';
   lbl.textContent='± £1';
   // Set default airflow rate from practice
@@ -1657,8 +1669,8 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   if(p&&p.air)document.getElementById('aao').value=fc(p.air);
 }else{
   ahAoType='custom';
-  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
-  btn.classList.add('sel','prc-adhoc');
+  document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
+  btn.classList.add('sel');
   amtRow.style.display='block';customName.style.display='block';
   lbl.textContent='± £1';
   document.getElementById('ahAoName').focus();
