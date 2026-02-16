@@ -1567,6 +1567,7 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   btn.classList.add('sel',prcClass);
   amtRow.style.display='block';customName.style.display='none';
   lbl.textContent='± £1';
+  setTimeout(()=>document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
 }else{
   S.aoType='custom';
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
@@ -1574,6 +1575,7 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   amtRow.style.display='block';customName.style.display='block';
   lbl.textContent='± £1';
   document.getElementById('aoName').focus();
+  setTimeout(()=>document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
 }
 upAmt();
 }
@@ -1721,12 +1723,14 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   const pId=document.getElementById('ahSel').value;
   const p=S.ahPrac.find(x=>x.id===pId);
   if(p&&p.air)document.getElementById('aao').value=fc(p.air);
+  setTimeout(()=>document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
 }else{
   ahAoType='custom';
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
   if(btn)btn.classList.add('sel');
   if(amtRow)amtRow.style.display='block';if(customName)customName.style.display='block';
   document.getElementById('ahAoName').focus();
+  setTimeout(()=>document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
 }
 upAhAmt();
 }
