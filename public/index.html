@@ -901,7 +901,8 @@ async function syncPracticesToCloud() {
     days: p.days || [],
     rate: 0,  // Contract practices don't use rate
     air: 0,   // Contract practices don't use air
-    active: p.active !== false  // Default to true
+    active: p.active !== false,  // Default to true
+    color: p.color || 'grove'  // Practice color for styling
   }));
   // Ad Hoc practices
   const adhocPractices = (S.ahPrac || []).map(p => ({
@@ -915,10 +916,12 @@ async function syncPracticesToCloud() {
     days: [],
     rate: p.rate || 0,
     air: p.air || 0,
-    active: p.active !== false
+    active: p.active !== false,
+    color: 'adhoc'  // Ad hoc always uses adhoc color
   }));
   const practices = [...contractPractices, ...adhocPractices];
   console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
+  console.log('[Practices Sync] Sending practices:', practices.map(p => `${p.id}:${p.type}`).join(', '));
   try {
     const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
     if (!result.success) {
@@ -933,10 +936,21 @@ async function syncPracticesToCloud() {
   }
 }
 
-// Load practices from cloud
+// Load practices from cloud (tries Self sheet first, falls back to Ltd if no contract practices)
 async function loadPracticesFromCloud() {
-  const result = await apiCall('sheets-sync', { action: 'load_practices', entity: S.iEnt });
+  let result = await apiCall('sheets-sync', { action: 'load_practices', entity: 'self' });
+
+  // If self sheet has no practices or failed, try ltd sheet as backup
+  if (!result.success || !result.practices || result.practices.filter(p => p.type !== 'adhoc').length === 0) {
+    console.log('[Practices] Self sheet had no contract practices, trying Ltd sheet...');
+    const ltdResult = await apiCall('sheets-sync', { action: 'load_practices', entity: 'ltd' });
+    if (ltdResult.success && ltdResult.practices && ltdResult.practices.filter(p => p.type !== 'adhoc').length > 0) {
+      result = ltdResult;
+    }
+  }
+
   if (result.success && result.practices) {
+    console.log('[Practices] Loaded from cloud:', result.practices.length, 'total practices');
     // Filter: only load CONTRACT practices here (ad hoc are loaded via ahPrac in settings)
     const contractPractices = result.practices.filter(p => p.type !== 'adhoc');
     contractPractices.forEach(p => {
@@ -960,7 +974,18 @@ async function loadPracticesFromCloud() {
       S.practices[p.id] = p;
     });
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
+
+    // If cloud had no contract practices but we have defaults, push them to cloud
+    if (contractPractices.length === 0 && Object.keys(S.practices).length > 0) {
+      console.log('[Practices] Cloud has no contract practices but we have defaults - syncing to cloud...');
+      syncPracticesToCloud();
+    }
+
     save();
+  } else if (Object.keys(S.practices).length > 0) {
+    // Cloud load failed but we have local defaults - sync them to cloud
+    console.log('[Practices] Cloud load failed but we have local defaults - syncing to cloud...');
+    syncPracticesToCloud();
   }
   return result;
 }

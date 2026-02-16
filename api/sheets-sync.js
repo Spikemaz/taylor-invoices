@@ -742,6 +742,11 @@ async function loadAll(sheets, sheetId, res) {
 // ===== PRACTICES =====
 // Syncs practices to BOTH sheets (practices are shared across entities)
 async function syncPractices(sheets, sheetId, { practices }, res) {
+  console.log('[syncPractices] Received practices:', practices ? practices.length : 'null/undefined');
+  if (practices && practices.length > 0) {
+    console.log('[syncPractices] Practice types:', practices.map(p => `${p.id}:${p.type}`).join(', '));
+  }
+
   if (!practices || !practices.length) {
     return res.status(200).json({ success: true, message: 'No practices to sync', count: 0 });
   }
@@ -755,6 +760,9 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
       return val;
     })
   );
+
+  console.log('[syncPractices] Built', rows.length, 'rows');
+  console.log('[syncPractices] Row IDs:', rows.map(r => r[0]).join(', '));
 
   // Helper to sync to a single sheet and apply colors
   async function syncToSheet(targetSheetId) {
