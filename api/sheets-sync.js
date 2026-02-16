@@ -241,6 +241,7 @@ module.exports = async (req, res) => {
       case 'get_dashboard': return await getDashboard(sheets, sheetId, res);
       case 'rename_sheet': return await renameSheet(sheets, sheetId, data, res);
       case 'setup_log_tab': return await setupLogTab(sheets, sheetId, res);
+      case 'setup_tabs': return await setupAllTabs(sheets, res);
       case 'trigger_pdf_regeneration': return await triggerPdfRegeneration(sheets, sheetId, data, res);
       default: return res.status(400).json({ error: `Unknown action: ${action}` });
     }
@@ -482,11 +483,11 @@ async function syncEntries(sheets, sheetId, { entries }, res) {
   });
 
   if (rows.length > 0) {
-    await sheets.spreadsheets.values.append({
+    // Use update with explicit range starting at A2 to avoid header issues
+    await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: 'Entries!A:T',
+      range: `Entries!A2:T${rows.length + 1}`,
       valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows }
     });
   }
@@ -666,15 +667,15 @@ async function syncInvoices(sheets, sheetId, { invoices }, res) {
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: sheetId,
-    range: 'Invoices!A2:X',
+    range: 'Invoices!A2:AA',
   });
 
   if (rows.length > 0) {
-    await sheets.spreadsheets.values.append({
+    // Use update with explicit range starting at A2 to avoid header issues
+    await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: 'Invoices!A:AA',
+      range: `Invoices!A2:AA${rows.length + 1}`,
       valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows }
     });
   }
@@ -763,11 +764,11 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     });
 
     if (rows.length > 0) {
-      await sheets.spreadsheets.values.append({
+      // Use update with explicit range starting at A2 to avoid header issues
+      await sheets.spreadsheets.values.update({
         spreadsheetId: targetSheetId,
-        range: 'Practices!A:M',
+        range: `Practices!A2:M${rows.length + 1}`,
         valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: { values: rows }
       });
 
@@ -880,17 +881,18 @@ async function syncSettings(sheets, sheetId, { settings, entity }, res) {
       new Date().toISOString()
     ]);
 
+    // Clear data rows (not header)
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
       range: 'Settings!A2:C',
     });
 
     if (rows.length > 0) {
-      await sheets.spreadsheets.values.append({
+      // Use update with explicit range starting at A2 to avoid header issues
+      await sheets.spreadsheets.values.update({
         spreadsheetId: targetSheetId,
-        range: 'Settings!A:C',
+        range: `Settings!A2:C${rows.length + 1}`,
         valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: { values: rows }
       });
     }
@@ -1113,5 +1115,99 @@ async function setupLogTab(sheets, sheetId, res) {
     return res.status(200).json({ success: true, message: 'Log tab setup complete' });
   } catch (e) {
     return res.status(500).json({ error: 'Failed to setup Log tab', message: e.message });
+  }
+}
+
+// ===== SETUP ALL TABS =====
+// Ensures all tabs exist with correct headers in both Self and Ltd sheets
+async function setupAllTabs(sheets, res) {
+  const results = { self: {}, ltd: {} };
+
+  // Define all tabs with their headers
+  const TABS = [
+    { name: 'Entries', columns: ENTRY_COLUMNS, range: 'A:T' },
+    { name: 'Invoices', columns: INVOICE_COLUMNS, range: 'A:AA' },
+    { name: 'Practices', columns: PRACTICE_COLUMNS, range: 'A:M' },
+    { name: 'Settings', columns: SETTINGS_COLUMNS, range: 'A:C' },
+    { name: 'Log', columns: LOG_COLUMNS, range: 'A:G' },
+    { name: 'Trash', columns: TRASH_COLUMNS, range: 'A:C' }
+  ];
+
+  async function setupSheet(sheetId, sheetName) {
+    const tabResults = {};
+
+    for (const tab of TABS) {
+      try {
+        // Check if tab exists
+        const metadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+        const existingTab = metadata.data.sheets.find(s => s.properties.title === tab.name);
+
+        if (!existingTab) {
+          // Create the tab
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: sheetId,
+            requestBody: {
+              requests: [{
+                addSheet: {
+                  properties: { title: tab.name }
+                }
+              }]
+            }
+          });
+          tabResults[tab.name] = 'created';
+        } else {
+          tabResults[tab.name] = 'exists';
+        }
+
+        // Check current headers
+        const headerResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: sheetId,
+          range: `${tab.name}!1:1`,
+        });
+
+        const currentHeaders = headerResponse.data.values?.[0] || [];
+        const expectedHeaders = tab.columns;
+
+        // Compare headers
+        const headersMatch = expectedHeaders.every((col, i) => currentHeaders[i] === col);
+
+        if (!headersMatch || currentHeaders.length !== expectedHeaders.length) {
+          // Update headers
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: sheetId,
+            range: `${tab.name}!A1:${String.fromCharCode(64 + expectedHeaders.length)}1`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [expectedHeaders] }
+          });
+          tabResults[tab.name] = tabResults[tab.name] === 'created' ? 'created+headers' : 'headers_fixed';
+        }
+      } catch (e) {
+        tabResults[tab.name] = `error: ${e.message}`;
+      }
+    }
+
+    return tabResults;
+  }
+
+  // Setup both sheets
+  try {
+    if (SHEET_IDS.self) {
+      results.self = await setupSheet(SHEET_IDS.self, 'Self-Employed');
+    }
+    if (SHEET_IDS.ltd && SHEET_IDS.ltd !== SHEET_IDS.self) {
+      results.ltd = await setupSheet(SHEET_IDS.ltd, 'Ltd Company');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'All tabs setup complete',
+      results
+    });
+  } catch (e) {
+    return res.status(500).json({
+      error: 'Failed to setup tabs',
+      message: e.message,
+      results
+    });
   }
 }
