@@ -2841,8 +2841,8 @@ if(minDate===maxDate){
   }
 }
 
-var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;});
-var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.aoType||'Add-on';var rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+var svcs={};me.forEach(function(e){var key=e.svc+'@'+e.uPrice;if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0,dates:[]};svcs[key].pts+=e.pts;svcs[key].total+=e.pts*e.uPrice;if(svcs[key].dates.indexOf(e.date)===-1)svcs[key].dates.push(e.date);});Object.values(svcs).forEach(function(s){s.dates.sort();});
+var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.aoType||'Add-on';var rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0,dates:[]};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;if(addons[aType].dates.indexOf(e.date)===-1)addons[aType].dates.push(e.date);}});Object.values(addons).forEach(function(a){a.dates.sort();});
 var airTotal=0;Object.values(addons).forEach(function(a){airTotal+=a.total;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
@@ -2881,10 +2881,10 @@ var ent=S.ents[entKey];
 var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
 if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 e.invSt='invoiced';e.invNo=invNum;
-var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
+var svcs={};svcs[e.svc+'@'+e.uPrice]={name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice,dates:[e.date]};
 var addons={};
 var airTotal=e.aoAmt||0;
-if(e.aoType&&e.aoAmt>0){var aType=e.aoType||'Add-on';var aoPts=e.aoPatients||1;var aoPrice=e.aoAmt/aoPts;addons[aType]={pts:aoPts,price:aoPrice,total:e.aoAmt};}
+if(e.aoType&&e.aoAmt>0){var aType=e.aoType||'Add-on';var aoPts=e.aoPatients||1;var aoPrice=e.aoAmt/aoPts;addons[aType]={pts:aoPts,price:aoPrice,total:e.aoAmt,dates:[e.date]};}
 var tg=e.gross;
 var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||''};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
@@ -2945,16 +2945,18 @@ const pAddr=entries[0].adhocAddr||'';
 // Mark all entries as invoiced
 entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
 
-// Group services by svc+price
+// Group services by svc+price with dates
 const svcs={};
 entries.forEach(e=>{
   const key=e.svc+'@'+e.uPrice;
-  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0,dates:[]};
   svcs[key].pts+=e.pts;
   svcs[key].total+=e.pts*e.uPrice;
+  if(svcs[key].dates.indexOf(e.date)===-1)svcs[key].dates.push(e.date);
 });
+Object.values(svcs).forEach(s=>{s.dates.sort();});
 
-// Calculate totals and addons
+// Calculate totals and addons with dates
 const addons={};
 let airTotal=0;
 entries.forEach(e=>{
@@ -2962,12 +2964,14 @@ entries.forEach(e=>{
     const aType=e.aoType||'Add-on';
     const aoPts=e.aoPatients||1;
     const aoPrice=e.aoAmt/aoPts;
-    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0};
+    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0,dates:[]};
     addons[aType].pts+=aoPts;
     addons[aType].total+=e.aoAmt;
+    if(addons[aType].dates.indexOf(e.date)===-1)addons[aType].dates.push(e.date);
     airTotal+=e.aoAmt;
   }
 });
+Object.values(addons).forEach(a=>{a.dates.sort();});
 const tg=entries.reduce((s,e)=>s+e.gross,0);
 
 // Determine period description
@@ -3030,16 +3034,18 @@ const pAddr=entries[0].adhocAddr||'';
 // Mark all entries as invoiced
 entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
 
-// Group services by svc+price
+// Group services by svc+price with dates
 const svcs={};
 entries.forEach(e=>{
   const key=e.svc+'@'+e.uPrice;
-  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+  if(!svcs[key])svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0,dates:[]};
   svcs[key].pts+=e.pts;
   svcs[key].total+=e.pts*e.uPrice;
+  if(svcs[key].dates.indexOf(e.date)===-1)svcs[key].dates.push(e.date);
 });
+Object.values(svcs).forEach(s=>{s.dates.sort();});
 
-// Calculate totals and addons
+// Calculate totals and addons with dates
 const addons={};
 let airTotal=0;
 entries.forEach(e=>{
@@ -3047,12 +3053,14 @@ entries.forEach(e=>{
     const aType=e.aoType||'Add-on';
     const aoPts=e.aoPatients||1;
     const aoPrice=e.aoAmt/aoPts;
-    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0};
+    if(!addons[aType])addons[aType]={pts:0,price:aoPrice,total:0,dates:[]};
     addons[aType].pts+=aoPts;
     addons[aType].total+=e.aoAmt;
+    if(addons[aType].dates.indexOf(e.date)===-1)addons[aType].dates.push(e.date);
     airTotal+=e.aoAmt;
   }
 });
+Object.values(addons).forEach(a=>{a.dates.sort();});
 const tg=entries.reduce((s,e)=>s+e.gross,0);
 
 // Determine period description

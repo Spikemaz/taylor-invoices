@@ -110,22 +110,23 @@ module.exports = async (req, res) => {
     doc.text('Period:  ' + (inv.period || ''), W - 40, y + 28, { align: 'right' });
     doc.text('Entity:  ' + (inv.entity || ''), W - 40, y + 42, { align: 'right' });
 
-    // Table header
+    // Table header - 5 columns: Service, Date(s), Price, Qty, Subtotal
     y = 290;
     doc.setFillColor(27, 67, 50);
     doc.rect(40, y, W - 80, 22, 'F');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
     doc.text('Service', 50, y + 15);
-    doc.text('Price', 260, y + 15);
-    doc.text('Qty', 390, y + 15, { align: 'right' });
+    doc.text('Date(s)', 160, y + 15);
+    doc.text('Price', 320, y + 15);
+    doc.text('Qty', 410, y + 15, { align: 'right' });
     doc.text('Subtotal', W - 50, y + 15, { align: 'right' });
     y += 30;
 
     // Table rows
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     const svcs = inv.svcs || {};
     const svcKeys = Object.keys(svcs);
 
@@ -133,8 +134,17 @@ module.exports = async (req, res) => {
       const s = svcs[key];
       doc.setTextColor(26, 26, 26);
       doc.text(s.name || '', 50, y + 4);
-      doc.text('\u00a3' + (s.price || 0).toFixed(2), 260, y + 4);
-      doc.text(String(s.pts || 0), 390, y + 4, { align: 'right' });
+
+      // Format dates for display (short format: "10, 14, 17 Feb" or "10 Feb, 3 Mar")
+      const datesStr = formatDatesForPdf(s.dates || []);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(datesStr, 160, y + 4, { maxWidth: 150 });
+      doc.setFontSize(10);
+      doc.setTextColor(26, 26, 26);
+
+      doc.text('\u00a3' + (s.price || 0).toFixed(2), 320, y + 4);
+      doc.text(String(s.pts || 0), 410, y + 4, { align: 'right' });
       doc.text('\u00a3' + (s.total || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
 
       // Row separator line
@@ -148,11 +158,20 @@ module.exports = async (req, res) => {
     const addons = inv.addons || {};
     Object.entries(addons).forEach(([aType, addon]) => {
       doc.setTextColor(26, 26, 26);
-      // Handle both new format {pts, price, total} and old format (just amount)
+      // Handle both new format {pts, price, total, dates} and old format (just amount)
       if (typeof addon === 'object' && addon.pts !== undefined) {
         doc.text(aType + ' Add-on', 50, y + 4);
-        doc.text('\u00a3' + (addon.price || 0).toFixed(2), 260, y + 4);
-        doc.text(String(addon.pts || 0), 390, y + 4, { align: 'right' });
+
+        // Format addon dates
+        const addonDatesStr = formatDatesForPdf(addon.dates || []);
+        doc.setFontSize(8);
+        doc.setTextColor(107, 114, 128);
+        doc.text(addonDatesStr, 160, y + 4, { maxWidth: 150 });
+        doc.setFontSize(10);
+        doc.setTextColor(26, 26, 26);
+
+        doc.text('\u00a3' + (addon.price || 0).toFixed(2), 320, y + 4);
+        doc.text(String(addon.pts || 0), 410, y + 4, { align: 'right' });
         doc.text('\u00a3' + (addon.total || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
       } else {
         // Old format: addon is just the total amount
@@ -282,5 +301,35 @@ function formatDate(dateStr) {
     });
   } catch (e) {
     return dateStr;
+  }
+}
+
+// Helper function to format dates array for PDF display
+// Groups dates by month when possible: "10, 14, 17 Feb" or "10 Feb, 3 Mar"
+function formatDatesForPdf(dates) {
+  if (!dates || !dates.length) return '';
+  if (dates.length === 1) {
+    // Single date: "10 Feb"
+    const d = new Date(dates[0]);
+    return d.getDate() + ' ' + d.toLocaleString('en-GB', { month: 'short' });
+  }
+
+  // Multiple dates - try to group by month
+  const sorted = [...dates].sort();
+  const parsed = sorted.map(ds => new Date(ds));
+
+  // Check if all dates are in the same month
+  const firstMonth = parsed[0].getMonth();
+  const firstYear = parsed[0].getFullYear();
+  const allSameMonth = parsed.every(d => d.getMonth() === firstMonth && d.getFullYear() === firstYear);
+
+  if (allSameMonth) {
+    // Same month: "10, 14, 17 Feb"
+    const days = parsed.map(d => d.getDate()).join(', ');
+    const month = parsed[0].toLocaleString('en-GB', { month: 'short' });
+    return days + ' ' + month;
+  } else {
+    // Different months: "10 Feb, 3 Mar, 7 Mar"
+    return parsed.map(d => d.getDate() + ' ' + d.toLocaleString('en-GB', { month: 'short' })).join(', ');
   }
 }
