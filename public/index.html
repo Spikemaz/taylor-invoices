@@ -42,10 +42,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .banner h3{font-size:12px;font-weight:600;margin-bottom:6px;text-align:center}
 .hb-row{margin-bottom:6px;text-align:center}.hb-lbl{font-size:9px;font-weight:600;opacity:.85;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.hb-nums{font-size:24px;font-weight:800;letter-spacing:-1px;display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);padding:3px 12px;border-radius:6px}.hb-nums .g{color:#fca5a5;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .n{color:#86efac;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .sep{color:rgba(255,255,255,.5);font-weight:400}
 .hb-split{display:flex;gap:10px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:8px;font-weight:600;opacity:.85;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:16px;font-weight:800;letter-spacing:-.5px;display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
-.entrow{display:flex;gap:6px;margin-bottom:8px;align-items:stretch}
-.esw{display:flex;background:var(--card);border-radius:var(--rs);padding:2px;border:1px solid var(--bdr);flex:0 0 auto}
-.ebtn{padding:6px 10px;border:0;background:0;font-size:11px;font-weight:500;color:var(--txt2);border-radius:5px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri-dk);color:#fff}
-.msum{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);flex:1}
+.entbox{background:var(--card);border-radius:var(--rs);border:1px solid var(--bdr);margin-bottom:8px;overflow:hidden}
+.esw{display:flex;padding:2px}
+.ebtn{flex:1;padding:6px 10px;border:0;background:0;font-size:11px;font-weight:500;color:var(--txt2);border-radius:5px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:var(--pri-dk);color:#fff}
+.msum{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:linear-gradient(135deg,var(--pri-dk),var(--pri))}
 .msl{font-size:8px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
 .ms-nums{display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
 .msv{font-size:14px;font-weight:800;color:#fff;letter-spacing:-0.5px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
@@ -242,7 +242,7 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- PRACTICE LOGGING -->
 <div class="scr" id="scr-practice">
-<div class="entrow">
+<div class="entbox">
 <div class="esw" id="pEntSw">
 <button class="ebtn act" onclick="setPracticeEntity('self')" id="pES">Self-Employed</button>
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
