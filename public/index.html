@@ -69,8 +69,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .stpv .stpl{font-size:9px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.3px}
 .stpvin{border:0;background:transparent;font-size:18px;font-weight:700;text-align:center;color:var(--txt);font-family:var(--f);width:100%;padding:0;margin:0;outline:0}
 .stpv:focus-within{border-color:var(--pri);background:var(--pri-bg)}
-.amtd{background:var(--pri-bg);border:3px solid var(--pri);border-radius:var(--r);padding:10px 16px;text-align:center;margin:10px 0}
-.amtd .lb{font-size:11px;color:var(--pri);font-weight:500}.amtd .vl{font-size:28px;font-weight:700;color:var(--pri-dk);letter-spacing:-1px}.amtd .cl{font-size:11px;color:var(--acc);margin-top:2px}
+.amtd{background:var(--pri-bg);border:3px solid var(--pri);border-radius:var(--r);padding:4px 12px;text-align:center;margin:6px 0;display:flex;align-items:center;justify-content:center;gap:8px;min-height:56px}
+.amtd .lb{font-size:9px;color:var(--pri);font-weight:500;text-transform:uppercase}.amtd .vl{font-size:20px;font-weight:700;color:var(--pri-dk);letter-spacing:-0.5px}.amtd .cl{font-size:10px;color:var(--acc)}
 .amtd.prc-bupa{background:var(--bupa-lt);border-color:var(--bupa)}.amtd.prc-bupa .lb,.amtd.prc-bupa .cl{color:var(--bupa)}.amtd.prc-bupa .vl{color:var(--bupa)}
 .amtd.prc-grove{background:var(--grove-lt);border-color:var(--grove)}.amtd.prc-grove .lb,.amtd.prc-grove .cl{color:var(--grove)}.amtd.prc-grove .vl{color:var(--grove)}
 .amtd.prc-adhoc{background:#FEE2E2;border-color:#EF4444}.amtd.prc-adhoc .lb,.amtd.prc-adhoc .cl{color:#EF4444}.amtd.prc-adhoc .vl{color:#DC2626}
@@ -251,7 +251,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><div class="stpv" onclick="document.getElementById('ptIn').focus()"><span class="stpl">Patients</span><input id="ptIn" class="stpvin" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"></div><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><div class="stpv" onclick="document.getElementById('prIn').focus()"><span class="stpl">Price/Patient</span><input id="prIn" class="stpvin" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
-<div class="amtd" style="margin-top:12px"><div class="lb">Total Amount</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
+<div class="amtd" style="margin-top:6px"><div class="lb">Total</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
 <div class="stg" id="aoG" style="margin-top:12px">
 <div class="sl">Add-on</div>
 <div class="sgrid" id="aoTypeGrid" style="margin-bottom:10px">
