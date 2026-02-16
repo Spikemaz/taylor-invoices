@@ -792,13 +792,33 @@ async function deleteInvoiceFromCloud(num, entity) {
 
 // Sync practices to cloud (includes both contract and ad hoc practices)
 async function syncPracticesToCloud() {
-  // Contract practices
+  // Contract practices - include all fields matching PRACTICE_COLUMNS
   const contractPractices = Object.entries(S.practices).map(([id, p]) => ({
-    id, short: p.short, name: p.name, type: 'contract', addr: p.addr, comm: p.comm, services: p.svcs, days: p.days
+    id,
+    short: p.short || p.name || id,
+    name: p.name || p.short || id,
+    type: 'contract',
+    addr: p.addr || '',
+    comm: p.comm || 0,
+    services: p.svcs || {},
+    days: p.days || [],
+    rate: 0,  // Contract practices don't use rate
+    air: 0,   // Contract practices don't use air
+    active: p.active !== false  // Default to true
   }));
   // Ad Hoc practices
   const adhocPractices = (S.ahPrac || []).map(p => ({
-    id: p.id, short: p.name.split(' ')[0], name: p.name, type: 'adhoc', addr: p.addr, comm: 0, services: {}, days: [], rate: p.rate, air: p.air, active: p.active
+    id: p.id,
+    short: p.name ? p.name.split(' ')[0] : p.id,
+    name: p.name || p.id,
+    type: 'adhoc',
+    addr: p.addr || '',
+    comm: 0,
+    services: {},
+    days: [],
+    rate: p.rate || 0,
+    air: p.air || 0,
+    active: p.active !== false
   }));
   const practices = [...contractPractices, ...adhocPractices];
   console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
@@ -1410,13 +1430,18 @@ async function loadSettingsFromCloudFn() {
       S.ahPrac = selfResult.settings.ahPrac;
       console.log('[Settings Loaded] ahPrac=', S.ahPrac.length, 'practices');
     }
+    if (selfResult.settings.defComm !== undefined) S.defComm = selfResult.settings.defComm;
+    if (selfResult.settings.invoiceFooter) S.invoiceFooter = selfResult.settings.invoiceFooter;
+    if (selfResult.settings.svcs) S.svcs = selfResult.settings.svcs;
     if (selfResult.settings.nextInv) S.nextInvSelf = selfResult.settings.nextInv;
+    console.log('[Settings Loaded] entities=', Object.keys(S.ents || {}), 'defComm=', S.defComm, 'invoiceFooter=', !!S.invoiceFooter);
   }
   // Load entity-specific nextInv from ltd
   if (ltdResult.success && ltdResult.settings) {
     if (ltdResult.settings.nextInv) S.nextInvLtd = ltdResult.settings.nextInv;
   }
   console.log('[Settings Loaded] nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
+  save(); // Persist loaded settings to localStorage
   return selfResult;
 }
 function scheduleMidnightReset(){
@@ -3225,7 +3250,7 @@ document.getElementById('_efC').onclick=function(){closeMod2()};
 document.getElementById('_efS').onclick=function(){
 var v=document.getElementById('_efVal').value.trim();
 if(field==='addr')v=v.replace(/\n/g,'\\n');
-S.ents[entType][field]=v;save();closeMod2();refreshSettings();showToast('\u2713 Updated');};
+S.ents[entType][field]=v;save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Updated');};
 },50);
 }
 function editBankField(entType){
@@ -3244,7 +3269,7 @@ S.ents[entType].bank=document.getElementById('_ebBank').value.trim();
 S.ents[entType].bName=document.getElementById('_ebName').value.trim();
 S.ents[entType].acc=document.getElementById('_ebAcc').value.trim();
 S.ents[entType].sort=document.getElementById('_ebSort').value.trim();
-save();closeMod2();refreshSettings();showToast('\u2713 Bank details updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Bank details updated');};
 },50);
 }
 function editCompanyNo(){
@@ -3274,7 +3299,7 @@ setTimeout(function(){
 document.getElementById('_dmC').onclick=function(){closeMod2()};
 document.getElementById('_dmS').onclick=function(){
 S.dayMap[dayNum]=document.getElementById('_dmVal').value;
-save();closeMod2();buildDayMap();refreshSettings();showToast('\u2713 Updated');};
+save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud();showToast('\u2713 Updated');};
 },50);
 }
 function editInvNum(){
@@ -3302,7 +3327,7 @@ setTimeout(function(){
 document.getElementById('_ptC').onclick=function(){closeMod2()};
 document.getElementById('_ptS').onclick=function(){
 S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
-save();closeMod2();refreshSettings();showToast('\u2713 Payment terms updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Payment terms updated');};
 },50);
 }
 function editDefaultComm(){
@@ -3315,7 +3340,7 @@ setTimeout(function(){
 document.getElementById('_dcC').onclick=function(){closeMod2()};
 document.getElementById('_dcS').onclick=function(){
 S.defComm=parseInt(document.getElementById('_dcVal').value)||50;
-save();closeMod2();refreshSettings();showToast('\u2713 Default profit share updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Default profit share updated');};
 },50);
 }
 function viewLogo(ent){
@@ -3363,12 +3388,12 @@ showModal(_h);
 setTimeout(function(){
 document.getElementById('_esC').onclick=function(){closeMod2()};
 document.getElementById('_esD').onclick=function(){
-if(confirm('Delete this service type?')){S.svcs.splice(idx,1);save();closeMod2();buildSvcSettings();showToast('Service deleted');}
+if(confirm('Delete this service type?')){S.svcs.splice(idx,1);save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('Service deleted');}
 };
 document.getElementById('_esS').onclick=function(){
 s.name=document.getElementById('_esName').value.trim()||s.name;
 s.price=parseFloat(document.getElementById('_esPrice').value)||s.price;
-save();closeMod2();buildSvcSettings();showToast('\u2713 Service updated');};
+save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('\u2713 Service updated');};
 },50);
 }
 function addService(){
@@ -3385,7 +3410,7 @@ var price=parseFloat(document.getElementById('_asPrice').value)||25;
 if(!name){showToast('Enter a service name','err');return;}
 S.svcs=S.svcs||[];
 S.svcs.push({id:name.toLowerCase().replace(/\s+/g,''),name:name,price:price,active:true});
-save();closeMod2();buildSvcSettings();showToast('\u2713 Service added');};
+save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('\u2713 Service added');};
 },50);
 }
 function clearAllData(){
