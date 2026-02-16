@@ -3081,20 +3081,45 @@ function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;show
 function showCpSelect(pid){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth();
 const pe=getMonth(y,m).filter(e=>e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc');
-if(!pe.length)return;
+if(!pe.length){showToast('No pending entries');return;}
 const p=S.practices[pid];
-let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
-html+='<p style="font-size:14px;color:var(--txt2);margin-bottom:12px">'+p.short+'</p>';
-html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
+const pComm=p.comm||0.35;
+const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
+
+// Build modal with entries list and live preview
+let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px">'+p.short+' Invoice</h3>';
+html+='<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-s" style="flex:1;font-size:12px" onclick="cpSelectAll()">Select All</button><button class="btn btn-s" style="flex:1;font-size:12px" onclick="cpSelectNone()">Select None</button></div>';
+html+='<div id="cpEntryList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px">';
 pe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
-  html+='<input type="checkbox" class="cpsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
-  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='<input type="checkbox" class="cpsel-cb" data-eid="'+e.id+'" data-gross="'+e.gross+'" data-pts="'+e.pts+'" data-comm="'+pComm+'" checked style="width:18px;height:18px" onchange="updateCpPreview()">';
+  html+='<div style="flex:1"><div style="font-weight:600;font-size:13px">'+fdd(e.date)+'</div><div style="font-size:11px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
   html+='</label>';
 });
 html+='</div>';
-html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genCpMulti(\''+pid+'\')">Combine Invoice</button></div>';
-showModal(html);
+// Preview summary
+html+='<div id="cpPreview" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px">';
+html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Entries</span><span id="cpPrevCount" style="font-weight:600">'+pe.length+'</span></div>';
+html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Patients</span><span id="cpPrevPts" style="font-weight:600">'+pe.reduce((s,e)=>s+e.pts,0)+'</span></div>';
+html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Gross</span><span id="cpPrevGross" style="font-weight:600">'+fc(pe.reduce((s,e)=>s+e.gross,0))+'</span></div>';
+html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--bdr);padding-top:6px;margin-top:6px"><span style="font-weight:600">Profit Share ('+Math.round(pComm*100)+'%)</span><span id="cpPrevNet" style="font-weight:700;color:var(--pri)">'+fc(pe.reduce((s,e)=>s+e.gross,0)*pComm)+'</span></div>';
+html+='</div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p '+prcClass+'" id="cpGenBtn" onclick="genCpMulti(\''+pid+'\')">Generate Invoice</button></div>';
+showModal(html,prcClass);
+}
+
+function cpSelectAll(){document.querySelectorAll('.cpsel-cb').forEach(cb=>cb.checked=true);updateCpPreview();}
+function cpSelectNone(){document.querySelectorAll('.cpsel-cb').forEach(cb=>cb.checked=false);updateCpPreview();}
+
+function updateCpPreview(){
+const cbs=document.querySelectorAll('.cpsel-cb:checked');
+let count=0,pts=0,gross=0,comm=0.35;
+cbs.forEach(cb=>{count++;pts+=parseInt(cb.dataset.pts)||0;gross+=parseFloat(cb.dataset.gross)||0;comm=parseFloat(cb.dataset.comm)||0.35;});
+document.getElementById('cpPrevCount').textContent=count;
+document.getElementById('cpPrevPts').textContent=pts;
+document.getElementById('cpPrevGross').textContent=fc(gross);
+document.getElementById('cpPrevNet').textContent=fc(gross*comm);
+document.getElementById('cpGenBtn').disabled=count===0;
 }
 
 // Generate invoice for selected contract practice entries
@@ -3103,9 +3128,12 @@ const checkboxes=document.querySelectorAll('.cpsel-cb:checked');
 const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
 if(!ids.length){showToast('Select at least one entry');return;}
 const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
-if(!entries.length)return;
-closeMod2();
+if(!entries.length){showToast('Entries not found');return;}
+// Disable button to prevent double-click
+document.getElementById('cpGenBtn').disabled=true;
+document.getElementById('cpGenBtn').textContent='Generating...';
 await genCpInvMulti(pid,entries);
+closeMod2();
 }
 
 // Generate invoice for multiple contract practice entries
@@ -3268,20 +3296,41 @@ refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 // Show entry selection modal for multi-entry ad hoc invoice
 function showAhSelect(pId){
 const ahe=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
-if(!ahe.length)return;
+if(!ahe.length){showToast('No pending entries');return;}
 const pName=ahe[0].pName;
-let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
-html+='<p style="font-size:14px;color:var(--txt2);margin-bottom:12px">'+pName+'</p>';
-html+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
+
+// Build modal with entries list and live preview
+let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px">'+pName+' Invoice</h3>';
+html+='<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-s" style="flex:1;font-size:12px" onclick="ahSelectAll()">Select All</button><button class="btn btn-s" style="flex:1;font-size:12px" onclick="ahSelectNone()">Select None</button></div>';
+html+='<div id="ahEntryList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px">';
 ahe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
   html+='<label style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--bdr);cursor:pointer">';
-  html+='<input type="checkbox" class="ahsel-cb" data-eid="'+e.id+'" checked style="width:18px;height:18px">';
-  html+='<div style="flex:1"><div style="font-weight:600">'+fdd(e.date)+'</div><div style="font-size:12px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
+  html+='<input type="checkbox" class="ahsel-cb" data-eid="'+e.id+'" data-gross="'+e.gross+'" data-pts="'+e.pts+'" checked style="width:18px;height:18px" onchange="updateAhPreview()">';
+  html+='<div style="flex:1"><div style="font-weight:600;font-size:13px">'+fdd(e.date)+'</div><div style="font-size:11px;color:var(--txt2)">'+e.svc+' · '+e.pts+' pts · '+fc(e.gross)+'</div></div>';
   html+='</label>';
 });
 html+='</div>';
-html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" onclick="genAhMulti(\''+pId+'\')">Combine Invoice</button></div>';
-showModal(html);
+// Preview summary
+html+='<div id="ahPreview" style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px">';
+html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Entries</span><span id="ahPrevCount" style="font-weight:600">'+ahe.length+'</span></div>';
+html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Patients</span><span id="ahPrevPts" style="font-weight:600">'+ahe.reduce((s,e)=>s+e.pts,0)+'</span></div>';
+html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--bdr);padding-top:6px;margin-top:6px"><span style="font-weight:600">Invoice Total</span><span id="ahPrevTotal" style="font-weight:700;color:var(--pri)">'+fc(ahe.reduce((s,e)=>s+e.gross,0))+'</span></div>';
+html+='</div>';
+html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p prc-adhoc" id="ahGenBtn" onclick="genAhMulti(\''+pId+'\')">Generate Invoice</button></div>';
+showModal(html,'prc-adhoc');
+}
+
+function ahSelectAll(){document.querySelectorAll('.ahsel-cb').forEach(cb=>cb.checked=true);updateAhPreview();}
+function ahSelectNone(){document.querySelectorAll('.ahsel-cb').forEach(cb=>cb.checked=false);updateAhPreview();}
+
+function updateAhPreview(){
+const cbs=document.querySelectorAll('.ahsel-cb:checked');
+let count=0,pts=0,gross=0;
+cbs.forEach(cb=>{count++;pts+=parseInt(cb.dataset.pts)||0;gross+=parseFloat(cb.dataset.gross)||0;});
+document.getElementById('ahPrevCount').textContent=count;
+document.getElementById('ahPrevPts').textContent=pts;
+document.getElementById('ahPrevTotal').textContent=fc(gross);
+document.getElementById('ahGenBtn').disabled=count===0;
 }
 
 // Generate multi-entry ad hoc invoice
@@ -3290,9 +3339,12 @@ const checkboxes=document.querySelectorAll('.ahsel-cb:checked');
 const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
 if(!ids.length){showToast('Select at least one entry');return;}
 const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
-if(!entries.length)return;
-closeMod2();
+if(!entries.length){showToast('Entries not found');return;}
+// Disable button to prevent double-click
+document.getElementById('ahGenBtn').disabled=true;
+document.getElementById('ahGenBtn').textContent='Generating...';
 await genAhInvMulti(entries);
+closeMod2();
 }
 
 // Generate all entries for a practice
