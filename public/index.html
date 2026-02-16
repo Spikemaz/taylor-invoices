@@ -337,7 +337,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <!-- INVOICES -->
 <div class="scr" id="scr-invoices">
 <div class="entbox">
-<div class="esw"><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
+<div class="esw"><button class="ebtn" onclick="setInvEnt('all')" id="iEA">All</button><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
 </div>
 <div class="sh">Awaiting Approval</div>
 <div id="mInv"></div>
@@ -1345,8 +1345,10 @@ function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classL
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
-// For archive screen, respect the archive entity filter
-if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}else{e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
+// For archive/invoices screen, respect entity filter
+if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}
+else if(s==='invoices'&&S.iEnt==='all'){e.textContent='All';}
+else{e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 b.innerHTML=s==='home'?'£':'&#8592;';b.onclick=s==='home'?null:goBack;b.classList.toggle('home',s==='home');}
 
 // ===== HOME =====
@@ -1454,7 +1456,13 @@ function setAhEntity(t){switchEntity(t);}
 // Invoice entity - also updates input entity and header for consistency
 function setInvEnt(t){
   S.iEnt=t;
-  switchEntity(t); // Also update input entity and header
+  // Update header - show "All" or switch entity
+  if(t==='all'){
+    document.getElementById('hdrE').textContent='All';
+  }else{
+    switchEntity(t);
+  }
+  document.getElementById('iEA').className='ebtn'+(t==='all'?' act':'');
   document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');
   document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');
   refInv();
@@ -2079,7 +2087,7 @@ function getPrcClass(pid,pType){
 // Contracted invoices - show pending entries grouped by practice (exclude adhoc)
 const mc=document.getElementById('mInv');let mh='';
 Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
-var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt&&e.pType!=='adhoc'});
+var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
 if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
@@ -2100,7 +2108,7 @@ if(!mh)mh='';
 mc.innerHTML=mh;
 
 // Ad hoc invoices - group by practice (all get red border)
-const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&e.entity===S.iEnt});
+const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
 if(!ahe.length){ac.innerHTML='';}
 else{
   // Group by practice
@@ -2129,7 +2137,7 @@ else{
 // Past invoices - grouped by month with practice colors and collapsible folders
 const pc2=document.getElementById('pInv');
 // Filter by current entity view
-const filtInv=S.invoices.filter(inv=>(inv.logoType||inv.entity)===(S.iEnt==='self'?'self':'ltd')||(inv.logoType||inv.entity)===(S.iEnt==='self'?'Self-Employed':'Ltd Company'));
+const filtInv=S.iEnt==='all'?S.invoices:S.invoices.filter(inv=>{const t=inv.logoType||inv.entity;return t===S.iEnt||t===(S.iEnt==='self'?'Self-Employed':'Ltd Company');});
 
 // Split into recent (this month) and past
 const recentInvs=filtInv.filter(inv=>inv.date.substring(0,7)===curMonth);
