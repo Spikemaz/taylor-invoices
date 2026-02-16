@@ -223,9 +223,12 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- HOME -->
 <div class="scr" id="scr-home">
+<div class="entbox">
 <div class="esw">
 <button class="ebtn act" onclick="setEntity('self')" id="eS">Self-Employed</button>
 <button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd Company</button>
+</div>
+<div class="msum" id="homeMSum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="homeMGross">£0</span><span class="msd">/</span><span class="msv msn" id="homeMNet">£0</span></span></div>
 </div>
 <div class="banner" id="hBan">
 <h3 id="hBanM">February 2026</h3>
@@ -273,9 +276,11 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- AD HOC -->
 <div class="scr" id="scr-adhoc">
+<div class="entbox">
 <div class="esw" id="ahEntSw">
 <button class="ebtn act" onclick="setAhEntity('self')" id="ahES">Self-Employed</button>
 <button class="ebtn" onclick="setAhEntity('ltd')" id="ahEL">Ltd Company</button>
+</div>
 </div>
 <div class="sh">Select Practice</div>
 <select class="asel" id="ahSel" onchange="onAhChange()"><option value="">Choose a practice...</option></select>
@@ -306,10 +311,12 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- ARCHIVE -->
 <div class="scr" id="scr-archive">
+<div class="entbox">
 <div class="esw" id="arcEntSw">
 <button class="ebtn act" onclick="filtArcEnt('all')" id="arcEAll">All</button>
 <button class="ebtn" onclick="filtArcEnt('self')" id="arcES">Self-Employed</button>
 <button class="ebtn" onclick="filtArcEnt('ltd')" id="arcEL">Ltd Company</button>
+</div>
 </div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
@@ -322,7 +329,9 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- INVOICES -->
 <div class="scr" id="scr-invoices">
+<div class="entbox">
 <div class="esw"><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
+</div>
 <div class="sh">Contracted Invoices</div>
 <div id="mInv"></div>
 <div class="sh">Ad Hoc Invoices</div>
@@ -1304,6 +1313,11 @@ var entMe=me.filter(function(e){return e.entity===S.ent});
 // Monthly gross and net (net = what Taylor keeps after commission)
 let mGross=0,mNet=0;
 entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
+// Update home entity box monthly summary
+const hmGross=document.getElementById('homeMGross');
+const hmNet=document.getElementById('homeMNet');
+if(hmGross)hmGross.textContent=fc(mGross);
+if(hmNet)hmNet.textContent=fc(mNet);
 document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">'+fw(mGross)+'</span><span class="sep">/</span><span class="n">'+fw(mNet)+'</span></span>';
 // Daily calc
 var td=today();
@@ -1372,10 +1386,10 @@ function switchEntity(t){
   // Update header entity display
   document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
 
-  // Update practice screen if we're on it
+  // Update practice screen monthly summary if we're on it
   if(S.prac&&S.practices[S.prac]){
     const p=S.practices[S.prac];
-    if(!p)return;
+    if(p)upPracMSum(S.prac,p.comm||0);
   }
 
   // Always update home screen totals when entity changes
@@ -1419,7 +1433,7 @@ document.getElementById('logForm').style.display='none';initDt();
 }
 function upPracMSum(pId,comm,animate=false){
 const now=new Date();const y=now.getFullYear();const m=now.getMonth();
-const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId;});
+const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
 let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
 const net=gross*(1-comm);
 const gEl=document.getElementById('pracMGross');

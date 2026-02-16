@@ -52,6 +52,30 @@ const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAdd
 const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
+const TRASH_COLUMNS = ['deletedAt', 'dataType', 'originalData'];
+
+// ===== MOVE TO TRASH =====
+// Moves deleted data to the Trash tab for audit/recovery purposes
+async function moveToTrash(sheets, sheetId, dataType, originalData) {
+  try {
+    const row = [
+      new Date().toISOString(),          // deletedAt
+      dataType,                           // 'entry' or 'invoice'
+      JSON.stringify(originalData)        // Full original data as JSON
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: sheetId,
+      range: 'Trash!A:C',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+  } catch (e) {
+    console.error('Failed to move to Trash tab:', e.message);
+    // Don't fail the main operation if trash fails
+  }
+}
 
 // ===== AUDIT LOG =====
 // Writes to the entity-specific sheet only (log is per-entity)
@@ -215,10 +239,13 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
     return res.status(404).json({ error: 'Entry not found', id });
   }
 
-  // Store the data before deletion for the log
+  // Store the data before deletion for the log and trash
   const deletedRow = rows[rowIndex];
   const deletedData = {};
   ENTRY_COLUMNS.forEach((col, i) => { deletedData[col] = deletedRow[i] || ''; });
+
+  // Move to Trash tab before deleting
+  await moveToTrash(sheets, sheetId, 'entry', deletedData);
 
   const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
   const entriesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'Entries');
@@ -247,11 +274,11 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
     action: 'DELETE',
     dataType: 'entry',
     recordId: id,
-    changes: `Deleted entry: ${deletedData.pName} - ${deletedData.svc} - ${deletedData.pts} pts - £${deletedData.gross}`,
+    changes: `Deleted entry: ${deletedData.pName} - ${deletedData.svc} - ${deletedData.pts} pts - £${deletedData.gross} (moved to Trash)`,
     previousData: deletedData
   });
 
-  return res.status(200).json({ success: true, message: 'Entry deleted', id });
+  return res.status(200).json({ success: true, message: 'Entry moved to Trash', id });
 }
 
 async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
@@ -267,38 +294,24 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
     return res.status(404).json({ error: 'Invoice not found', num });
   }
 
-  // Store the data before deletion for the log
+  // Store the data before deletion for the log and trash
   const deletedRow = rows[rowIndex];
   const deletedData = {};
   INVOICE_COLUMNS.forEach((col, i) => { deletedData[col] = deletedRow[i] || ''; });
 
+  // Move to Trash tab before deleting
+  await moveToTrash(sheets, sheetId, 'invoice', deletedData);
+
   // Get Drive link from sheet if not provided
   const driveLinkToDelete = driveLink || deletedData.driveLink;
 
-  // Delete PDF from Google Drive if link exists
-  let driveDeleted = false;
+  // Note: PDF deletion is handled by Apps Script onChange trigger
+  // which will move the PDF to the Trash folder in Google Drive
+  // The service account cannot delete files, but Apps Script can move them
+  let driveNote = '';
   if (driveLinkToDelete) {
-    try {
-      // Extract file ID from Drive URL
-      // URLs look like: https://drive.google.com/file/d/FILE_ID/view or https://drive.google.com/open?id=FILE_ID
-      let fileId = null;
-      const fileMatch = driveLinkToDelete.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      const idMatch = driveLinkToDelete.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      fileId = fileMatch ? fileMatch[1] : (idMatch ? idMatch[1] : null);
-
-      if (fileId) {
-        const drive = await getDrive();
-        await drive.files.delete({
-          fileId: fileId,
-          supportsAllDrives: true
-        });
-        driveDeleted = true;
-        console.log('Deleted Drive file:', fileId);
-      }
-    } catch (driveErr) {
-      console.log('Drive delete failed (file may not exist):', driveErr.message);
-      // Continue - don't fail the whole operation if Drive delete fails
-    }
+    driveNote = ' (PDF will be moved to Trash folder by Apps Script)';
+    console.log('Invoice has Drive link - Apps Script will move PDF to Trash:', driveLinkToDelete);
   }
 
   const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
@@ -328,11 +341,11 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
     action: 'DELETE',
     dataType: 'invoice',
     recordId: num,
-    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount}${driveDeleted ? ' (PDF also deleted)' : ''}`,
+    changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount} (moved to Trash)${driveNote}`,
     previousData: deletedData
   });
 
-  return res.status(200).json({ success: true, message: 'Invoice deleted', num, driveDeleted });
+  return res.status(200).json({ success: true, message: 'Invoice moved to Trash', num });
 }
 
 async function syncEntries(sheets, sheetId, { entries }, res) {

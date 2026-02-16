@@ -18,6 +18,7 @@
 const VERCEL_API_URL = 'https://taylor-invoices.vercel.app';
 const INVOICE_FOLDER_NAME = 'Taylor Invoices';
 const INVOICES_TAB_NAME = 'Invoices';
+const TRASH_FOLDER_NAME = 'Trash';
 
 /**
  * Setup trigger - Run this ONCE
@@ -138,7 +139,7 @@ function checkForDeletedInvoices() {
 }
 
 /**
- * Delete a file from Google Drive using its URL
+ * Move a file from Google Drive to the Trash folder (not Google's built-in trash)
  * @param {string} driveLink - The Drive URL (e.g., https://drive.google.com/file/d/FILE_ID/view)
  * @param {string} invoiceNum - The invoice number (for logging)
  */
@@ -160,14 +161,42 @@ function deleteDriveFileFromLink(driveLink, invoiceNum) {
     if (fileId) {
       const file = DriveApp.getFileById(fileId);
       const fileName = file.getName();
-      file.setTrashed(true); // Move to trash (safer than permanent delete)
-      Logger.log('✓ Deleted Drive PDF: ' + fileName + ' (Invoice ' + invoiceNum + ')');
+
+      // Get or create Trash folder inside Taylor Invoices
+      const trashFolder = getOrCreateTrashFolder();
+
+      // Move file to Trash folder instead of Google's trash
+      file.moveTo(trashFolder);
+      Logger.log('✓ Moved to Trash: ' + fileName + ' (Invoice ' + invoiceNum + ')');
     } else {
       Logger.log('Could not extract file ID from: ' + driveLink);
     }
   } catch (e) {
-    Logger.log('Failed to delete Drive file for invoice ' + invoiceNum + ': ' + e.message);
+    Logger.log('Failed to move Drive file to Trash for invoice ' + invoiceNum + ': ' + e.message);
   }
+}
+
+/**
+ * Get or create the Trash folder inside Taylor Invoices
+ * Structure: Taylor Invoices / Trash
+ */
+function getOrCreateTrashFolder() {
+  // Get root folder: Taylor Invoices
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(INVOICE_FOLDER_NAME);
+  if (rootFolders.hasNext()) {
+    rootFolder = rootFolders.next();
+  } else {
+    rootFolder = DriveApp.createFolder(INVOICE_FOLDER_NAME);
+  }
+
+  // Get or create Trash folder inside root
+  let trashFolder = getSubfolder(rootFolder, TRASH_FOLDER_NAME);
+  if (!trashFolder) {
+    trashFolder = rootFolder.createFolder(TRASH_FOLDER_NAME);
+  }
+
+  return trashFolder;
 }
 
 /**
