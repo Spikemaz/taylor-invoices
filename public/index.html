@@ -540,14 +540,18 @@ if(progress<1)requestAnimationFrame(step);
 requestAnimationFrame(step);
 }
 
+
 // ===== PERSISTENCE (Cloud-First) =====
 // Pending operations queue for failed cloud syncs
 let pendingOps = [];
 
 // Load settings only (entity toggle, day map) from localStorage - NOT data
 function loadSettings(){
+  console.log('[loadSettings] === START ===');
+  console.log('[loadSettings] S.practices BEFORE localStorage:', JSON.stringify(Object.keys(S.practices)));
   try {
     const d = JSON.parse(localStorage.getItem('tm_inv_settings') || '{}');
+    console.log('[loadSettings] localStorage practices keys:', d.practices ? Object.keys(d.practices) : 'none');
     if (d.ent) S.ent = d.ent;
     if (d.dayMap) S.dayMap = d.dayMap;
     if (d.ahPrac) S.ahPrac = d.ahPrac;
@@ -583,6 +587,8 @@ function loadSettings(){
     // Load pending operations
     const pending = JSON.parse(localStorage.getItem('tm_inv_pending') || '[]');
     if (pending.length) pendingOps = pending;
+    console.log('[loadSettings] S.practices AFTER localStorage:', JSON.stringify(Object.keys(S.practices)));
+    console.log('[loadSettings] === END ===');
   } catch(e) { console.error('Load settings error:', e); }
 }
 
@@ -885,6 +891,13 @@ async function deleteInvoiceFromCloud(num, entity) {
 
 // Sync practices to cloud (includes both contract and ad hoc practices)
 async function syncPracticesToCloud() {
+  // GUARD: Never sync if we have no practices at all - this prevents accidental deletion
+  const hasContractPractices = S.practices && Object.keys(S.practices).length > 0;
+  const hasAdhocPractices = S.ahPrac && S.ahPrac.length > 0;
+  if (!hasContractPractices && !hasAdhocPractices) {
+    console.warn('[Practices Sync] BLOCKED - No practices to sync (would delete all practices!)');
+    return { success: false, error: 'No practices to sync - blocked to prevent data loss' };
+  }
   // Contract practices - include all fields matching PRACTICE_COLUMNS
   const contractPractices = Object.entries(S.practices).map(([id, p]) => ({
     id,
@@ -934,22 +947,50 @@ async function syncPracticesToCloud() {
 
 // Load practices from cloud (tries Self sheet first, falls back to Ltd if no contract practices)
 async function loadPracticesFromCloud() {
+  console.log('[Practices] === START loadPracticesFromCloud ===');
+  console.log('[Practices] S.practices BEFORE load:', JSON.stringify(Object.keys(S.practices)), Object.keys(S.practices).length, 'practices');
+
   let result = await apiCall('sheets-sync', { action: 'load_practices', entity: 'self' });
+  console.log('[Practices] Self sheet API response:', result.success ? 'SUCCESS' : 'FAILED', 'count:', result.practices?.length || 0);
+  if (result.practices) {
+    console.log('[Practices] Self sheet practices raw:', result.practices.map(p => ({ id: p.id, type: p.type, name: p.name })));
+  }
+
+  // Get ad hoc practice IDs to filter by ID instead of type (type may be wrong in cloud)
+  const ahPracIdsForCheck = (S.ahPrac || []).map(ap => ap.id);
 
   // If self sheet has no practices or failed, try ltd sheet as backup
-  if (!result.success || !result.practices || result.practices.filter(p => p.type !== 'adhoc').length === 0) {
-    console.log('[Practices] Self sheet had no contract practices, trying Ltd sheet...');
+  // Check by ID (not in ahPrac list) rather than type because cloud may have wrong types
+  const selfContractCount = result.practices ? result.practices.filter(p => !ahPracIdsForCheck.includes(p.id)).length : 0;
+  if (!result.success || !result.practices || selfContractCount === 0) {
+    console.log('[Practices] Self sheet had', selfContractCount, 'contract practices, trying Ltd sheet...');
     const ltdResult = await apiCall('sheets-sync', { action: 'load_practices', entity: 'ltd' });
-    if (ltdResult.success && ltdResult.practices && ltdResult.practices.filter(p => p.type !== 'adhoc').length > 0) {
+    console.log('[Practices] Ltd sheet API response:', ltdResult.success ? 'SUCCESS' : 'FAILED', 'count:', ltdResult.practices?.length || 0);
+    const ltdContractCount = ltdResult.practices ? ltdResult.practices.filter(p => !ahPracIdsForCheck.includes(p.id)).length : 0;
+    if (ltdResult.success && ltdResult.practices && ltdContractCount > 0) {
       result = ltdResult;
+      console.log('[Practices] Using Ltd sheet data instead');
     }
   }
 
   if (result.success && result.practices) {
     console.log('[Practices] Loaded from cloud:', result.practices.length, 'total practices');
-    // Filter: only load CONTRACT practices here (ad hoc are loaded via ahPrac in settings)
-    const contractPractices = result.practices.filter(p => p.type !== 'adhoc');
+
+    // Get ad hoc practice IDs for comparison
+    const ahPracIds = (S.ahPrac || []).map(ap => ap.id);
+    console.log('[Practices] ahPrac IDs:', ahPracIds);
+
+    // Filter: only load practices that are NOT in the ahPrac list
+    // We check by ID rather than type because the cloud may have wrong type values
+    const contractPractices = result.practices.filter(p => !ahPracIds.includes(p.id));
+    console.log('[Practices] Contract practices to load:', contractPractices.map(p => ({ id: p.id, type: p.type })));
+
     contractPractices.forEach(p => {
+      // FIX: Ensure type is 'contract' (cloud may have wrong value)
+      if (p.type !== 'contract') {
+        console.log('[Practices] FIXING type for', p.id, 'from', p.type, 'to contract');
+        p.type = 'contract';
+      }
       // Map 'services' (API column) to 'svcs' (frontend field)
       if (p.services && !p.svcs) {
         p.svcs = typeof p.services === 'string' ? JSON.parse(p.services) : p.services;
@@ -970,6 +1011,7 @@ async function loadPracticesFromCloud() {
       S.practices[p.id] = p;
     });
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
+    console.log('[Practices] S.practices AFTER load:', JSON.stringify(Object.keys(S.practices)), Object.keys(S.practices).length, 'practices');
 
     // If cloud had no contract practices but we have defaults, push them to cloud
     if (contractPractices.length === 0 && Object.keys(S.practices).length > 0) {
@@ -983,6 +1025,7 @@ async function loadPracticesFromCloud() {
     console.log('[Practices] Cloud load failed but we have local defaults - syncing to cloud...');
     syncPracticesToCloud();
   }
+  console.log('[Practices] === END loadPracticesFromCloud ===');
   return result;
 }
 
@@ -1398,28 +1441,29 @@ function mergeInvoices(cloudInvoices, entity) {
 // ===== DATA MIGRATIONS =====
 // Run one-time data fixes after cloud load
 async function runDataMigrations() {
+  console.log('[Migration] === START runDataMigrations ===');
+  console.log('[Migration] S.practices at start:', JSON.stringify(Object.keys(S.practices)));
   let needsSync = false;
 
-  // Migration 1: Remove ad hoc practices that got mistakenly added to S.practices (contracted)
-  // Ad hoc practices should only exist in S.ahPrac, not S.practices
+  // MIGRATION 1 DISABLED - was incorrectly deleting contract practices
+  // The root cause was that cloud data had wrong 'type' values
+  // Instead of deleting, we now FIX the type if it's wrong
   const ahPracIds = (S.ahPrac || []).map(p => p.id);
-  const keysToRemove = [];
+  console.log('[Migration] ahPrac IDs:', ahPracIds);
+
+  // Fix any contract practices that have wrong type
   Object.keys(S.practices || {}).forEach(key => {
     const prac = S.practices[key];
-    // Check if this practice is actually an ad hoc practice by checking:
-    // 1. If it has type='adhoc'
-    // 2. If its ID matches an ad hoc practice
-    // 3. If it looks like an imported ad hoc (has rate field instead of comm)
-    if (prac.type === 'adhoc' || ahPracIds.includes(key) || prac.rate !== undefined) {
-      keysToRemove.push(key);
+    console.log('[Migration] Checking practice:', key, 'type:', prac.type, 'inAhPrac:', ahPracIds.includes(key));
+
+    // If this practice is in S.practices but NOT in ahPrac, it should be type='contract'
+    // This fixes cloud data that incorrectly has type='adhoc' for contract practices
+    if (!ahPracIds.includes(key) && prac.type !== 'contract') {
+      console.log('[Migration] FIXING practice type:', key, 'from', prac.type, 'to contract');
+      prac.type = 'contract';
+      needsSync = true;
     }
   });
-
-  if (keysToRemove.length > 0) {
-    console.log('Migration: Removing ad hoc practices from S.practices:', keysToRemove);
-    keysToRemove.forEach(key => delete S.practices[key]);
-    needsSync = true;
-  }
 
   // Migration 2: Update old Bupa service names to new ones
   if (S.practices && S.practices.bupa && S.practices.bupa.svcs) {
@@ -1447,11 +1491,13 @@ async function runDataMigrations() {
     save();
     try {
       await syncPracticesToCloud();
-      console.log('Migration: Changes synced to cloud');
+      console.log('[Migration] Changes synced to cloud');
     } catch (e) {
-      console.error('Migration: Failed to sync changes to cloud:', e);
+      console.error('[Migration] Failed to sync changes to cloud:', e);
     }
   }
+  console.log('[Migration] S.practices at end:', JSON.stringify(Object.keys(S.practices)));
+  console.log('[Migration] === END runDataMigrations ===');
 }
 
 // ===== INIT =====
@@ -2264,6 +2310,7 @@ if(isAdhoc){
 }
 }
 function rebuildHomeCards(){
+console.log('[rebuildHomeCards] Building cards. S.practices keys:', JSON.stringify(Object.keys(S.practices)));
 var grid=document.querySelector('.pgrid');if(!grid)return;
 grid.innerHTML='';
 Object.keys(S.practices).forEach(function(k){

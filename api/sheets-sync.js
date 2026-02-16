@@ -834,12 +834,16 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 }
 
 async function loadPractices(sheets, sheetId, res) {
+  console.log('[loadPractices] Loading from sheet:', sheetId);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Practices!A:M',
   });
 
   const rows = response.data.values || [];
+  console.log('[loadPractices] Raw rows count:', rows.length);
+  console.log('[loadPractices] Raw rows (first 5):', JSON.stringify(rows.slice(0, 5)));
+
   const practices = rows
     .filter(row => row[0] && row[0] !== 'id')
     .map(row => {
@@ -856,14 +860,15 @@ async function loadPractices(sheets, sheetId, res) {
       return obj;
     });
 
+  console.log('[loadPractices] Parsed practices:', practices.map(p => ({ id: p.id, type: p.type, name: p.name })));
   return res.status(200).json({ success: true, practices, count: practices.length });
 }
 
 // ===== SETTINGS =====
-// Settings are split: entity-specific (nextInv, entities) vs shared (dayMap, ahPrac, payTerms, etc.)
-// Shared settings are mirrored to both sheets
-const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'invoiceFooter'];
-const ENTITY_SPECIFIC_KEYS = ['nextInv', 'entities'];
+// Settings are split: entity-specific (nextInv only) vs shared (dayMap, ahPrac, payTerms, entities, defComm, etc.)
+// Shared settings are mirrored to both sheets so both entities have access to all configurations
+const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'invoiceFooter', 'entities', 'defComm'];
+const ENTITY_SPECIFIC_KEYS = ['nextInv'];
 
 async function syncSettings(sheets, sheetId, { settings, entity }, res) {
   if (!settings || Object.keys(settings).length === 0) {
@@ -939,16 +944,20 @@ async function syncSettings(sheets, sheetId, { settings, entity }, res) {
     }
   }
 
-  // Sync entity-specific settings to the current entity's sheet only
-  await syncToSheet(sheetId, entitySpecificSettings);
+  // Determine which sheet we're syncing to
+  const isSelfSheet = sheetId === SHEET_IDS.self;
+  const isLtdSheet = sheetId === SHEET_IDS.ltd;
+  const otherSheetId = isSelfSheet ? SHEET_IDS.ltd : SHEET_IDS.self;
 
-  // Sync shared settings to BOTH sheets
-  if (Object.keys(sharedSettings).length > 0) {
-    const syncPromises = [syncToSheet(SHEET_IDS.self, sharedSettings)];
-    if (SHEET_IDS.ltd && SHEET_IDS.ltd !== SHEET_IDS.self) {
-      syncPromises.push(syncToSheet(SHEET_IDS.ltd, sharedSettings));
-    }
-    await Promise.all(syncPromises);
+  // Sync to the CURRENT entity's sheet: entity-specific + shared settings together
+  const currentSheetSettings = { ...entitySpecificSettings, ...sharedSettings };
+  if (Object.keys(currentSheetSettings).length > 0) {
+    await syncToSheet(sheetId, currentSheetSettings);
+  }
+
+  // Sync shared settings ONLY to the OTHER sheet (if different)
+  if (Object.keys(sharedSettings).length > 0 && otherSheetId && otherSheetId !== sheetId) {
+    await syncToSheet(otherSheetId, sharedSettings);
   }
 
   return res.status(200).json({
