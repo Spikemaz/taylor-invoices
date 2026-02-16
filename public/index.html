@@ -339,6 +339,12 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="entbox">
 <div class="esw"><button class="ebtn" onclick="setInvEnt('all')" id="iEA">All</button><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
 </div>
+<div class="frow" id="iFilt">
+<button class="fc act" onclick="filtInv('all')">All</button>
+<button class="fc prc-bupa" onclick="filtInv('bupa')">Bupa</button>
+<button class="fc prc-grove" onclick="filtInv('grove')">Grove</button>
+<button class="fc prc-adhoc" onclick="filtInv('adhoc')">Ad Hoc</button>
+</div>
 <div class="sh">Awaiting Approval</div>
 <div id="mInv"></div>
 <div id="ahInv"></div>
@@ -2071,6 +2077,15 @@ async function delEntry(id){
 }
 
 // ===== INVOICES =====
+let invPracFilter='all';
+function filtInv(f){
+  invPracFilter=f;
+  document.querySelectorAll('#iFilt .fc').forEach(c=>{
+    var txt=c.textContent.toLowerCase().replace(/\s+/g,'');
+    c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));
+  });
+  refInv();
+}
 function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
@@ -2087,6 +2102,8 @@ function getPrcClass(pid,pType){
 // Contracted invoices - show pending entries grouped by practice (exclude adhoc)
 const mc=document.getElementById('mInv');let mh='';
 Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
+// Practice filter
+if(invPracFilter!=='all'&&invPracFilter!==pid)return;
 var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
 if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
@@ -2108,7 +2125,11 @@ if(!mh)mh='';
 mc.innerHTML=mh;
 
 // Ad hoc invoices - group by practice (all get red border)
-const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
+const ac=document.getElementById('ahInv');
+// Hide ad hoc section if filtering by contract practice
+if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
+else{
+const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
 if(!ahe.length){ac.innerHTML='';}
 else{
   // Group by practice
@@ -2133,15 +2154,26 @@ else{
   });
   ac.innerHTML=ahHtml;
 }
+} // end ad hoc practice filter else
 
 // Past invoices - grouped by month with practice colors and collapsible folders
 const pc2=document.getElementById('pInv');
-// Filter by current entity view
-const filtInv=S.iEnt==='all'?S.invoices:S.invoices.filter(inv=>{const t=inv.logoType||inv.entity;return t===S.iEnt||t===(S.iEnt==='self'?'Self-Employed':'Ltd Company');});
+// Filter by current entity and practice view
+let filteredInvs=S.iEnt==='all'?S.invoices:S.invoices.filter(inv=>{const t=inv.logoType||inv.entity;return t===S.iEnt||t===(S.iEnt==='self'?'Self-Employed':'Ltd Company');});
+// Apply practice filter
+if(invPracFilter!=='all'){
+  filteredInvs=filteredInvs.filter(inv=>{
+    const prac=(inv.practice||'').toLowerCase();
+    if(invPracFilter==='adhoc')return inv.isAdhoc||prac==='ad hoc';
+    if(invPracFilter==='bupa')return prac.includes('bupa');
+    if(invPracFilter==='grove')return prac.includes('grove');
+    return true;
+  });
+}
 
 // Split into recent (this month) and past
-const recentInvs=filtInv.filter(inv=>inv.date.substring(0,7)===curMonth);
-const pastInvs=filtInv.filter(inv=>inv.date.substring(0,7)!==curMonth);
+const recentInvs=filteredInvs.filter(inv=>inv.date.substring(0,7)===curMonth);
+const pastInvs=filteredInvs.filter(inv=>inv.date.substring(0,7)!==curMonth);
 
 // Helper to render a single invoice
 function renderInv(inv){
