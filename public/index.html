@@ -51,14 +51,14 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .msd{font-size:14px;color:rgba(255,255,255,.5);font-weight:400}
 .msg{color:#fca5a5}
 .msn{color:#86efac}
-.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-.sbtn{padding:10px 12px;border:3px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+.sbtn{padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f)}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--pri-bg);color:var(--pri-dk)}
 .sbtn.prc-bupa{border-color:var(--bupa)}.sbtn.prc-grove{border-color:var(--grove)}.sbtn.prc-adhoc{border-color:#EF4444}
 .sbtn.sel.prc-bupa{border-color:var(--bupa);background:var(--bupa-lt);color:var(--bupa)}
 .sbtn.sel.prc-grove{border-color:var(--grove);background:var(--grove-lt);color:var(--grove)}
 .sbtn.sel.prc-adhoc{border-color:#EF4444;background:#FEE2E2;color:#EF4444}
-.sbtn .ph{display:block;font-size:11px;font-weight:400;color:var(--txt2);margin-top:2px}.sbtn.sel .ph{color:inherit}
+.sbtn .ph{display:block;font-size:10px;font-weight:400;color:var(--txt2);margin-top:1px}.sbtn.sel .ph{color:inherit}
 .stg{background:var(--card);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;border:3px solid var(--bdr)}
 .stg.prc-bupa{border-color:var(--bupa)}.stg.prc-grove{border-color:var(--grove)}.stg.prc-adhoc{border-color:#EF4444}
 .stg .sl{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:flex;justify-content:center}
@@ -244,7 +244,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
 <div class="msum" id="pracMSum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="pracMGross">£0</span><span class="msd">/</span><span class="msv msn" id="pracMNet">£0</span></span></div>
-<div class="sh">Service Type</div>
 <div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
 <div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
@@ -276,7 +275,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="sh">Select Practice</div>
 <select class="asel" id="ahSel" onchange="onAhChange()"><option value="">Choose a practice...</option></select>
 <div id="ahForm" style="display:none">
-<div class="sh">Service Type</div>
 <div class="sgrid" id="ahSGrid">
 <button class="sbtn sel" onclick="selAhSvc('Hygiene')" data-s="Hygiene">Hygiene<span class="ph" id="ahHH">£25/pt</span></button>
 <button class="sbtn" onclick="selAhSvc('Perio')" data-s="Perio">Perio<span class="ph">£160/pt</span></button>
