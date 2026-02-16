@@ -2095,12 +2095,12 @@ if(pe.length>1){
 }
 mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button></div></div>';
 });
-if(!mh)mh='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending contracted invoices.</p>';
+if(!mh)mh='';
 mc.innerHTML=mh;
 
 // Ad hoc invoices - group by practice (all get red border)
 const ac=document.getElementById('ahInv');const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&e.entity===S.iEnt});
-if(!ahe.length){ac.innerHTML='<p style="color:var(--txt2);font-size:13px;padding:8px 0">No pending ad hoc invoices.</p>';}
+if(!ahe.length){ac.innerHTML='';}
 else{
   // Group by practice
   const ahByPrac={};ahe.forEach(e=>{if(!ahByPrac[e.pId])ahByPrac[e.pId]={name:e.pName,addr:e.adhocAddr,entries:[]};ahByPrac[e.pId].entries.push(e);});
