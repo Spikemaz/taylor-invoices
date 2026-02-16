@@ -280,7 +280,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <!-- Pending operations bar -->
 <div class="pending-bar" id="pendingBar">
 <span id="pendingText">1 pending change</span>
-<button onclick="retryPending()">Retry Now</button>
+<div style="display:flex;gap:6px"><button onclick="retryPending()">Retry</button><button onclick="clearPendingQueue()" style="background:rgba(0,0,0,.2)">Clear</button></div>
 </div>
 <div id="app">
 <div class="hdr">
@@ -702,6 +702,19 @@ async function retryPending() {
   }
 }
 
+// Clear all pending operations (for when stuck in queue)
+function clearPendingQueue() {
+  if (!pendingOps.length) {
+    showToast('No pending changes to clear');
+    return;
+  }
+  const count = pendingOps.length;
+  pendingOps = [];
+  save();
+  updatePendingBar();
+  showToast('Cleared ' + count + ' pending changes');
+}
+
 // Show/hide loading overlay (used for long operations after initial load)
 function showLoading(msg) {
   const overlay = document.getElementById('loadOverlay');
@@ -863,11 +876,14 @@ async function syncInvoiceToCloud(invoice) {
   return result;
 }
 
-// Delete entry from cloud - queues on failure
+// Delete entry from cloud - queues on failure (but not if already deleted/not found)
 async function deleteEntryFromCloud(id, entity) {
   entity = entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'delete_entry', data: { id }, entity });
-  if (!result.success) {
+  // Don't queue if "not found" - means it's already deleted or never synced
+  if (!result.success && !result.error?.includes('not found') && !result.offline) {
+    // Only queue if it's a network error, not a "not found" error
+  } else if (!result.success && result.offline) {
     addPendingOp({ type: 'delete_entry', data: { action: 'delete_entry', data: { id }, entity }, id });
     showToast('Delete queued - will sync when online', 'err');
   }
@@ -885,11 +901,12 @@ async function updateEntryInCloud(id, updates, entity) {
   return result;
 }
 
-// Delete invoice from cloud - queues on failure
+// Delete invoice from cloud - queues on failure (but not if already deleted/not found)
 async function deleteInvoiceFromCloud(num, entity) {
   entity = entity || S.iEnt;
   const result = await apiCall('sheets-sync', { action: 'delete_invoice', data: { num }, entity });
-  if (!result.success) {
+  // Don't queue if "not found" - means it's already deleted or never synced
+  if (!result.success && result.offline) {
     addPendingOp({ type: 'delete_invoice', data: { action: 'delete_invoice', data: { num }, entity }, num });
     showToast('Delete queued - will sync when online', 'err');
   }
