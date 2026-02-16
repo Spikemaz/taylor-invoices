@@ -52,6 +52,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .msg{color:#fca5a5}
 .msn{color:#86efac}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+.scarousel{display:flex;gap:8px;margin:6px 0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;padding:2px 0}
+.scarousel::-webkit-scrollbar{display:none}
+.scarousel .sbtn{flex:0 0 calc(50% - 4px);scroll-snap-align:start;min-width:calc(50% - 4px)}
 .sbtn{padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f);min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--pri-bg);color:var(--pri-dk)}
 .sbtn.prc-bupa{border-color:var(--bupa)}.sbtn.prc-grove{border-color:var(--grove)}.sbtn.prc-adhoc{border-color:#EF4444}
@@ -244,7 +247,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
 <div class="msum" id="pracMSum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="pracMGross">£0</span><span class="msd">/</span><span class="msv msn" id="pracMNet">£0</span></span></div>
-<div class="sgrid" id="sGrid"></div>
+<div class="scarousel" id="sGrid"></div>
 <div id="logForm" style="display:none">
 <div class="stg"><div class="sl">Patients</div><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><input class="stpv" id="pt" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
 <div class="stg"><div class="sl">Price per Patient</div><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><input class="stpv" id="pr" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
@@ -1388,7 +1391,11 @@ document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
 upPracMSum(id,p.comm||0);
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
-if(p.svcs){Object.keys(p.svcs).forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
+if(p.svcs){
+// Sort services by usage (most used first)
+const svcUsage={};S.entries.filter(e=>e.pId===id).forEach(e=>{svcUsage[e.svc]=(svcUsage[e.svc]||0)+1;});
+const svcNames=Object.keys(p.svcs).sort((a,b)=>(svcUsage[b]||0)-(svcUsage[a]||0));
+svcNames.forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
 }
 function upPracMSum(pId,comm){
