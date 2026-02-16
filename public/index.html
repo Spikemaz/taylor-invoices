@@ -52,6 +52,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .msd{font-size:12px;color:rgba(255,255,255,.5);font-weight:400}
 .msg{color:#fca5a5}
 .msn{color:#86efac}
+.hsum{padding:6px 10px;background:rgba(0,0,0,.15)}
+.hsum-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0}
+.hsum-lbl{font-size:10px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.5px;opacity:.85}
+.hsum-nums{display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,.25);padding:2px 10px;border-radius:5px}
+.hsum-g{font-size:14px;font-weight:800;color:#fca5a5;letter-spacing:-0.5px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.hsum-n{font-size:14px;font-weight:800;color:#86efac;letter-spacing:-0.5px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.hsum-sep{font-size:12px;color:rgba(255,255,255,.5);font-weight:400}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:4px 0}
 .sbtn{padding:4px 8px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:12px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f);height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--pri-bg);color:var(--pri-dk)}
@@ -223,17 +230,16 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- HOME -->
 <div class="scr" id="scr-home">
-<div class="entbox">
+<div class="entbox" id="hBan">
 <div class="esw">
 <button class="ebtn act" onclick="setEntity('self')" id="eS">Self-Employed</button>
 <button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd Company</button>
 </div>
-<div class="msum" id="homeMSum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="homeMGross">£0</span><span class="msd">/</span><span class="msv msn" id="homeMNet">£0</span></span></div>
+<div class="hsum">
+<div class="hsum-row"><span class="hsum-lbl">Daily</span><span class="hsum-nums"><span class="hsum-g" id="hDayG">£0</span><span class="hsum-sep">/</span><span class="hsum-n" id="hDayN">£0</span></span></div>
+<div class="hsum-row"><span class="hsum-lbl">Weekly</span><span class="hsum-nums"><span class="hsum-g" id="hWeekG">£0</span><span class="hsum-sep">/</span><span class="hsum-n" id="hWeekN">£0</span></span></div>
+<div class="hsum-row"><span class="hsum-lbl">Monthly</span><span class="hsum-nums"><span class="hsum-g" id="hMonthG">£0</span><span class="hsum-sep">/</span><span class="hsum-n" id="hMonthN">£0</span></span></div>
 </div>
-<div class="banner" id="hBan">
-<h3 id="hBanM">February 2026</h3>
-<div class="hb-row" id="hBanMonth"><span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div>
-<div class="hb-split"><div class="hb-col" id="hBanDay"><span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div><div class="hb-col" id="hBanWeek"><span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">£0</span><span class="sep">/</span><span class="n">£0</span></span></div></div>
 </div>
 <div class="pgrid">
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
@@ -1304,21 +1310,14 @@ t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books 
 b.innerHTML=s==='home'?'£':'&#8592;';b.onclick=s==='home'?null:goBack;b.classList.toggle('home',s==='home');}
 
 // ===== HOME =====
-function upHome(){
+function upHome(animate=false){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid');return;}
-const n=new Date(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-document.getElementById('hBanM').textContent=mn;
+const n=new Date();
 const me=getMonth(n.getFullYear(),n.getMonth());
 var entMe=me.filter(function(e){return e.entity===S.ent});
 // Monthly gross and net (net = what Taylor keeps after commission)
 let mGross=0,mNet=0;
 entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
-// Update home entity box monthly summary
-const hmGross=document.getElementById('homeMGross');
-const hmNet=document.getElementById('homeMNet');
-if(hmGross)hmGross.textContent=fc(mGross);
-if(hmNet)hmNet.textContent=fc(mNet);
-document.getElementById('hBanMonth').innerHTML='<span class="hb-lbl">Monthly</span><span class="hb-nums"><span class="g">'+fw(mGross)+'</span><span class="sep">/</span><span class="n">'+fw(mNet)+'</span></span>';
 // Daily calc
 var td=today();
 var dayEntries=entMe.filter(function(e){return e.date===td});
@@ -1331,8 +1330,19 @@ var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wGross=0,wNet=0;
 weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
-document.getElementById('hBanDay').innerHTML='<span class="hb-lbl">Daily</span><span class="hb-nums"><span class="g">'+fw(dGross)+'</span><span class="sep">/</span><span class="n">'+fw(dNet)+'</span></span>';
-document.getElementById('hBanWeek').innerHTML='<span class="hb-lbl">Weekly</span><span class="hb-nums"><span class="g">'+fw(wGross)+'</span><span class="sep">/</span><span class="n">'+fw(wNet)+'</span></span>';
+// Update home summary with animations
+const hDayG=document.getElementById('hDayG'),hDayN=document.getElementById('hDayN');
+const hWeekG=document.getElementById('hWeekG'),hWeekN=document.getElementById('hWeekN');
+const hMonthG=document.getElementById('hMonthG'),hMonthN=document.getElementById('hMonthN');
+if(animate){
+animateValue(hDayG,pc(hDayG.textContent),dGross);animateValue(hDayN,pc(hDayN.textContent),dNet);
+animateValue(hWeekG,pc(hWeekG.textContent),wGross);animateValue(hWeekN,pc(hWeekN.textContent),wNet);
+animateValue(hMonthG,pc(hMonthG.textContent),mGross);animateValue(hMonthN,pc(hMonthN.textContent),mNet);
+}else{
+hDayG.textContent=fc(dGross);hDayN.textContent=fc(dNet);
+hWeekG.textContent=fc(wGross);hWeekN.textContent=fc(wNet);
+hMonthG.textContent=fc(mGross);hMonthN.textContent=fc(mNet);
+}
 var te=S.entries.filter(e=>e.date===td);
 var _st;
 _st=document.getElementById('buSt')||document.getElementById('bupaSt');if(_st)_st.className='cs'+(te.some(e=>e.pId==='bupa')?' on':'');
@@ -1526,6 +1536,7 @@ console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts'
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 upPracMSum(S.prac,pComm,true);
+upHome(true);
 document.getElementById('ptIn').value='0';document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
@@ -1557,6 +1568,7 @@ async function addToDup(id,pts,ao){
     closeMod2();
     document.getElementById('ptIn').value='0';document.getElementById('ao').value='£0.00';upAmt();
     upPracMSum(e.pId,e.comm,true);
+    upHome(true);
     showToast('Syncing...',prcClass);
     // Sync update to cloud
     const result = await updateEntryInCloud(e.id, e, e.entity || S.ent);
@@ -1582,7 +1594,7 @@ const prcClass=entry.pType==='adhoc'?'prc-adhoc':(entry.pId==='bupa'?'prc-bupa':
 t.className='toast '+prcClass;t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const pId=S.undoE.pId;const comm=S.undoE.comm||0;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(pId==='bupa'?'prc-bupa':(pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);if(S.prac&&S.prac===pId)upPracMSum(pId,comm,true);}}
+function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const pId=S.undoE.pId;const comm=S.undoE.comm||0;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(pId==='bupa'?'prc-bupa':(pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);upHome(true);if(S.prac&&S.prac===pId)upPracMSum(pId,comm,true);}}
 function showToast(msg,prcClass){const t=document.getElementById('toast');t.className='toast'+(prcClass?' '+prcClass:' ok');t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -1660,7 +1672,7 @@ const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoNam
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
-syncEntryToCloud(entry);
+syncEntryToCloud(entry);upHome(true);
 document.getElementById('apIn').value='0';document.getElementById('aap').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
 function showAhDupMod(ex,pts,air,airPts){
@@ -1689,6 +1701,7 @@ if(e){
   save();closeMod2();
   // Reset form
   document.getElementById('apIn').value='0';document.getElementById('aap').value='0';upAhAmt();
+  upHome(true);
   showToast('Syncing...','prc-adhoc');
   const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
   if(result.success){showToast('Updated — '+e.pts+' patients','prc-adhoc');}
