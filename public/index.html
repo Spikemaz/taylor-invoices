@@ -455,9 +455,9 @@ const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.get
 const today=()=>new Date().toISOString().split('T')[0];
 
 // Animated counter - smoothly transitions between values
-function animateValue(el,start,end,duration=400){
+function animateValue(el,start,end,duration=800){
 const range=end-start;
-if(range===0)return;
+if(range===0){el.textContent=fc(end);return;}
 const startTime=performance.now();
 const step=(now)=>{
 const elapsed=now-startTime;
@@ -1154,19 +1154,27 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       document.getElementById('scr-home').classList.add('act');
       S.scr='home'; upHdr('home');
       console.log('Before upHome: S.practices=', S.practices, 'typeof=', typeof S.practices);
-      // Set zeros first, then animate to actual values for reactive feel on startup
+
+      // Smart auto-open based on day
+      const day = new Date().getDay();
+      const t = S.dayMap[day];
+      console.log('Auto-open check: day=', day, 't=', t, 'S.practices[t]=', S.practices[t]);
+
+      // Set home values to zero initially (will animate when user returns to home)
       document.getElementById('hDayG').textContent='£0.00';
       document.getElementById('hDayN').textContent='£0.00';
       document.getElementById('hWeekG').textContent='£0.00';
       document.getElementById('hWeekN').textContent='£0.00';
       document.getElementById('hMonthG').textContent='£0.00';
       document.getElementById('hMonthN').textContent='£0.00';
-      setTimeout(()=>upHome(true), 150);
-      // Smart auto-open based on day
-      const day = new Date().getDay();
-      const t = S.dayMap[day];
-      console.log('Auto-open check: day=', day, 't=', t, 'S.practices[t]=', S.practices[t]);
-      if (t && t !== 'home' && S.practices && S.practices[t]) { openPractice(t); }
+
+      if (t && t !== 'home' && S.practices && S.practices[t]) {
+        // Auto-open practice - home will animate when user returns
+        openPractice(t);
+      } else {
+        // Staying on home - animate after brief delay
+        setTimeout(()=>upHome(true), 200);
+      }
       // Retry any pending operations
       if (pendingOps.length > 0) {
         setTimeout(retryPending, 2000);
