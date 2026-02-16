@@ -171,7 +171,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .mov.show .mod{transform:translateY(0)}
 .mh{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px}
 .fg{margin-bottom:14px}.fl{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:block}
-.fi{width:100%;height:48px;padding:0 12px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:14px;font-family:var(--f);color:var(--txt);background:var(--bg);box-sizing:border-box;-webkit-appearance:none;appearance:none}.fi:focus{outline:0;border-color:var(--pri)}
+.fi{width:100%;height:48px;padding:0 12px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:16px;font-family:var(--f);color:var(--txt);background:var(--bg);box-sizing:border-box;-webkit-appearance:none;appearance:none}.fi:focus{outline:0;border-color:var(--pri)}
 input[type="date"].fi{min-width:100%;display:block}
 .fi.prc-bupa{border-color:var(--bupa)}.fi.prc-grove{border-color:var(--grove)}.fi.prc-adhoc{border-color:#EF4444}
 .brow{display:flex;gap:8px;margin-top:20px}
@@ -2830,8 +2830,7 @@ if(recentInvs.length){
 
 // Show empty state if no today or recent
 if(!todayInvs.length&&!recentInvs.length){
-  invHtml+='<div class="inv-section">Recent <span class="sec-count">0 invoices</span></div>';
-  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No recent invoices</div>';
+  invHtml+='<div class="empty"><div class="emo">📋</div><p>No recent invoices</p></div>';
 }
 
 // PREVIOUS section - monthly collapsible folders with Ad Hoc / Contracted subfolders
@@ -3010,7 +3009,10 @@ async function deleteInvoiceWithDrive(idx){
 // ===== INVOICE PREVIEW =====
 function previewInv(pid,y,m){
 const p=S.practices[pid];if(!p)return;
-const ent=S.ents[S.iEnt],me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.entity===S.iEnt&&e.invSt==='pending'});
+const me=getMonth(y,m).filter(function(e){return e.pId===pid&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.invSt==='pending'&&e.pType!=='adhoc'});
+// Determine entity from entries (use first entry's entity, or default to 'self')
+const entType=me.length>0?me[0].entity:'self';
+const ent=S.ents[entType];
 if(!me.length){showToast('No pending entries to preview');return;}
 const pComm=p.comm||0.35;
 // Group by service
@@ -3021,7 +3023,7 @@ let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 const mn=new Date(y,m).toLocaleString('en-GB',{month:'long',year:'numeric'});
-const logo=LOGO[S.iEnt];
+const logo=LOGO[entType];
 
 let html='<div style="max-height:65vh;overflow-y:auto;background:#fff;padding:20px;border-radius:var(--r);border:1px solid var(--bdr)">';
 html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">';
@@ -3156,9 +3158,11 @@ refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 async function genInv(pid,y,m){
 var p=S.practices[pid];if(!p)return;
 var pComm=p.comm||0.35;
-var ent=S.ents[S.iEnt];
-var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt});
+var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
 if(!me.length){showToast('No entries to invoice');return;}
+// Determine entity from entries (use first entry's entity)
+var entType=me[0].entity;
+var ent=S.ents[entType];
 var invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 me.forEach(function(e){e.invSt='invoiced';e.invNo=invNum;});save();
 
@@ -3186,11 +3190,11 @@ var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.a
 var airTotal=0;Object.values(addons).forEach(function(a){airTotal+=a.total;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:S.iEnt==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,payTerms:S.payTerms,entryCount:me.length,companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
-console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+S.iEnt);
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:entType==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,payTerms:S.payTerms,entryCount:me.length,companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
+console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+entType);
 S.invoices.push(invData);save();
 syncInvoiceToCloud(invData);
-me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);});
+me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);});
 var prcClass2=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 showToast('Generating invoice...',prcClass2);
 await generateAndUploadPDF(invData);
@@ -3269,7 +3273,7 @@ await genAhInvMulti(entries);
 
 // Generate all entries for a practice
 async function genAhAll(pId){
-const entries=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&e.entity===S.iEnt);
+const entries=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
 if(!entries.length)return;
 await genAhInvMulti(entries);
 }
@@ -3277,7 +3281,9 @@ await genAhInvMulti(entries);
 // Generate invoice for multiple ad hoc entries
 async function genAhInvMulti(entries){
 if(!entries.length)return;
-const ent=S.ents[S.iEnt];
+// Determine entity from entries (use first entry's entity)
+const entType=entries[0].entity||'self';
+const ent=S.ents[entType];
 const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
 const pName=entries[0].pName;
 const pAddr=entries[0].adhocAddr||'';
@@ -3336,13 +3342,13 @@ if(minDate===maxDate){
 const invData={
   num:invNum,date:today(),practice:pName,practiceName:pName,
   practiceAddr:pAddr.replace(/\\n/g,'\n'),period:period,
-  entity:S.iEnt==='self'?'Self-Employed':'Ltd',
+  entity:entType==='self'?'Self-Employed':'Ltd',
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
-  commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:S.iEnt,
+  commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,
   payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
-  companyNo:S.iEnt==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
+  companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
   createdAt:new Date().toISOString()
 };
 
@@ -3351,7 +3357,7 @@ syncInvoiceToCloud(invData);
 
 // Update all entries in cloud
 for(const e of entries){
-  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||S.iEnt);
+  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);
 }
 
 showToast('Generating invoice...','prc-adhoc');
@@ -3749,7 +3755,15 @@ document.getElementById('_ahsS').onclick=function(){saveAhPracSettings(null)};
 function editAhPracSettings(idx){
 var p=S.ahPrac[idx];if(!p)return;
 var currentColor=p.color||'adhoc';
-var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', '):'';
+// Handle both old format (rate, air) and new format (svcs)
+var svcsStr='';
+if(p.svcs){
+  svcsStr=Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', ');
+}else if(p.rate){
+  // Convert old format to services string
+  svcsStr='Standard:'+p.rate;
+  if(p.air)svcsStr+=', Airflow:'+p.air;
+}
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short||p.name)+' Settings</h3>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" value="'+p.name+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ahsShort" value="'+(p.short||'')+'"></div>';
@@ -3813,6 +3827,9 @@ if(idx===null){
   S.ahPrac[idx].color=color;
   S.ahPrac[idx].svcs=svcs;
   S.ahPrac[idx].active=active;
+  // Remove old format properties if present (migrate to svcs format)
+  delete S.ahPrac[idx].rate;
+  delete S.ahPrac[idx].air;
   console.log('[Ad Hoc Practice Updated]',name,'active=',active);
 }
 save();closeMod2();refreshSettings();popAh();
