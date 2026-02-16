@@ -315,7 +315,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="fc prc-adhoc" onclick="filtArc('adhoc')">Ad Hoc</button>
 </div>
 <div class="alist" id="arcList"><div class="empty"><div class="emo">&#128203;</div><p>No entries yet.</p></div></div>
-<div style="padding:16px;margin-top:8px"><button class="btn btn-d" style="width:100%" onclick="showClearTodayModal()">Clear Today's Entries</button></div>
 </div>
 
 <!-- INVOICES -->
@@ -1950,118 +1949,6 @@ async function delEntry(id){
   // Sync deletion to cloud (queues on failure)
   const result=await deleteEntryFromCloud(id, entity);
   if(result.success){showToast('Entry deleted',prcClass);}
-}
-
-// ===== CLEAR TODAY'S ENTRIES =====
-function showClearTodayModal(){
-  const td=today();
-  // Split by entity AND type (contract vs adhoc)
-  const selfContract=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='contract');
-  const selfAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='self'&&e.pType==='adhoc');
-  const ltdContract=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='contract');
-  const ltdAdhoc=S.entries.filter(e=>e.date===td&&e.entity==='ltd'&&e.pType==='adhoc');
-
-  const hasAny=selfContract.length||selfAdhoc.length||ltdContract.length||ltdAdhoc.length;
-  if(!hasAny){
-    showToast('No entries for today');
-    return;
-  }
-
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Clear Today\'s Entries</h3></div>';
-  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Select which entries to clear for '+fdd(td)+':</p>';
-  _h+='<div style="display:flex;flex-direction:column;gap:12px">';
-
-  // Self-Employed Contract
-  _h+=renderClearOption('Self-Employed','Contract',selfContract,'#0EA5E9','_clearSelfContract');
-  // Self-Employed Ad Hoc
-  _h+=renderClearOption('Self-Employed','Ad Hoc',selfAdhoc,'#0EA5E9','_clearSelfAdhoc');
-  // Ltd Company Contract
-  _h+=renderClearOption('Ltd Company','Contract',ltdContract,'#EF4444','_clearLtdContract');
-  // Ltd Company Ad Hoc
-  _h+=renderClearOption('Ltd Company','Ad Hoc',ltdAdhoc,'#EF4444','_clearLtdAdhoc');
-
-  _h+='</div>';
-  _h+='<button class="btn btn-s" style="width:100%;margin-top:16px" id="_clearCancel">Cancel</button>';
-  showModal(_h);
-
-  setTimeout(()=>{
-    document.getElementById('_clearCancel').onclick=()=>closeMod2();
-    if(selfContract.length>0) document.getElementById('_clearSelfContract').onclick=()=>showClearConfirmModal('self','contract');
-    if(selfAdhoc.length>0) document.getElementById('_clearSelfAdhoc').onclick=()=>showClearConfirmModal('self','adhoc');
-    if(ltdContract.length>0) document.getElementById('_clearLtdContract').onclick=()=>showClearConfirmModal('ltd','contract');
-    if(ltdAdhoc.length>0) document.getElementById('_clearLtdAdhoc').onclick=()=>showClearConfirmModal('ltd','adhoc');
-  },50);
-}
-
-function renderClearOption(entLabel,typeLabel,entries,color,btnId){
-  const gross=entries.reduce((s,e)=>s+(parseFloat(e.gross)||0),0);
-  if(entries.length>0){
-    return '<button class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px" id="'+btnId+'">'+
-      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
-      '<div style="font-size:12px;color:var(--txt2)">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+fc(gross)+' gross</div>'+
-      '</button>';
-  }else{
-    return '<div class="btn btn-s" style="width:100%;text-align:left;padding:12px 16px;opacity:0.5;cursor:not-allowed">'+
-      '<div style="font-weight:600;color:'+color+'">'+entLabel+' — '+typeLabel+'</div>'+
-      '<div style="font-size:12px;color:var(--txt2)">No entries today</div>'+
-      '</div>';
-  }
-}
-
-function showClearConfirmModal(entity,pType){
-  const td=today();
-  const entries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
-  const entLabel=entity==='self'?'Self-Employed':'Ltd Company';
-  const typeLabel=pType==='adhoc'?'Ad Hoc':'Contract';
-  const entColor=entity==='self'?'#0EA5E9':'#EF4444';
-
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Clear '+entLabel+' '+typeLabel+'</h3></div>';
-  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete <b>'+entries.length+' entr'+(entries.length===1?'y':'ies')+'</b> from today ('+fdd(td)+').</p>';
-  _h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:16px;border-left:3px solid '+entColor+'">';
-  entries.forEach(e=>{
-    _h+='<div style="font-size:13px;padding:4px 0;border-bottom:1px solid var(--bdr)">'+e.pName+' · '+e.svc+' · '+e.pts+' pts · '+fc(parseFloat(e.gross)||0)+'</div>';
-  });
-  _h+='</div>';
-  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:8px">Type <b>11</b> to confirm deletion:</p>';
-  _h+='<input class="fi" id="clearConfirmInput" type="text" placeholder="Type 11" style="margin-bottom:16px">';
-  _h+='<div class="brow"><button class="btn btn-s" id="_clearBack">Back</button><button class="btn btn-d" id="_clearConfirm" disabled>Delete All</button></div>';
-  showModal(_h);
-
-  setTimeout(()=>{
-    const inp=document.getElementById('clearConfirmInput');
-    const btn=document.getElementById('_clearConfirm');
-    inp.focus();
-    inp.oninput=()=>{
-      btn.disabled=inp.value!=='11';
-    };
-    document.getElementById('_clearBack').onclick=()=>showClearTodayModal();
-    btn.onclick=()=>clearTodayEntries(entity,pType);
-  },50);
-}
-
-async function clearTodayEntries(entity,pType){
-  const td=today();
-  const todayEntries=S.entries.filter(e=>e.date===td&&e.entity===entity&&e.pType===pType);
-  if(todayEntries.length===0){closeMod2();return;}
-
-  closeMod2();
-  showToast('Clearing '+todayEntries.length+' entries...');
-
-  // Delete from cloud first
-  let deleted=0;
-  for(const entry of todayEntries){
-    const result=await deleteEntryFromCloud(entry.id,entity);
-    if(result.success)deleted++;
-    console.log('[Clear Today] Deleted', entry.pName, entry.svc, entry.id, result.success?'OK':'FAIL');
-  }
-
-  // Remove from local state (only for selected entity and type)
-  S.entries=S.entries.filter(e=>!(e.date===td&&e.entity===entity&&e.pType===pType));
-  save();
-  refArc();
-  upHome();
-
-  showToast('Cleared '+deleted+'/'+todayEntries.length+' entries');
 }
 
 // ===== INVOICES =====
