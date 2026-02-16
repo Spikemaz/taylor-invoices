@@ -766,10 +766,43 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 
   // Helper to sync to a single sheet and apply colors
   async function syncToSheet(targetSheetId) {
+    // Clear all data and formatting from row 2 onwards
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A2:M',
+      range: 'Practices!A2:M100',
     });
+
+    // Clear formatting for rows 2-100 to remove any leftover colored rows
+    try {
+      const metadata = await sheets.spreadsheets.get({ spreadsheetId: targetSheetId });
+      const sheet = metadata.data.sheets.find(s => s.properties.title === 'Practices');
+      if (sheet) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: targetSheetId,
+          requestBody: {
+            requests: [{
+              repeatCell: {
+                range: {
+                  sheetId: sheet.properties.sheetId,
+                  startRowIndex: 1, // Row 2 (0-indexed)
+                  endRowIndex: 100,
+                  startColumnIndex: 0,
+                  endColumnIndex: 13
+                },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: { red: 1, green: 1, blue: 1 } // White
+                  }
+                },
+                fields: 'userEnteredFormat.backgroundColor'
+              }
+            }]
+          }
+        });
+      }
+    } catch (e) {
+      console.log('Could not clear formatting:', e.message);
+    }
 
     if (rows.length > 0) {
       // Use update with explicit range starting at A2 to avoid header issues

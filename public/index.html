@@ -68,7 +68,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .sbtn.sel.prc-grove{border-color:var(--grove);background:var(--grove-lt);color:var(--grove)}
 .sbtn.sel.prc-adhoc{border-color:#EF4444;background:#FEE2E2;color:#EF4444}
 .sbtn .ph{display:block;font-size:10px;font-weight:400;color:var(--txt2);margin-top:1px}.sbtn.sel .ph{color:inherit}
-#aoTypeGrid .sbtn,#ahAoTypeGrid .sbtn{height:48px}
+#aoTypeGrid .sbtn,#ahAoTypeGrid .sbtn{height:48px;flex:1}
 .stg{background:var(--card);border-radius:var(--rs);padding:6px 10px;margin-bottom:6px;border:2px solid var(--bdr)}
 .stg.prc-bupa{border-color:var(--bupa)}.stg.prc-grove{border-color:var(--grove)}.stg.prc-adhoc{border-color:#EF4444}
 .stg .sl{display:none}
@@ -330,16 +330,14 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><div class="stpv" onclick="document.getElementById('prIn').focus()"><span class="stpl">Price/Patient</span><input id="prIn" class="stpvin" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
 <button class="abtn" id="arcBtn" onclick="doArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd" style="margin-top:6px"><div class="lb">Total</div><div class="vl" id="totA">£0.00</div><div class="cl" id="comL"></div></div>
-<div class="stg" id="aoG" style="margin-top:12px">
-<div class="stp" id="aoTypeGrid">
-<button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow" style="flex:1">Airflow</button>
-<button class="sbtn" onclick="selAddon('custom')" data-ao="custom" style="flex:1">Custom</button>
-</div>
+<div class="sgrid" id="aoTypeGrid" style="margin-top:12px">
+<button class="sbtn" onclick="selAddon('Airflow')" data-ao="Airflow">Airflow</button>
+<button class="sbtn" onclick="selAddon('custom')" data-ao="custom">Custom</button>
 </div>
 <div id="aoCustomName" style="display:none;margin-top:6px"><input class="fi" id="aoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="aoAmtRow" style="display:none">
-<div class="stg"><div class="sl">Add-on Rate<span id="aoTypeLbl" style="margin-left:8px;font-weight:400;opacity:.7"></span></div><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><input class="stpv" id="ao" value="£9.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
-<div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adj('aoPts',-1)">−</button><input class="stpv" id="aoPts" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('aoPts',1)">+</button></div></div>
+<div class="stg"><div class="stp"><button class="stpb" onclick="adj('aoPts',-1)">−</button><div class="stpv" onclick="document.getElementById('aoPtsIn').focus()"><span class="stpl">Patients<span id="aoTypeLbl" style="margin-left:6px;font-weight:400;opacity:.7"></span></span><input id="aoPtsIn" class="stpvin" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"></div><button class="stpb" onclick="adj('aoPts',1)">+</button></div></div>
+<div class="stg"><div class="stp"><button class="stpb" onclick="adj('ao',-1)">−</button><div class="stpv" onclick="document.getElementById('aoIn').focus()"><span class="stpl">Price/Patient</span><input id="aoIn" class="stpvin" value="£9.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adj('ao',1)">+</button></div></div>
 </div>
 <div class="stg" style="margin-top:12px"><div class="stp"><div class="stpv" style="flex:1;cursor:pointer" onclick="document.getElementById('logDt').showPicker()"><span class="stpl">Date<span id="dLbl" style="margin-left:6px;font-weight:400;opacity:.7">Today</span></span><input type="date" id="logDt" onchange="upDLbl()" style="border:none;background:transparent;font-size:18px;font-weight:700;text-align:center;width:100%;cursor:pointer"></div></div></div>
 </div>
@@ -363,16 +361,14 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="stp"><button class="stpb" onclick="adjAh('arv',-5)">−</button><div class="stpv" onclick="document.getElementById('arvIn').focus()"><span class="stpl">Rate/Patient</span><input id="arvIn" class="stpvin" value="£25.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adjAh('arv',5)">+</button></div></div>
 <button class="abtn prc-adhoc" id="ahArcBtn" onclick="doAhArchive()" disabled>&#128228; Archive — Save to Sheet</button>
 <div class="amtd prc-adhoc" style="margin-top:12px"><div class="lb">Invoice Total</div><div class="vl" id="ahTot">£0.00</div></div>
-<div class="stg" id="ahAoG" style="margin-top:12px">
-<div class="stp" id="ahAoTypeGrid">
-<button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow" style="flex:1">Airflow</button>
-<button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom" style="flex:1">Custom</button>
-</div>
+<div class="sgrid" id="ahAoTypeGrid" style="margin-top:12px">
+<button class="sbtn" onclick="selAhAddon('Airflow')" data-ao="Airflow">Airflow</button>
+<button class="sbtn" onclick="selAhAddon('custom')" data-ao="custom">Custom</button>
 </div>
 <div id="ahAoCustomName" style="display:none;margin-top:6px"><input class="fi" id="ahAoName" placeholder="Add-on name (e.g. Whitening)" style="font-size:14px"></div>
 <div id="ahAoAmtRow" style="display:none">
-<div class="stg"><div class="sl">Add-on per Patient</div><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><input class="stpv" id="aao" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
-<div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+<div class="stg"><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><div class="stpv" onclick="document.getElementById('aapIn').focus()"><span class="stpl">Patients</span><input id="aapIn" class="stpvin" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"></div><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
+<div class="stg"><div class="stp"><button class="stpb" onclick="adjAh('aao',-1)">−</button><div class="stpv" onclick="document.getElementById('aaoIn').focus()"><span class="stpl">Price/Patient</span><input id="aaoIn" class="stpvin" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAhAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adjAh('aao',1)">+</button></div></div>
 </div>
 <div class="stg" style="margin-top:12px"><div class="stp"><div class="stpv" style="flex:1;cursor:pointer" onclick="document.getElementById('ahDt').showPicker()"><span class="stpl">Date<span id="ahDLbl" style="margin-left:6px;font-weight:400;opacity:.7">Today</span></span><input type="date" id="ahDt" onchange="upAhDLbl()" style="border:none;background:transparent;font-size:18px;font-weight:700;text-align:center;width:100%;cursor:pointer"></div></div></div>
 </div>
@@ -1861,10 +1857,10 @@ if(prcClass)arcBtn.classList.add(prcClass);
 const amtd=document.querySelector('#logForm .amtd');
 if(amtd){amtd.classList.remove('prc-bupa','prc-grove','prc-adhoc');if(prcClass)amtd.classList.add(prcClass);}
 document.getElementById('logForm').style.display='block';
-document.getElementById('ptIn').value='0';document.getElementById('prIn').value=fc(sv.p);document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';
+document.getElementById('ptIn').value='0';document.getElementById('prIn').value=fc(sv.p);document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';
 document.getElementById('aoName').value='';selAddon('none');upAmt();}
 function fmtPrice(el){const v=pc(el.value);el.value=fc(v);}
-function adj(id,d){const elId=id==='pt'?'ptIn':(id==='pr'?'prIn':id);const el=document.getElementById(elId);if(id==='pt'||id==='aoPts'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
+function adj(id,d){const elId=id==='pt'?'ptIn':(id==='pr'?'prIn':(id==='ao'?'aoIn':(id==='aoPts'?'aoPtsIn':id)));const el=document.getElementById(elId);if(id==='pt'||id==='aoPts'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
 function selAddon(type){
 const amtRow=document.getElementById('aoAmtRow');
 const customName=document.getElementById('aoCustomName');
@@ -1877,14 +1873,14 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   S.aoType=null;
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
   amtRow.style.display='none';customName.style.display='none';
-  document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';lbl.textContent='';
+  document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';lbl.textContent='';
 }else if(type==='Airflow'){
   S.aoType='Airflow';
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
   btn.classList.add('sel',prcClass);
   amtRow.style.display='block';customName.style.display='none';
   lbl.textContent='± £1';
-  setTimeout(()=>document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
+  setTimeout(()=>{document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.querySelector('.scr.act').scrollBy({top:40,behavior:'smooth'}),300)},50);
 }else{
   S.aoType='custom';
   document.querySelectorAll('#aoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc');});
@@ -1892,11 +1888,11 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   amtRow.style.display='block';customName.style.display='block';
   lbl.textContent='± £1';
   document.getElementById('aoName').focus();
-  setTimeout(()=>document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
+  setTimeout(()=>{document.getElementById('logDt').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.querySelector('.scr.act').scrollBy({top:40,behavior:'smooth'}),300)},50);
 }
 upAmt();
 }
-function upAmt(){const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('ao').value),aoPts=parseInt(document.getElementById('aoPts').value)||0;
+function upAmt(){const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('aoIn').value),aoPts=parseInt(document.getElementById('aoPtsIn').value)||0;
 const ao=aoRate*aoPts;const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;document.getElementById('comL').textContent='Profit Share '+(pComm*100).toFixed(0)+'%: '+fc(t*pComm);}
 document.getElementById('arcBtn').disabled=pts===0;}
@@ -1907,7 +1903,7 @@ function upAhDLbl(){const el=document.getElementById('ahDt');document.getElement
 function doArchive(){
 const p=S.practices[S.prac];if(!p||!S.svc)return;
 const pComm=p.comm||0.35;
-const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('ao').value),aoPts=parseInt(document.getElementById('aoPts').value)||0,dt=document.getElementById('logDt').value;
+const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('aoIn').value),aoPts=parseInt(document.getElementById('aoPtsIn').value)||0,dt=document.getElementById('logDt').value;
 const ao=aoRate*aoPts;
 if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
@@ -1919,7 +1915,7 @@ S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
 upPracMSum(S.prac,pComm,true);
 upHome(true);
-document.getElementById('ptIn').value='0';document.getElementById('ao').value='£9.00';document.getElementById('aoPts').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
+document.getElementById('ptIn').value='0';document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
@@ -1948,7 +1944,7 @@ async function addToDup(id,pts,ao){
     e.updatedAt=new Date().toISOString();
     save();
     closeMod2();
-    document.getElementById('ptIn').value='0';document.getElementById('ao').value='£0.00';upAmt();
+    document.getElementById('ptIn').value='0';document.getElementById('aoIn').value='£0.00';upAmt();
     upPracMSum(e.pId,e.comm,true);
     upHome(true);
     showToast('Syncing...',prcClass);
@@ -2017,8 +2013,8 @@ if(p.svcs&&Object.keys(p.svcs).length>0){
   ahSvc='Hygiene';
   document.getElementById('arvIn').value=fc(p.rate||25);
 }
-document.getElementById('aao').value='£0.00';
-document.getElementById('apIn').value='0';document.getElementById('aap').value='0';
+document.getElementById('aaoIn').value='£0.00';
+document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';
 // Reset add-on selector
 selAhAddon('none');
 document.getElementById('ahAoName').value='';
@@ -2073,7 +2069,7 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   ahAoType=null;
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc','prc-purple','prc-orange','prc-teal');b.classList.add(colorClass);});
   if(amtRow)amtRow.style.display='none';if(customName)customName.style.display='none';
-  document.getElementById('aao').value='£0.00';document.getElementById('aap').value='0';
+  document.getElementById('aaoIn').value='£0.00';document.getElementById('aapIn').value='0';
 }else if(type==='Airflow'){
   ahAoType='Airflow';
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc','prc-purple','prc-orange','prc-teal');b.classList.add(colorClass);});
@@ -2084,24 +2080,24 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
     var airPrice=0;
     if(p.svcs&&p.svcs.Airflow)airPrice=p.svcs.Airflow.p;
     else if(p.air)airPrice=p.air;
-    document.getElementById('aao').value=fc(airPrice);
+    document.getElementById('aaoIn').value=fc(airPrice);
   }
-  setTimeout(()=>document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
+  setTimeout(()=>{document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.querySelector('.scr.act').scrollBy({top:40,behavior:'smooth'}),300)},50);
 }else{
   ahAoType='custom';
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel','prc-bupa','prc-grove','prc-adhoc','prc-purple','prc-orange','prc-teal');b.classList.add(colorClass);});
   if(btn)btn.classList.add('sel');
   if(amtRow)amtRow.style.display='block';if(customName)customName.style.display='block';
   document.getElementById('ahAoName').focus();
-  setTimeout(()=>document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'end'}),50);
+  setTimeout(()=>{document.getElementById('ahDt').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.querySelector('.scr.act').scrollBy({top:40,behavior:'smooth'}),300)},50);
 }
 upAhAmt();
 }
-function adjAh(id,d){const elId=id==='ap'?'apIn':(id==='arv'?'arvIn':id);const el=document.getElementById(elId);if(id==='ap'||id==='aap'){const mx=id==='aap'?parseInt(document.getElementById('apIn').value)||0:999;el.value=Math.max(0,Math.min(mx,(parseInt(el.value)||0)+d));}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAhAmt();}
-function upAhAmt(){const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aao').value),airPts=parseInt(document.getElementById('aap').value)||0;
+function adjAh(id,d){const elId=id==='ap'?'apIn':(id==='arv'?'arvIn':(id==='aao'?'aaoIn':(id==='aap'?'aapIn':id)));const el=document.getElementById(elId);if(id==='ap'||id==='aap'){const mx=id==='aap'?parseInt(document.getElementById('apIn').value)||0:999;el.value=Math.max(0,Math.min(mx,(parseInt(el.value)||0)+d));}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAhAmt();}
+function upAhAmt(){const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aaoIn').value),airPts=parseInt(document.getElementById('aapIn').value)||0;
 const t=(pts*rate)+(airPts*air);document.getElementById('ahTot').textContent=fc(t);document.getElementById('ahArcBtn').disabled=pts===0;}
 function doAhArchive(){const pId=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===pId);if(!p)return;
-const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aao').value),airPts=parseInt(document.getElementById('aap').value)||0,dt=document.getElementById('ahDt').value;
+const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aaoIn').value),airPts=parseInt(document.getElementById('aapIn').value)||0,dt=document.getElementById('ahDt').value;
 if(!pts)return;const gr=(pts*rate)+(airPts*air);
 // Check for duplicate (same date, practice, service, rate, entity)
 const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
@@ -2112,7 +2108,7 @@ const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ah
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);upHome(true);
-document.getElementById('apIn').value='0';document.getElementById('aap').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
+document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
 function showAhDupMod(ex,pts,air,airPts){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
@@ -2139,7 +2135,7 @@ if(e){
   e.updatedAt=new Date().toISOString();
   save();closeMod2();
   // Reset form
-  document.getElementById('apIn').value='0';document.getElementById('aap').value='0';upAhAmt();
+  document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';upAhAmt();
   upHome(true);
   showToast('Syncing...','prc-adhoc');
   const result=await updateEntryInCloud(e.id,e,e.entity||S.ent);
