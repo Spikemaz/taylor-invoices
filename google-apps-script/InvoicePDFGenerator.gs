@@ -331,6 +331,32 @@ function processTrashTab() {
       // Entries don't have Drive files - just mark as processed
       sheet.getRange(i + 1, processedCol + 1).setValue(true);
       Logger.log('  Entry type - marked as processed (no Drive file)');
+    } else if (dataType === 'pdf_replacement' && originalDataJson) {
+      // PDF replacement - move old PDF to Trash folder before regeneration
+      try {
+        const originalData = JSON.parse(originalDataJson);
+        Logger.log('  PDF replacement for Invoice #' + originalData.num + ', driveLink: ' + (originalData.driveLink ? 'present' : 'missing'));
+        Logger.log('  Reason: ' + (originalData.reason || 'unknown'));
+
+        if (originalData.driveLink) {
+          Logger.log('  Moving old PDF to Trash folder...');
+          const success = deleteDriveFileFromLink(originalData.driveLink, originalData.num);
+
+          sheet.getRange(i + 1, processedCol + 1).setValue(true);
+          Logger.log('  Marked as processed');
+
+          if (success !== false) {
+            processedCount++;
+          }
+        } else {
+          sheet.getRange(i + 1, processedCol + 1).setValue(true);
+          Logger.log('  No driveLink - marked as processed');
+        }
+      } catch (e) {
+        Logger.log('  ERROR processing pdf_replacement: ' + e.message);
+        errorCount++;
+        sheet.getRange(i + 1, processedCol + 1).setValue('error: ' + e.message);
+      }
     }
   }
 

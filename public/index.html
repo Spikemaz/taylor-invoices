@@ -949,6 +949,121 @@ async function generateAndUploadPDF(invData) {
   }
 }
 
+// Regenerate invoice PDF when entries are edited
+// This rebuilds the invoice data from current entries and triggers Apps Script to regenerate the PDF
+async function regenerateInvoicePDF(invoiceNum, entity) {
+  console.log('[Regenerate Invoice]', invoiceNum, entity);
+  try {
+    // Find the invoice
+    const inv = S.invoices.find(i => i.num === invoiceNum);
+    if (!inv) {
+      console.error('Invoice not found:', invoiceNum);
+      showToast('Invoice not found', 'err');
+      return { success: false, error: 'Invoice not found' };
+    }
+
+    // Find all entries for this invoice
+    const entries = S.entries.filter(e => e.invNo === invoiceNum);
+    if (!entries.length) {
+      console.error('No entries found for invoice:', invoiceNum);
+      showToast('No entries found', 'err');
+      return { success: false, error: 'No entries found' };
+    }
+
+    // Rebuild services breakdown from current entries
+    const svcs = {};
+    let gross = 0;
+    const addons = {};
+
+    entries.forEach(e => {
+      const key = e.svc + '@' + e.uPrice;
+      if (!svcs[key]) {
+        svcs[key] = { name: e.svc, pts: 0, price: e.uPrice, total: 0 };
+      }
+      svcs[key].pts += e.pts;
+      svcs[key].total += e.pts * e.uPrice;
+      gross += e.pts * e.uPrice;
+
+      // Handle add-ons
+      if (e.aoType && e.aoAmt > 0) {
+        const aoKey = e.aoType;
+        if (!addons[aoKey]) {
+          addons[aoKey] = { pts: 0, price: 0, total: 0 };
+        }
+        addons[aoKey].pts += e.aoPatients || 1;
+        addons[aoKey].total += e.aoAmt;
+        // Calculate average price per patient for display
+        if (e.aoPatients > 0) {
+          addons[aoKey].price = e.aoAmt / e.aoPatients;
+        }
+        gross += e.aoAmt;
+      }
+    });
+
+    // Calculate new totals
+    const commRate = parseFloat(inv.commRate) || 0;
+    const amount = inv.isAdhoc ? gross : gross * (1 - commRate / 100);
+
+    // Update invoice data
+    inv.svcs = svcs;
+    inv.addons = addons;
+    inv.gross = gross;
+    inv.amount = amount;
+    inv.updatedAt = new Date().toISOString();
+
+    // Save locally
+    save();
+    refInv();
+
+    // Update invoice in cloud (this updates the Sheet row)
+    const updateResult = await apiCall('sheets-sync', {
+      action: 'update_invoice',
+      data: {
+        num: invoiceNum,
+        updates: {
+          svcs: JSON.stringify(svcs),
+          addons: JSON.stringify(addons),
+          gross: gross,
+          amount: amount,
+          needsRegeneration: true  // Flag for Apps Script
+        }
+      },
+      entity: entity
+    });
+
+    if (!updateResult.success) {
+      console.error('Failed to update invoice in cloud:', updateResult);
+      showToast('Cloud update failed', 'err');
+      return updateResult;
+    }
+
+    // Trigger PDF regeneration via Apps Script
+    // We clear the driveLink and set needsRegeneration flag
+    // Apps Script's checkForNewInvoices() will detect this and regenerate
+    const regenResult = await apiCall('sheets-sync', {
+      action: 'trigger_pdf_regeneration',
+      data: { num: invoiceNum },
+      entity: entity
+    });
+
+    if (regenResult.success) {
+      showToast('Invoice updated - PDF regenerating...');
+      console.log('[Regenerate Invoice] Triggered Apps Script regeneration');
+    } else {
+      // Fallback: generate locally and user can manually upload
+      console.log('[Regenerate Invoice] Generating local PDF as fallback');
+      const invWithLogo = { ...inv, logoBase64: LOGO[inv.logoType] || LOGO.self };
+      await generateAndUploadPDF(invWithLogo);
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('regenerateInvoicePDF error:', err);
+    showToast('Regeneration failed', 'err');
+    return { success: false, error: err.message };
+  }
+}
+
 // Load data from cloud (simple - for UI refresh)
 async function loadFromCloudSimple() {
   const result = await apiCall('sheets-sync', { action: 'load_all', entity: S.iEnt });
@@ -2091,12 +2206,20 @@ function toggleArcMonth(el){
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 var prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
+// Show warning if entry is already invoiced
+if(e.invSt==='invoiced'&&e.invNo){_h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';}
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
 _h+='<div class="fg"><label class="fl">Service</label><input class="fi" id="edSvc" value="'+e.svc+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Patients</label><input class="fi" id="edPts" type="number" value="'+e.pts+'"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
-_h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Add-on Type</label><input class="fi" id="edAoType" value="'+(e.aoType||'')+'"></div>';
-_h+='<div class="fg" style="flex:1"><label class="fl">Add-on (£)</label><input class="fi" id="edAo" type="number" value="'+(e.aoAmt||0).toFixed(2)+'" step="0.01"></div></div>';
+// Add-on dropdown with None/Airflow/Custom options
+_h+='<div class="fg"><label class="fl">Add-on</label><select class="fi" id="edAoType" onchange="onEditAddonChange()"><option value="">None</option><option value="Airflow"'+(e.aoType==='Airflow'?' selected':'')+'>Airflow</option><option value="custom"'+(e.aoType&&e.aoType!=='Airflow'?' selected':'')+'>Custom</option></select></div>';
+// Custom add-on name (hidden by default, shown when Custom selected)
+var customName=(e.aoType&&e.aoType!=='Airflow')?e.aoType:'';
+_h+='<div class="fg" id="edAoCustomRow" style="display:'+(e.aoType&&e.aoType!=='Airflow'?'block':'none')+'"><label class="fl">Custom Add-on Name</label><input class="fi" id="edAoName" value="'+customName+'" placeholder="e.g. Whitening"></div>';
+// Add-on rate and patients (hidden by default, shown when addon selected)
+_h+='<div id="edAoFields" style="display:'+(e.aoType?'flex':'none')+';gap:10px"><div class="fg" style="flex:1"><label class="fl">Add-on Rate (£)</label><input class="fi" id="edAoRate" type="number" value="'+((e.aoPatients&&e.aoPatients>0)?(e.aoAmt/e.aoPatients).toFixed(2):(e.aoAmt||0).toFixed(2))+'" step="0.01"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">Add-on Patients</label><input class="fi" id="edAoPts" type="number" value="'+(e.aoPatients||0)+'"></div></div>';
 _h+='<div class="brow"><button class="btn btn-d" id="_edDel">Delete</button><button class="btn btn-s" id="_edCancel">Cancel</button><button class="btn btn-p" id="_edSave">Save</button></div>';
 showModal(_h,prcClass);
 setTimeout(function(){
@@ -2105,26 +2228,56 @@ var canB=document.getElementById('_edCancel');if(canB)canB.onclick=function(){cl
 var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){saveEntry(id)};
 },50);
 }
+// Handle add-on type change in edit modal
+function onEditAddonChange(){
+var sel=document.getElementById('edAoType').value;
+var customRow=document.getElementById('edAoCustomRow');
+var fieldsRow=document.getElementById('edAoFields');
+if(sel===''){customRow.style.display='none';fieldsRow.style.display='none';document.getElementById('edAoRate').value='0.00';document.getElementById('edAoPts').value='0';}
+else if(sel==='Airflow'){customRow.style.display='none';fieldsRow.style.display='flex';}
+else{customRow.style.display='block';fieldsRow.style.display='flex';}
+}
 
 async function saveEntry(id){
   var e=S.entries.find(function(x){return x.id===id});if(!e)return;
   const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
+  const hadInvoice=e.invSt==='invoiced'&&e.invNo;
+  const invoiceNum=e.invNo;
+  // Get form values
   e.date=document.getElementById('edDt').value;
   e.svc=document.getElementById('edSvc').value;
   e.pts=parseInt(document.getElementById('edPts').value)||0;
   e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
-  e.aoAmt=parseFloat(document.getElementById('edAo').value)||0;
-  const aoTypeVal=document.getElementById('edAoType').value.trim();
-  e.aoType=e.aoAmt>0?(aoTypeVal||'Add-on'):null;
+  // Handle add-on - new structure with type, rate, and patients
+  const aoTypeVal=document.getElementById('edAoType').value;
+  const aoRate=parseFloat(document.getElementById('edAoRate').value)||0;
+  const aoPts=parseInt(document.getElementById('edAoPts').value)||0;
+  if(aoTypeVal===''){
+    e.aoType=null;e.aoAmt=0;e.aoPatients=0;
+  }else if(aoTypeVal==='Airflow'){
+    e.aoType='Airflow';e.aoAmt=aoRate*aoPts;e.aoPatients=aoPts;
+  }else{
+    // Custom - get the custom name
+    const customName=document.getElementById('edAoName').value.trim()||'Add-on';
+    e.aoType=customName;e.aoAmt=aoRate*aoPts;e.aoPatients=aoPts;
+  }
   e.gross=(e.pts*e.uPrice)+e.aoAmt;
   e.comm=parseFloat(e.comm)||0;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
-  console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
+  console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'addon='+e.aoType, 'id='+e.id);
   save();closeMod2();refArc();showToast('Syncing...',prcClass);
   // Sync to cloud (queues on failure)
   const result=await updateEntryInCloud(e.id, e, e.entity||S.ent);
-  if(result.success){showToast('Entry updated',prcClass);}
+  if(result.success){
+    // If entry was invoiced, trigger PDF regeneration
+    if(hadInvoice){
+      showToast('Regenerating invoice PDF...',prcClass);
+      await regenerateInvoicePDF(invoiceNum, e.entity||S.ent);
+    }else{
+      showToast('Entry updated',prcClass);
+    }
+  }
 }
 async function delEntry(id){
   var e=S.entries.find(function(x){return x.id===id});

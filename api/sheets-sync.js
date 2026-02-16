@@ -138,6 +138,7 @@ module.exports = async (req, res) => {
       case 'get_dashboard': return await getDashboard(sheets, sheetId, res);
       case 'rename_sheet': return await renameSheet(sheets, sheetId, data, res);
       case 'setup_log_tab': return await setupLogTab(sheets, sheetId, res);
+      case 'trigger_pdf_regeneration': return await triggerPdfRegeneration(sheets, sheetId, data, res);
       default: return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (error) {
@@ -462,6 +463,75 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
   });
 
   return res.status(200).json({ success: true, message: 'Invoice updated', num });
+}
+
+// Trigger PDF regeneration by clearing driveLink and setting needsRegeneration flag
+// Apps Script will detect this on next onChange trigger and regenerate the PDF
+async function triggerPdfRegeneration(sheets, sheetId, { num }, res) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'Invoices!A:X',
+  });
+
+  const rows = response.data.values || [];
+  const headers = rows[0] || INVOICE_COLUMNS;
+  const rowIndex = rows.findIndex(row => row[0] === num || row[0] === String(num));
+
+  if (rowIndex === -1) {
+    return res.status(404).json({ error: 'Invoice not found', num });
+  }
+
+  // Find the driveLink column index
+  const driveLinkCol = headers.indexOf('driveLink');
+  if (driveLinkCol === -1) {
+    return res.status(500).json({ error: 'driveLink column not found' });
+  }
+
+  // Store old driveLink for moving to trash
+  const oldDriveLink = rows[rowIndex][driveLinkCol];
+
+  // Clear driveLink to trigger Apps Script regeneration
+  // Apps Script's checkForNewInvoices() looks for invoices without driveLink
+  const currentRow = rows[rowIndex];
+  currentRow[driveLinkCol] = '';  // Clear driveLink
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `Invoices!A${rowIndex + 1}:X${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [currentRow] }
+  });
+
+  // Log the regeneration trigger
+  await writeLog(sheets, sheetId, {
+    action: 'UPDATE',
+    dataType: 'invoice',
+    recordId: num,
+    changes: `PDF regeneration triggered - cleared driveLink${oldDriveLink ? ' (old PDF will be moved to Trash by Apps Script)' : ''}`,
+    previousData: { driveLink: oldDriveLink },
+    newData: { driveLink: '', needsRegeneration: true }
+  });
+
+  // If there was an old PDF, move it to the Trash tab so Apps Script can move it to Trash folder
+  if (oldDriveLink) {
+    try {
+      await moveToTrash(sheets, sheetId, 'pdf_replacement', {
+        num: num,
+        driveLink: oldDriveLink,
+        reason: 'PDF regeneration - entry edited'
+      });
+    } catch (e) {
+      console.log('Failed to move old PDF to trash:', e.message);
+      // Continue anyway - Apps Script will handle cleanup
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: `PDF regeneration triggered for invoice #${num}`,
+    num,
+    oldDriveLink: oldDriveLink || null
+  });
 }
 
 async function syncInvoices(sheets, sheetId, { invoices }, res) {
