@@ -51,11 +51,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .msd{font-size:14px;color:rgba(255,255,255,.5);font-weight:400}
 .msg{color:#fca5a5}
 .msn{color:#86efac}
-.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
-.scarousel{display:flex;gap:8px;margin:6px 0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;padding:2px 0}
-.scarousel::-webkit-scrollbar{display:none}
-.scarousel .sbtn{flex:0 0 calc(50% - 4px);scroll-snap-align:start;min-width:calc(50% - 4px)}
-.sbtn{padding:8px 10px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f);min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:4px 0}
+.sbtn{padding:6px 8px;border:2px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:12px;font-weight:600;color:var(--txt);cursor:pointer;transition:all .2s;text-align:center;font-family:var(--f);min-height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .sbtn:active{transform:scale(.97)}.sbtn.sel{border-color:var(--pri);background:var(--pri-bg);color:var(--pri-dk)}
 .sbtn.prc-bupa{border-color:var(--bupa)}.sbtn.prc-grove{border-color:var(--grove)}.sbtn.prc-adhoc{border-color:#EF4444}
 .sbtn.sel.prc-bupa{border-color:var(--bupa);background:var(--bupa-lt);color:var(--bupa)}
@@ -249,7 +246,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="setPracticeEntity('ltd')" id="pEL">Ltd Company</button>
 </div>
 <div class="msum" id="pracMSum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="pracMGross">£0</span><span class="msd">/</span><span class="msv msn" id="pracMNet">£0</span></span></div>
-<div class="scarousel" id="sGrid"></div>
+<div class="sgrid" id="sGrid"></div>
 <div id="logForm" style="display:none">
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pt',-1)">−</button><div class="stpv" onclick="document.getElementById('ptIn').focus()"><span class="stpl">Patients</span><input id="ptIn" class="stpvin" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"></div><button class="stpb" onclick="adj('pt',1)">+</button></div></div>
 <div class="stg"><div class="stp"><button class="stpb" onclick="adj('pr',-5)">−</button><div class="stpv" onclick="document.getElementById('prIn').focus()"><span class="stpl">Price/Patient</span><input id="prIn" class="stpvin" value="£0.00" type="text" inputmode="decimal" onfocus="this.select()" oninput="upAmt()" onblur="fmtPrice(this)"></div><button class="stpb" onclick="adj('pr',5)">+</button></div></div>
