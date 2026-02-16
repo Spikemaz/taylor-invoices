@@ -898,29 +898,34 @@ async function generateAndUploadPDF(invData) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    // Upload to Drive
+    // Try to upload to Drive via Vercel API
+    // If this fails (service account quota), Apps Script will upload when it detects the invoice
     const invoiceDate = new Date(invData.date);
-    const driveResult = await apiCall('drive-upload', {
-      fileName: pdfResult.fileName,
-      pdfBase64: pdfResult.pdfBase64,
-      entity: invData.logoType,
-      year: invoiceDate.getFullYear().toString(),
-      month: invoiceDate.toLocaleString('en-GB', { month: 'long' }),
-      isAdhoc: invData.isAdhoc || false
-    });
+    let driveResult = { success: false };
+    try {
+      driveResult = await apiCall('drive-upload', {
+        fileName: pdfResult.fileName,
+        pdfBase64: pdfResult.pdfBase64,
+        entity: invData.logoType,
+        year: invoiceDate.getFullYear().toString(),
+        month: invoiceDate.toLocaleString('en-GB', { month: 'long' }),
+        isAdhoc: invData.isAdhoc || false
+      });
+    } catch (driveErr) {
+      // Silent fail - Apps Script handles Drive upload
+    }
 
-    if (driveResult.success) {
+    if (driveResult && driveResult.success) {
       console.log('[PDF/Drive] Uploaded to:', driveResult.folderPath);
       showToast('PDF saved to Drive');
-      // Update invoice with drive link
       await apiCall('sheets-sync', {
         action: 'update_invoice',
         data: { num: invData.num, updates: { driveLink: driveResult.webViewLink } },
         entity: invData.entity || invData.logoType
       });
     } else {
-      console.log('[PDF/Drive] Drive upload skipped/failed - PDF downloaded locally');
-      // Don't show error - PDF was already downloaded, Drive is optional
+      // Apps Script will upload PDF when it sees invoice without driveLink
+      console.log('[PDF/Drive] Apps Script will handle Drive upload');
     }
 
     return { pdf: pdfResult, drive: driveResult };
@@ -1676,20 +1681,18 @@ let ahAoType=null;
 function selAhAddon(type){
 const amtRow=document.getElementById('ahAoAmtRow');
 const customName=document.getElementById('ahAoCustomName');
-const lbl=document.getElementById('ahAoTypeLbl');
 const btn=document.querySelector('#ahAoTypeGrid [data-ao="'+type+'"]');
 // Toggle off if already selected, or clear selection
 if(type==='none'||(btn&&btn.classList.contains('sel'))){
   ahAoType=null;
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
-  amtRow.style.display='none';customName.style.display='none';
-  document.getElementById('aao').value='£0.00';document.getElementById('aap').value='0';lbl.textContent='';
+  if(amtRow)amtRow.style.display='none';if(customName)customName.style.display='none';
+  document.getElementById('aao').value='£0.00';document.getElementById('aap').value='0';
 }else if(type==='Airflow'){
   ahAoType='Airflow';
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
-  btn.classList.add('sel');
-  amtRow.style.display='block';customName.style.display='none';
-  lbl.textContent='± £1';
+  if(btn)btn.classList.add('sel');
+  if(amtRow)amtRow.style.display='block';if(customName)customName.style.display='none';
   // Set default airflow rate from practice
   const pId=document.getElementById('ahSel').value;
   const p=S.ahPrac.find(x=>x.id===pId);
@@ -1697,9 +1700,8 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
 }else{
   ahAoType='custom';
   document.querySelectorAll('#ahAoTypeGrid .sbtn').forEach(b=>{b.classList.remove('sel');b.classList.add('prc-adhoc');});
-  btn.classList.add('sel');
-  amtRow.style.display='block';customName.style.display='block';
-  lbl.textContent='± £1';
+  if(btn)btn.classList.add('sel');
+  if(amtRow)amtRow.style.display='block';if(customName)customName.style.display='block';
   document.getElementById('ahAoName').focus();
 }
 upAhAmt();
