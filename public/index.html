@@ -3049,7 +3049,7 @@ function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;show
 // Show entry selection modal for contract practice invoice
 function showCpSelect(pid){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth();
-const pe=getMonth(y,m).filter(e=>e.pId===pid&&e.invSt==='pending'&&e.entity===S.iEnt);
+const pe=getMonth(y,m).filter(e=>e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc');
 if(!pe.length)return;
 const p=S.practices[pid];
 let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
@@ -3232,7 +3232,7 @@ refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 
 // Show entry selection modal for multi-entry ad hoc invoice
 function showAhSelect(pId){
-const ahe=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&e.entity===S.iEnt);
+const ahe=S.entries.filter(e=>e.pType==='adhoc'&&e.pId===pId&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
 if(!ahe.length)return;
 const pName=ahe[0].pName;
 let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Select Entries for Invoice</h3>';
