@@ -202,9 +202,9 @@ input[type="date"].fi{min-width:100%;display:block}
 .load-error{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:16px;margin:16px;text-align:center;max-width:300px}
 .load-error .msg{font-size:14px;color:var(--err);margin-bottom:12px}
 .load-error button{background:var(--pri);color:#fff;border:0;padding:10px 20px;border-radius:var(--rs);font-weight:600;cursor:pointer}
-.pending-bar{position:fixed;top:0;left:0;right:0;background:var(--warn);color:#000;padding:8px 16px;font-size:12px;font-weight:500;z-index:1000;display:none;align-items:center;justify-content:space-between}
+.pending-bar{position:fixed;top:0;left:0;right:0;background:var(--err);color:#fff;padding:8px 16px;font-size:12px;font-weight:600;z-index:1000;display:none;align-items:center;justify-content:space-between}
 .pending-bar.show{display:flex}
-.pending-bar button{background:rgba(0,0,0,.2);border:0;color:#000;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
+.pending-bar button{background:rgba(255,255,255,.25);border:0;color:#fff;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -822,9 +822,18 @@ async function syncPracticesToCloud() {
   }));
   const practices = [...contractPractices, ...adhocPractices];
   console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
-  const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
-  if (!result.success) console.error('Failed to sync practices:', result);
-  return result;
+  try {
+    const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
+    if (!result.success) {
+      console.error('Failed to sync practices:', result);
+      showToast('Practices sync failed - check connection', 'err');
+    }
+    return result;
+  } catch (e) {
+    console.error('Practices sync error:', e);
+    showToast('Practices sync failed - check connection', 'err');
+    return { success: false, error: e.message };
+  }
 }
 
 // Load practices from cloud
@@ -884,13 +893,28 @@ async function syncSettingsToCloud() {
     svcs: S.svcs
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
-  const [selfResult, ltdResult] = await Promise.all([
-    apiCall('sheets-sync', { action: 'sync_settings', data: { settings: selfSettings }, entity: 'self' }),
-    apiCall('sheets-sync', { action: 'sync_settings', data: { settings: ltdSettings }, entity: 'ltd' })
-  ]);
-  if (!selfResult.success) console.error('Failed to sync self settings:', selfResult);
-  if (!ltdResult.success) console.error('Failed to sync ltd settings:', ltdResult);
-  return selfResult.success && ltdResult.success ? { success: true } : { success: false };
+  try {
+    const [selfResult, ltdResult] = await Promise.all([
+      apiCall('sheets-sync', { action: 'sync_settings', data: { settings: selfSettings }, entity: 'self' }),
+      apiCall('sheets-sync', { action: 'sync_settings', data: { settings: ltdSettings }, entity: 'ltd' })
+    ]);
+    if (!selfResult.success) {
+      console.error('Failed to sync self settings:', selfResult);
+      showToast('Settings sync failed - check connection', 'err');
+    }
+    if (!ltdResult.success) {
+      console.error('Failed to sync ltd settings:', ltdResult);
+      showToast('Settings sync failed - check connection', 'err');
+    }
+    if (selfResult.success && ltdResult.success) {
+      console.log('[Settings Sync] Success');
+    }
+    return selfResult.success && ltdResult.success ? { success: true } : { success: false };
+  } catch (e) {
+    console.error('Settings sync error:', e);
+    showToast('Settings sync failed - check connection', 'err');
+    return { success: false, error: e.message };
+  }
 }
 
 // Refresh dashboard
