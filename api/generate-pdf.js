@@ -67,9 +67,14 @@ module.exports = async (req, res) => {
     addrLines.forEach((line, i) => {
       doc.text(line, W - 40, addrY + i * 12, { align: 'right' });
     });
-    // Phone below address with proper spacing
+    // Phone and email below address with proper spacing
+    let contactY = addrY + addrLines.length * 12;
     if (inv.entPhone) {
-      doc.text(inv.entPhone, W - 40, addrY + addrLines.length * 12, { align: 'right' });
+      doc.text(inv.entPhone, W - 40, contactY, { align: 'right' });
+      contactY += 12;
+    }
+    if (inv.entEmail) {
+      doc.text(inv.entEmail, W - 40, contactY, { align: 'right' });
     }
 
     // INVOICE title (starts below logo area - logo is 180pt tall starting at y=40)
