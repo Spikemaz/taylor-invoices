@@ -424,17 +424,13 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="ssec">
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
 <div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
-<div class="srow" onclick="editDefaultComm()"><span class="la">Default Profit Share</span><span class="va" id="sDefComm">50%</span></div>
 <div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
 </div>
 </div>
 
 <div class="sgrp sgrp-cloud">
-<div class="sgrp-hdr">Cloud &amp; Data</div>
+<div class="sgrp-hdr">Data</div>
 <div class="ssec">
-<div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
-<div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
-<div class="srow" onclick="initDriveFoldersManual()"><span class="la">Setup Drive Folders</span><span class="va">📁</span></div>
 <div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">📊</span></div>
 <div class="srow" onclick="clearAllData()"><span class="la">Clear All Data</span><span class="va" style="color:var(--err)">⚠️</span></div>
 </div>
@@ -470,13 +466,7 @@ self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingha
 ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',email:'',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:''}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
-nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days',defComm:50,invoiceFooter:'Thank you for your continued support.',
-svcs:[
-{id:'hyg',name:'Hygiene',price:25,active:true},
-{id:'th',name:'Therapy',price:35,active:true},
-{id:'new',name:'New Patient',price:30,active:true},
-{id:'fv',name:'Fluoride Varnish',price:5,active:true}
-]
+nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days',invoiceFooter:'Thank you for your continued support.'
 };
 // Helper to get/set nextInv for current entity
 function getNextInv(){return S.ent==='ltd'?S.nextInvLtd:S.nextInvSelf;}
@@ -3417,19 +3407,6 @@ S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
 save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Payment terms updated');};
 },50);
 }
-function editDefaultComm(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Default Profit Share Rate</h3>';
-_h+='<div class="fg"><label class="fl">Profit Share Percentage</label><input class="fi" id="_dcVal" type="number" min="0" max="100" value="'+(S.defComm||50)+'"></div>';
-_h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">Used as default for new practices</p>';
-_h+='<div class="brow"><button class="btn btn-s" id="_dcC">Cancel</button><button class="btn btn-p" id="_dcS">Save</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_dcC').onclick=function(){closeMod2()};
-document.getElementById('_dcS').onclick=function(){
-S.defComm=parseInt(document.getElementById('_dcVal').value)||50;
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Default profit share updated');};
-},50);
-}
 function viewLogo(ent){
 var logoData=window.LOGOS&&window.LOGOS[ent];
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(ent==='self'?'Self-Employed':'Ltd Company')+' Logo</h3>';
@@ -3557,7 +3534,6 @@ el=document.getElementById('ltd_compNo');if(el)el.textContent=lt.companyNo||'Not
 el=document.getElementById('sEnt');if(el)el.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
 el=document.getElementById('nInv');if(el)el.textContent='S:'+pad(S.nextInvSelf)+' L:'+pad(S.nextInvLtd);
 el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'5 working days';
-el=document.getElementById('sDefComm');if(el)el.textContent=(S.defComm||50)+'%';
 el=document.getElementById('sFooter');if(el){var ft=S.invoiceFooter||'Thank you...';el.textContent=ft.length>20?ft.substring(0,20)+'...':ft;}
 el=document.getElementById('se_email');if(el)el.textContent=se.email||'Not set';
 el=document.getElementById('ltd_email');if(el)el.textContent=lt.email||'Not set';
