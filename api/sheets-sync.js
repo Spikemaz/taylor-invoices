@@ -50,12 +50,98 @@ function getSheetId(entity) {
 // NOTE: PDF deletion is handled by Apps Script (processTrashTab or onChange trigger)
 // because the service account doesn't own the files - Taylor does.
 // The Trash tab stores deleted invoice data so Apps Script can process it.
-const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'createdAt'];
+const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'color', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'createdAt'];
-const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'createdAt'];
+const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 const TRASH_COLUMNS = ['deletedAt', 'dataType', 'originalData'];
+
+// ===== COLOR CODING =====
+// Practice colors matching the app's CSS variables
+// Colors are stored as RGB objects for Google Sheets API
+const PRACTICE_COLORS = {
+  bupa: { bg: { red: 0.91, green: 0.94, blue: 0.996 }, text: { red: 0, green: 0.34, blue: 0.66 } },      // #e8f0fe bg, #0057a8 text
+  grove: { bg: { red: 0.91, green: 0.96, blue: 0.91 }, text: { red: 0.18, green: 0.42, blue: 0.31 } },   // #e8f5e9 bg, #2d6a4f text
+  adhoc: { bg: { red: 0.996, green: 0.886, blue: 0.886 }, text: { red: 0.937, green: 0.267, blue: 0.267 } }, // #FEE2E2 bg, #EF4444 text
+  purple: { bg: { red: 0.93, green: 0.89, blue: 0.99 }, text: { red: 0.486, green: 0.227, blue: 0.929 } }, // #ede9fe bg, #7c3aed text
+  orange: { bg: { red: 1, green: 0.95, blue: 0.88 }, text: { red: 0.96, green: 0.62, blue: 0.04 } },     // #fff7e0 bg, #f59e0b text
+  teal: { bg: { red: 0.8, green: 0.98, blue: 0.96 }, text: { red: 0.08, green: 0.72, blue: 0.65 } },     // #ccfbf1 bg, #14b8a6 text
+  // Default colors for new practices
+  default: { bg: { red: 0.97, green: 0.97, blue: 0.94 }, text: { red: 0.06, green: 0.06, blue: 0.06 } }  // Light gray bg
+};
+
+// Get color scheme for a practice (by ID, type, or custom color name)
+function getPracticeColor(pId, pType, customColor) {
+  // Check for custom color first (set in practice settings)
+  if (customColor && PRACTICE_COLORS[customColor.toLowerCase()]) {
+    return PRACTICE_COLORS[customColor.toLowerCase()];
+  }
+  // Check for known practice IDs
+  if (pId && PRACTICE_COLORS[pId.toLowerCase()]) {
+    return PRACTICE_COLORS[pId.toLowerCase()];
+  }
+  // Ad hoc practices get red color
+  if (pType === 'adhoc') {
+    return PRACTICE_COLORS.adhoc;
+  }
+  // Default for unknown practices
+  return PRACTICE_COLORS.default;
+}
+
+// Apply row formatting to a specific row in a sheet
+async function applyRowColor(sheets, sheetId, sheetName, rowIndex, colorScheme) {
+  try {
+    // Get sheet metadata to find the sheet's gid
+    const metadata = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+    const sheet = metadata.data.sheets.find(s => s.properties.title === sheetName);
+    if (!sheet) return;
+
+    const sheetGid = sheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: {
+        requests: [{
+          repeatCell: {
+            range: {
+              sheetId: sheetGid,
+              startRowIndex: rowIndex,
+              endRowIndex: rowIndex + 1,
+              startColumnIndex: 0,
+              endColumnIndex: 20 // Cover all columns
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: colorScheme.bg,
+                textFormat: {
+                  foregroundColor: colorScheme.text
+                }
+              }
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat.foregroundColor)'
+          }
+        }]
+      }
+    });
+  } catch (e) {
+    console.error('Failed to apply row color:', e.message);
+    // Don't fail the main operation if coloring fails
+  }
+}
+
+// Get the last row index in a sheet (0-indexed)
+async function getLastRowIndex(sheets, sheetId, sheetName) {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `${sheetName}!A:A`
+    });
+    return (response.data.values || []).length - 1; // -1 because we want 0-indexed
+  } catch (e) {
+    return 0;
+  }
+}
 
 // ===== MOVE TO TRASH =====
 // Moves deleted data to the Trash tab for audit/recovery purposes
@@ -74,6 +160,13 @@ async function moveToTrash(sheets, sheetId, dataType, originalData) {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [row] }
     });
+
+    // Apply color coding based on practice from original data
+    const rowIndex = await getLastRowIndex(sheets, sheetId, 'Trash');
+    const pId = originalData.pId || originalData.practice || '';
+    const pType = originalData.pType || (originalData.isAdhoc ? 'adhoc' : 'contract');
+    const colorScheme = getPracticeColor(pId, pType, originalData.color);
+    await applyRowColor(sheets, sheetId, 'Trash', rowIndex, colorScheme);
   } catch (e) {
     console.error('Failed to move to Trash tab:', e.message);
     // Don't fail the main operation if trash fails
@@ -101,6 +194,16 @@ async function writeLog(sheets, sheetId, logEntry) {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [row] }
     });
+
+    // Apply color coding based on practice from log data
+    const rowIndex = await getLastRowIndex(sheets, sheetId, 'Log');
+    const data = logEntry.newData || logEntry.previousData || {};
+    const pId = data.pId || data.practice || '';
+    const pType = data.pType || (data.isAdhoc ? 'adhoc' : 'contract');
+    if (pId || pType) {
+      const colorScheme = getPracticeColor(pId, pType, data.color);
+      await applyRowColor(sheets, sheetId, 'Log', rowIndex, colorScheme);
+    }
   } catch (e) {
     console.error('Failed to write audit log:', e.message);
     // Don't fail the main operation if logging fails
@@ -163,11 +266,16 @@ async function appendEntry(sheets, sheetId, entry, res) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: 'Entries!A:S',
+    range: 'Entries!A:T',
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Apply color coding based on practice
+  const rowIndex = await getLastRowIndex(sheets, sheetId, 'Entries');
+  const colorScheme = getPracticeColor(entry.pId, entry.pType, entry.color);
+  await applyRowColor(sheets, sheetId, 'Entries', rowIndex, colorScheme);
 
   // Log the creation
   await writeLog(sheets, sheetId, {
@@ -184,7 +292,7 @@ async function appendEntry(sheets, sheetId, entry, res) {
 async function updateEntry(sheets, sheetId, { id, updates }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Entries!A:S',
+    range: 'Entries!A:T',
   });
 
   const rows = response.data.values || [];
@@ -211,7 +319,7 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `Entries!A${rowIndex + 1}:S${rowIndex + 1}`,
+    range: `Entries!A${rowIndex + 1}:T${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [updatedRow] }
   });
@@ -233,7 +341,7 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
 async function deleteEntry(sheets, sheetId, { id }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Entries!A:S',
+    range: 'Entries!A:T',
   });
 
   const rows = response.data.values || [];
@@ -370,13 +478,13 @@ async function syncEntries(sheets, sheetId, { entries }, res) {
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId: sheetId,
-    range: 'Entries!A2:S',
+    range: 'Entries!A2:T',
   });
 
   if (rows.length > 0) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Entries!A:S',
+      range: 'Entries!A:T',
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows }
@@ -403,6 +511,13 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Apply color coding based on practice
+  const rowIndex = await getLastRowIndex(sheets, sheetId, 'Invoices');
+  const practiceId = invoice.practice ? invoice.practice.toLowerCase() : '';
+  const isAdhoc = invoice.isAdhoc === true || invoice.isAdhoc === 'true';
+  const colorScheme = getPracticeColor(practiceId, isAdhoc ? 'adhoc' : 'contract', invoice.color);
+  await applyRowColor(sheets, sheetId, 'Invoices', rowIndex, colorScheme);
 
   // Log the invoice creation
   await writeLog(sheets, sheetId, {
@@ -570,7 +685,7 @@ async function syncInvoices(sheets, sheetId, { invoices }, res) {
 // ===== LOAD ALL =====
 async function loadAll(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:S' }),
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:T' }),
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
   ]);
 
@@ -640,21 +755,28 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     })
   );
 
-  // Helper to sync to a single sheet
+  // Helper to sync to a single sheet and apply colors
   async function syncToSheet(targetSheetId) {
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A2:L',
+      range: 'Practices!A2:M',
     });
 
     if (rows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: targetSheetId,
-        range: 'Practices!A:L',
+        range: 'Practices!A:M',
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: { values: rows }
       });
+
+      // Apply color coding to each practice row
+      for (let i = 0; i < practices.length; i++) {
+        const p = practices[i];
+        const colorScheme = getPracticeColor(p.id, p.type, p.color);
+        await applyRowColor(sheets, targetSheetId, 'Practices', i + 1, colorScheme); // +1 for header row
+      }
     }
   }
 
@@ -672,7 +794,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 async function loadPractices(sheets, sheetId, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Practices!A:L',
+    range: 'Practices!A:M',
   });
 
   const rows = response.data.values || [];
@@ -698,7 +820,7 @@ async function loadPractices(sheets, sheetId, res) {
 // ===== SETTINGS =====
 // Settings are split: entity-specific (nextInv, entities) vs shared (dayMap, ahPrac, payTerms, etc.)
 // Shared settings are mirrored to both sheets
-const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'defComm', 'invoiceFooter', 'svcs'];
+const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'defComm', 'invoiceFooter'];
 const ENTITY_SPECIFIC_KEYS = ['nextInv', 'entities'];
 
 async function syncSettings(sheets, sheetId, { settings, entity }, res) {
@@ -816,7 +938,7 @@ async function loadSettings(sheets, sheetId, res) {
 // ===== DASHBOARD =====
 async function getDashboard(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:S' }),
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:T' }),
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
   ]);
 

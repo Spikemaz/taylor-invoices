@@ -13,7 +13,8 @@
 :root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--acc:#00b36b;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--warn:#f59e0b;--warn-bg:#fef9c3;--bupa:#0057a8;--bupa-lt:#e8f0fe;--grove:#2d6a4f;--grove-lt:#e8f5e9;--adhoc:#EF4444;--adhoc-lt:#FEE2E2;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--shm:0 4px 12px rgba(0,0,0,.08);--shl:0 8px 24px rgba(0,0,0,.12);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%;overflow:hidden;-webkit-font-smoothing:antialiased}
-#app{height:100%;display:flex;flex-direction:column;padding-top:var(--st);padding-bottom:var(--sb)}
+#app{height:100%;display:flex;flex-direction:column;padding-top:var(--st);padding-bottom:var(--sb);max-width:430px;margin:0 auto;background:var(--bg);box-shadow:0 0 20px rgba(0,0,0,.1)}
+@media(min-width:431px){html,body{background:#e5e5e5}}
 .hdr{background:var(--pri-dk);color:#fff;padding:8px 10px;display:flex;align-items:center;gap:6px;z-index:100;min-height:56px;box-sizing:border-box;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .hdr-left{display:flex;align-items:center;gap:6px;min-width:80px;flex-shrink:1}
 .hdr-back{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;font-size:16px;padding:0;cursor:pointer;border-radius:8px;transition:all .2s;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
@@ -88,7 +89,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .abtn.prc-bupa{background:var(--bupa)}.abtn.prc-bupa:active{background:#004080}
 .abtn.prc-grove{background:var(--grove)}.abtn.prc-grove:active{background:#1b4332}
 .abtn.prc-adhoc{background:#EF4444}.abtn.prc-adhoc:active{background:#DC2626}
-.toast{position:fixed;bottom:calc(20px + var(--sb));left:50%;transform:translateX(-50%) translateY(100px);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:1000;transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;box-shadow:var(--shl);max-width:calc(100vw - 40px);font-family:var(--f);color:#fff}
+.toast{position:fixed;bottom:calc(20px + var(--sb));left:50%;transform:translateX(-50%) translateY(100px);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:1000;transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;box-shadow:var(--shl);max-width:min(calc(100vw - 40px),390px);font-family:var(--f);color:#fff}
 .toast.show{transform:translateX(-50%) translateY(0)}.toast.ok{background:var(--pri-dk)}.toast.err{background:var(--err)}
 .toast.prc-bupa{background:var(--bupa)}.toast.prc-grove{background:var(--grove)}.toast.prc-adhoc{background:#EF4444}
 .toast .ubtn{background:rgba(255,255,255,.2);border:0;color:#fff;padding:4px 12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;font-family:var(--f);margin-left:8px}
@@ -157,8 +158,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .fc.prc-grove{border-color:var(--grove);color:var(--grove)}.fc.prc-grove.act{background:var(--grove);color:#fff}
 .fc.prc-adhoc{border-color:#EF4444;color:#EF4444}.fc.prc-adhoc.act{background:#EF4444;color:#fff}
 .mov{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;opacity:0;transition:opacity .25s}
-.mov.show{display:flex;opacity:1;align-items:flex-end}
-.mod{background:var(--card);width:100%;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + var(--sb));max-height:85vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);border-top:4px solid var(--bdr)}
+.mov.show{display:flex;opacity:1;align-items:flex-end;justify-content:center}
+.mod{background:var(--card);width:100%;max-width:430px;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + var(--sb));max-height:85vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);border-top:4px solid var(--bdr)}
 .mod.prc-bupa{border-top-color:var(--bupa)}.mod.prc-grove{border-top-color:var(--grove)}.mod.prc-adhoc{border-top-color:#EF4444}
 .mov.show .mod{transform:translateY(0)}
 .mh{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px}
@@ -172,6 +173,21 @@ input[type="date"].fi{min-width:100%;display:block}
 .ssec{background:var(--card);border-radius:var(--r);border:1px solid var(--bdr);margin-bottom:12px;overflow:hidden}
 .srow{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bdr);cursor:pointer}.srow:last-child{border:0}
 .srow .la{font-size:15px}.srow .va{font-size:14px;color:var(--txt2)}
+.sgrp{margin-bottom:20px;border-radius:var(--r);overflow:hidden;border:2px solid var(--bdr)}
+.sgrp-hdr{padding:10px 16px;font-size:13px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.sgrp-hdr span{font-size:10px;font-weight:500;opacity:.7;margin-left:6px;text-transform:none}
+.sgrp .sh{background:var(--bg);margin:0;padding:8px 16px;text-align:left;font-size:12px;font-weight:600;border-top:1px solid var(--bdr)}
+.sgrp .sh:first-child{border-top:0}
+.sgrp .ssec{border:0;border-radius:0;margin:0}
+.sgrp .ssec+.sh{margin-top:0}
+.sgrp-business{border-color:var(--pri)}
+.sgrp-business .sgrp-hdr{background:var(--pri);color:#fff}
+.sgrp-practices{border-color:var(--bupa)}
+.sgrp-practices .sgrp-hdr{background:var(--bupa);color:#fff}
+.sgrp-invoice{border-color:var(--warn)}
+.sgrp-invoice .sgrp-hdr{background:var(--warn);color:#fff}
+.sgrp-cloud{border-color:var(--txt3)}
+.sgrp-cloud .sgrp-hdr{background:var(--txt3);color:#fff}
 .rb{background:var(--warn-bg);border:1px solid var(--warn);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:13px;color:#92400e;display:flex;align-items:center;gap:8px}
 .rb.ok{background:var(--ok-bg);border-color:var(--ok);color:#166534}
 .asel{width:100%;padding:12px 14px;border:1px solid var(--bdr);border-radius:var(--rs);font-size:16px;font-family:var(--f);color:var(--txt);background:var(--card);margin-bottom:12px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 5.646a.5.5 0 011 0L8 8.293l2.646-2.647a.5.5 0 01.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 010-.708z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
@@ -194,7 +210,7 @@ input[type="date"].fi{min-width:100%;display:block}
 .sync-info{flex:1;display:flex;flex-direction:column;gap:2px}
 .sync-label{font-size:13px;font-weight:600;color:var(--txt)}
 .sync-time{font-size:11px;color:var(--txt2)}
-.load-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
+.load-overlay{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .3s}
 .load-overlay.hidden{opacity:0;pointer-events:none}
 .load-spinner{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--pri);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -202,7 +218,7 @@ input[type="date"].fi{min-width:100%;display:block}
 .load-error{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:16px;margin:16px;text-align:center;max-width:300px}
 .load-error .msg{font-size:14px;color:var(--err);margin-bottom:12px}
 .load-error button{background:var(--pri);color:#fff;border:0;padding:10px 20px;border-radius:var(--rs);font-weight:600;cursor:pointer}
-.pending-bar{position:fixed;top:0;left:0;right:0;background:var(--err);color:#fff;padding:8px 16px;font-size:12px;font-weight:600;z-index:1000;display:none;align-items:center;justify-content:space-between}
+.pending-bar{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--err);color:#fff;padding:8px 16px;font-size:12px;font-weight:600;z-index:1000;display:none;align-items:center;justify-content:space-between}
 .pending-bar.show{display:flex}
 .pending-bar button{background:rgba(255,255,255,.25);border:0;color:#fff;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
@@ -367,6 +383,9 @@ input[type="date"].fi{min-width:100%;display:block}
 <span class="sync-time" id="syncTime">Last sync: --</span>
 </div>
 </div>
+
+<div class="sgrp sgrp-business">
+<div class="sgrp-hdr">Your Business</div>
 <div class="sh">Self-Employed</div>
 <div class="ssec">
 <div class="srow" onclick="editField('self','name')"><span class="la">Name</span><span class="va" id="se_name">Taylor Muir</span></div>
@@ -386,7 +405,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="srow" onclick="editCompanyNo()"><span class="la">Company Number</span><span class="va" id="ltd_compNo">Not set</span></div>
 <div class="srow" onclick="viewLogo('ltd')"><span class="la">Logo</span><span class="va">View/Change</span></div>
 </div>
-<div class="sh">Practices</div>
+</div>
+
+<div class="sgrp sgrp-practices">
+<div class="sgrp-hdr">Practices</div>
+<div class="sh">Contract Practices</div>
 <div class="ssec" id="pracSettings"></div>
 <div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addPrac()">+ Add New Practice</button></div>
 <div class="sh">Ad Hoc Practices</div>
@@ -394,17 +417,20 @@ input[type="date"].fi{min-width:100%;display:block}
 <div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="showAddAhPractice()">+ Add New Ad Hoc Practice</button></div>
 <div class="sh">Day Mapping</div>
 <div class="ssec" id="dayMap"></div>
+</div>
 
-<div class="sh">Invoice Settings</div>
+<div class="sgrp sgrp-invoice">
+<div class="sgrp-hdr">Invoice Settings</div>
 <div class="ssec">
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
 <div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
 <div class="srow" onclick="editDefaultComm()"><span class="la">Default Profit Share</span><span class="va" id="sDefComm">50%</span></div>
 <div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
 </div>
-<div class="ssec" id="svcSettings"></div>
-<div style="padding:8px 16px"><button class="btn btn-s" style="width:100%" onclick="addService()">+ Add Service Type</button></div>
-<div class="sh">Cloud &amp; Data</div>
+</div>
+
+<div class="sgrp sgrp-cloud">
+<div class="sgrp-hdr">Cloud &amp; Data</div>
 <div class="ssec">
 <div class="srow" onclick="syncAllToCloud()"><span class="la">Sync All to Google Sheets</span><span class="va">☁↑</span></div>
 <div class="srow" onclick="loadFromCloudUI()"><span class="la">Load from Cloud</span><span class="va">☁↓</span></div>
@@ -412,6 +438,8 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="srow" onclick="exportCSV()"><span class="la">Download Backup (CSV)</span><span class="va">📊</span></div>
 <div class="srow" onclick="clearAllData()"><span class="la">Clear All Data</span><span class="va" style="color:var(--err)">⚠️</span></div>
 </div>
+</div>
+
 <p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with ♥ by Marcus</p>
 </div>
 
@@ -502,7 +530,6 @@ function loadSettings(){
     if (d.nextInvLtd) S.nextInvLtd = d.nextInvLtd;
     if (d.defComm != null) S.defComm = d.defComm;
     if (d.invoiceFooter) S.invoiceFooter = d.invoiceFooter;
-    if (d.svcs) S.svcs = d.svcs;
     // Backwards compatibility: migrate old single nextInv to both
     if (d.nextInv && !d.nextInvSelf) { S.nextInvSelf = d.nextInv; S.nextInvLtd = 1; }
     if (d.ents) {
@@ -542,7 +569,7 @@ function save() {
       pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract' };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
-      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, svcs: S.svcs
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter
     }));
     localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
   } catch(e) { console.error('Save error:', e); }
@@ -878,8 +905,7 @@ async function syncSettingsToCloud() {
     dayMap: S.dayMap,
     ahPrac: S.ahPrac,
     defComm: S.defComm,
-    invoiceFooter: S.invoiceFooter,
-    svcs: S.svcs
+    invoiceFooter: S.invoiceFooter
   };
   // Sync Ltd settings
   const ltdSettings = {
@@ -889,8 +915,7 @@ async function syncSettingsToCloud() {
     dayMap: S.dayMap,
     ahPrac: S.ahPrac,
     defComm: S.defComm,
-    invoiceFooter: S.invoiceFooter,
-    svcs: S.svcs
+    invoiceFooter: S.invoiceFooter
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
   try {
@@ -1456,7 +1481,6 @@ async function loadSettingsFromCloudFn() {
     }
     if (selfResult.settings.defComm !== undefined) S.defComm = selfResult.settings.defComm;
     if (selfResult.settings.invoiceFooter) S.invoiceFooter = selfResult.settings.invoiceFooter;
-    if (selfResult.settings.svcs) S.svcs = selfResult.settings.svcs;
     if (selfResult.settings.nextInv) S.nextInvSelf = selfResult.settings.nextInv;
     console.log('[Settings Loaded] entities=', Object.keys(S.ents || {}), 'defComm=', S.defComm, 'invoiceFooter=', !!S.invoiceFooter);
   }
@@ -1760,7 +1784,7 @@ if(!pts)return;const gr=(pts*pr)+ao;
 const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
 if(dup){showDupMod(dup,pts,ao);return;}
 const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').value||'Add-on'):S.aoType):null;
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,createdAt:new Date().toISOString()};
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,color:p.color||null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
@@ -1909,7 +1933,7 @@ const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 // Get add-on type name (Airflow, custom name, or null)
 const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoName').value||'Add-on'):ahAoType):null;
-const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,createdAt:new Date().toISOString()};
+const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,color:p.color||'adhoc',createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);upHome(true);
@@ -3157,10 +3181,20 @@ function editPrac(id){var p=S.practices[id];if(!p)return;
 var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var daysStr=(p.days||[]).map(function(d){return d}).join(',');
 var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', '):'';
+var currentColor=p.color||'bupa';
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short||id)+' Settings</h3>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
+// Color picker
+_h+='<div class="fg"><label class="fl">Color Theme</label><div id="ePColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">';
+_h+='<button class="color-pick'+(currentColor==='bupa'?' act':'')+'" data-color="bupa" style="background:#0057a8;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='bupa'?'#0057a8':'transparent')+'"></button>';
+_h+='<button class="color-pick'+(currentColor==='grove'?' act':'')+'" data-color="grove" style="background:#2d6a4f;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='grove'?'#2d6a4f':'transparent')+'"></button>';
+_h+='<button class="color-pick'+(currentColor==='adhoc'?' act':'')+'" data-color="adhoc" style="background:#EF4444;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='adhoc'?'#EF4444':'transparent')+'"></button>';
+_h+='<button class="color-pick'+(currentColor==='purple'?' act':'')+'" data-color="purple" style="background:#7c3aed;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='purple'?'#7c3aed':'transparent')+'"></button>';
+_h+='<button class="color-pick'+(currentColor==='orange'?' act':'')+'" data-color="orange" style="background:#f59e0b;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='orange'?'#f59e0b':'transparent')+'"></button>';
+_h+='<button class="color-pick'+(currentColor==='teal'?' act':'')+'" data-color="teal" style="background:#14b8a6;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='teal'?'#14b8a6':'transparent')+'"></button>';
+_h+='</div><input type="hidden" id="ePColor" value="'+currentColor+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="'+((p.comm||0)*100).toFixed(0)+'" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
@@ -3171,6 +3205,15 @@ setTimeout(function(){
 document.getElementById('_epCancel').onclick=function(){closeMod2()};
 document.getElementById('_epSave').onclick=function(){savePrac(id,false)};
 document.getElementById('_epDel').onclick=function(){deletePrac(id)};
+// Color picker handlers
+document.querySelectorAll('.color-pick').forEach(function(btn){
+  btn.onclick=function(){
+    document.querySelectorAll('.color-pick').forEach(function(b){b.style.border='3px solid transparent'});
+    this.style.border='3px solid '+this.style.background;
+    this.classList.add('act');
+    document.getElementById('ePColor').value=this.getAttribute('data-color');
+  };
+});
 },50);
 }
 function addPrac(){
@@ -3183,6 +3226,15 @@ _h+='<button class="ebtn" id="ePTypeA" onclick="setAddPracType(\'adhoc\')">Ad Ho
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" placeholder="e.g. Smile Dental"></div>';
 _h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="ePShort" placeholder="e.g. Smile"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="2" placeholder="Full address..."></textarea></div>';
+// Color picker
+_h+='<div class="fg"><label class="fl">Color Theme</label><div id="ePColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">';
+_h+='<button class="color-pick act" data-color="bupa" style="background:#0057a8;width:36px;height:36px;border-radius:8px;border:3px solid #0057a8"></button>';
+_h+='<button class="color-pick" data-color="grove" style="background:#2d6a4f;width:36px;height:36px;border-radius:8px;border:3px solid transparent"></button>';
+_h+='<button class="color-pick" data-color="adhoc" style="background:#EF4444;width:36px;height:36px;border-radius:8px;border:3px solid transparent"></button>';
+_h+='<button class="color-pick" data-color="purple" style="background:#7c3aed;width:36px;height:36px;border-radius:8px;border:3px solid transparent"></button>';
+_h+='<button class="color-pick" data-color="orange" style="background:#f59e0b;width:36px;height:36px;border-radius:8px;border:3px solid transparent"></button>';
+_h+='<button class="color-pick" data-color="teal" style="background:#14b8a6;width:36px;height:36px;border-radius:8px;border:3px solid transparent"></button>';
+_h+='</div><input type="hidden" id="ePColor" value="bupa"></div>';
 // Contracted-only fields
 _h+='<div id="ePContractFields">';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
@@ -3199,6 +3251,15 @@ showModal(_h);
 setTimeout(function(){
 document.getElementById('_epCancel').onclick=function(){closeMod2()};
 document.getElementById('_epSave').onclick=function(){savePrac(null,true)};
+// Color picker handlers
+document.querySelectorAll('.color-pick').forEach(function(btn){
+  btn.onclick=function(){
+    document.querySelectorAll('.color-pick').forEach(function(b){b.style.border='3px solid transparent'});
+    this.style.border='3px solid '+this.style.background;
+    this.classList.add('act');
+    document.getElementById('ePColor').value=this.getAttribute('data-color');
+  };
+});
 },50);
 }
 function setAddPracType(t){
@@ -3213,6 +3274,7 @@ var short=document.getElementById('ePShort').value.trim();
 if(!name){showToast('Please enter a practice name');return;}
 if(!short)short=name;
 var addr=document.getElementById('ePAddr').value.trim().replace(/\n/g,'\\n');
+var color=document.getElementById('ePColor')?document.getElementById('ePColor').value:'bupa';
 // Check if Ad Hoc type is selected (only for new practices)
 var typeABtn=document.getElementById('ePTypeA');
 var isAdhoc=isNew&&typeABtn&&typeABtn.classList.contains('act');
@@ -3220,7 +3282,7 @@ if(isAdhoc){
   // Save as Ad Hoc practice
   var rate=parseFloat(document.getElementById('ePRate').value)||25;
   var air=parseFloat(document.getElementById('ePAir').value)||0;
-  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true});
+  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true,color:color});
   save();closeMod2();refreshSettings();
   showToast('\u2713 '+name+' added (Ad Hoc)');
   syncPracticesToCloud().then(function(r){if(r.success)console.log('[Ad Hoc Practice Synced]',name);});
@@ -3233,6 +3295,7 @@ p.id=newId;
 p.name=name;
 p.short=short;
 p.addr=addr;
+p.color=color;
 p.comm=(parseFloat(document.getElementById('ePComm').value)||35)/100;
 var daysVal=document.getElementById('ePDays').value.trim();
 p.days=daysVal?daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6}):[];
@@ -3245,7 +3308,7 @@ Object.keys(S.dayMap).forEach(function(k){if(S.dayMap[k]===newId)S.dayMap[k]='ho
 if(p.days)p.days.forEach(function(d){S.dayMap[d]=newId;});
 S.practices[newId]=p;
 save();closeMod2();refreshSettings();buildDayMap();
-console.log('[Practice '+(isNew?'Added':'Updated')+']',p.short,'svcs=',Object.keys(p.svcs||{}),'days=',p.days);
+console.log('[Practice '+(isNew?'Added':'Updated')+']',p.short,'svcs=',Object.keys(p.svcs||{}),'days=',p.days,'color=',p.color);
 showToast('\u2713 '+(isNew?'Added':'Updated')+' '+p.short);
 syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Synced to Cloud]',p.short);else console.error('[Practice Sync Failed]',r);});
 }
@@ -3393,50 +3456,6 @@ S.invoiceFooter=document.getElementById('_ifVal').value.trim()||'Thank you for y
 save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Footer message updated');};
 },50);
 }
-function buildSvcSettings(){
-var c=document.getElementById('svcSettings');if(!c)return;
-var h='';
-(S.svcs||[]).forEach(function(s,i){
-h+='<div class="srow" onclick="editService('+i+')"><span class="la">'+s.name+'</span><span class="va">\u00a3'+s.price.toFixed(2)+'</span></div>';
-});
-if(!h)h='<div class="srow"><span class="la" style="color:var(--txt3)">No services configured</span></div>';
-c.innerHTML=h;
-}
-function editService(idx){
-var s=(S.svcs||[])[idx];if(!s)return;
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Service</h3>';
-_h+='<div class="fg"><label class="fl">Service Name</label><input class="fi" id="_esName" value="'+s.name+'"></div>';
-_h+='<div class="fg"><label class="fl">Default Price (\u00a3)</label><input class="fi" id="_esPrice" type="number" step="0.01" value="'+s.price+'"></div>';
-_h+='<div class="brow"><button class="btn btn-s" style="color:var(--err)" id="_esD">Delete</button><button class="btn btn-s" id="_esC">Cancel</button><button class="btn btn-p" id="_esS">Save</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_esC').onclick=function(){closeMod2()};
-document.getElementById('_esD').onclick=function(){
-if(confirm('Delete this service type?')){S.svcs.splice(idx,1);save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('Service deleted');}
-};
-document.getElementById('_esS').onclick=function(){
-s.name=document.getElementById('_esName').value.trim()||s.name;
-s.price=parseFloat(document.getElementById('_esPrice').value)||s.price;
-save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('\u2713 Service updated');};
-},50);
-}
-function addService(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Service Type</h3>';
-_h+='<div class="fg"><label class="fl">Service Name</label><input class="fi" id="_asName" placeholder="e.g. Whitening"></div>';
-_h+='<div class="fg"><label class="fl">Default Price (\u00a3)</label><input class="fi" id="_asPrice" type="number" step="0.01" value="25"></div>';
-_h+='<div class="brow"><button class="btn btn-s" id="_asC">Cancel</button><button class="btn btn-p" id="_asS">Add</button></div>';
-showModal(_h);
-setTimeout(function(){
-document.getElementById('_asC').onclick=function(){closeMod2()};
-document.getElementById('_asS').onclick=function(){
-var name=document.getElementById('_asName').value.trim();
-var price=parseFloat(document.getElementById('_asPrice').value)||25;
-if(!name){showToast('Enter a service name','err');return;}
-S.svcs=S.svcs||[];
-S.svcs.push({id:name.toLowerCase().replace(/\s+/g,''),name:name,price:price,active:true});
-save();closeMod2();buildSvcSettings();syncSettingsToCloud();showToast('\u2713 Service added');};
-},50);
-}
 function clearAllData(){
 var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(--err)">Clear All Data</h3>';
 _h+='<p style="margin:12px 0">This will permanently delete:</p>';
@@ -3542,7 +3561,6 @@ el=document.getElementById('sDefComm');if(el)el.textContent=(S.defComm||50)+'%';
 el=document.getElementById('sFooter');if(el){var ft=S.invoiceFooter||'Thank you...';el.textContent=ft.length>20?ft.substring(0,20)+'...':ft;}
 el=document.getElementById('se_email');if(el)el.textContent=se.email||'Not set';
 el=document.getElementById('ltd_email');if(el)el.textContent=lt.email||'Not set';
-buildSvcSettings();
 var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var psec=document.getElementById('pracSettings');
 if(psec){psec.innerHTML='';Object.keys(S.practices).forEach(function(k){
