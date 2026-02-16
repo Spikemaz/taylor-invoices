@@ -1307,10 +1307,10 @@ if(p&&S.scr!==n)p.classList.remove('act');
 if(nx)nx.classList.add('act');
 if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
-if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')upHome();if(n==='settings')refreshSettings();
+if(n==='archive')refArc();if(n==='invoices')refInv();if(n==='home')upHome(true);if(n==='settings')refreshSettings();
 }
-function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')upHome();if(p==='archive')refArc();if(p==='invoices')refInv();}
-function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');upHome();}
+function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')upHome(true);if(p==='archive')refArc();if(p==='invoices')refInv();}
+function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');upHome(true);}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');e.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
@@ -1403,14 +1403,14 @@ function switchEntity(t){
   // Update header entity display
   document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
 
-  // Update practice screen monthly summary if we're on it
+  // Update practice screen monthly summary if we're on it (with animation)
   if(S.prac&&S.practices[S.prac]){
     const p=S.practices[S.prac];
-    if(p)upPracMSum(S.prac,p.comm||0);
+    if(p)upPracMSum(S.prac,p.comm||0,true);
   }
 
-  // Always update home screen totals when entity changes
-  upHome();
+  // Always update home screen totals when entity changes (with animation)
+  upHome(true);
 }
 
 // Aliases for backwards compatibility - all call the unified function
@@ -1437,8 +1437,10 @@ S.prac=id;S.svc=null;showScreen('practice');
 // Sync entity toggle with current entity
 document.getElementById('pES').className='ebtn'+(S.ent==='self'?' act':'');
 document.getElementById('pEL').className='ebtn'+(S.ent==='ltd'?' act':'');
-// Update monthly summary for this practice
-upPracMSum(id,p.comm||0);
+// Set zeros then animate monthly summary for reactive feel
+document.getElementById('pracMGross').textContent='£0.00';
+document.getElementById('pracMNet').textContent='£0.00';
+setTimeout(()=>upPracMSum(id,p.comm||0,true),100);
 const g=document.getElementById('sGrid');g.innerHTML='';
 const prcClass=p.type==='adhoc'?'prc-adhoc':(id==='bupa'?'prc-bupa':(id==='grove'?'prc-grove':''));
 if(p.svcs){
