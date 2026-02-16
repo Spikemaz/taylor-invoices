@@ -67,7 +67,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .sbtn.sel.prc-grove{border-color:var(--grove);background:var(--grove-lt);color:var(--grove)}
 .sbtn.sel.prc-adhoc{border-color:#EF4444;background:#FEE2E2;color:#EF4444}
 .sbtn .ph{display:block;font-size:10px;font-weight:400;color:var(--txt2);margin-top:1px}.sbtn.sel .ph{color:inherit}
-#aoTypeGrid .sbtn,#ahAoTypeGrid .sbtn{height:36px}
+#aoTypeGrid .sbtn,#ahAoTypeGrid .sbtn{height:48px}
 .stg{background:var(--card);border-radius:var(--rs);padding:6px 10px;margin-bottom:6px;border:2px solid var(--bdr)}
 .stg.prc-bupa{border-color:var(--bupa)}.stg.prc-grove{border-color:var(--grove)}.stg.prc-adhoc{border-color:#EF4444}
 .stg .sl{display:none}
@@ -139,6 +139,15 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .inv-section{font-size:16px;font-weight:700;color:var(--txt);padding:16px 0 10px;margin-top:12px;border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:8px}
 .inv-section:first-child{margin-top:0}
 .inv-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
+.ie-left{min-width:50px;max-width:50px;text-align:center;flex-shrink:0}
+.ie-num{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
+.ie-ent{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
+.ie-ent.self{background:#E0F7FA;color:#0891B2}.ie-ent.ltd{background:#DCFCE7;color:#166534}
+.ie-mid{flex:1;min-width:0;overflow:hidden;padding-right:8px}
+.ie-prc{font-size:14px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ie-per{font-size:11px;color:var(--txt3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ie-amt{display:flex;align-items:center;gap:3px;background:var(--pri-dk);padding:5px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.ie-bal{font-size:13px;font-weight:700;color:#86efac}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
 .ibtn.gn.prc-bupa{background:var(--bupa)}.ibtn.gn.prc-grove{background:var(--grove)}.ibtn.gn.prc-adhoc{background:#EF4444}
 .sh{font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.3px;margin:6px 0 6px;text-align:center}.sh:first-child{margin-top:0}
@@ -277,7 +286,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adj('aoPts',-1)">−</button><input class="stpv" id="aoPts" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAmt()"><button class="stpb" onclick="adj('aoPts',1)">+</button></div></div>
 </div>
 </div>
-<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="dLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="margin-top:6px;border:none"></div>
+<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="dLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="logDt" onchange="upDLbl()" style="border:none"></div>
 </div>
 </div>
 
@@ -312,7 +321,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="stg"><div class="sl">Add-on Patients</div><div class="stp"><button class="stpb" onclick="adjAh('aap',-1)">−</button><input class="stpv" id="aap" value="0" type="tel" inputmode="numeric" onfocus="this.select()" oninput="upAhAmt()"><button class="stpb" onclick="adjAh('aap',1)">+</button></div></div>
 </div>
 </div>
-<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="ahDLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="margin-top:6px;border:none"></div>
+<div class="stg" style="margin-top:12px"><div class="sl">Date<span id="ahDLbl" style="margin-left:8px;font-weight:400;opacity:.7">Today</span></div><input type="date" class="fi" id="ahDt" onchange="upAhDLbl()" style="border:none"></div>
 </div>
 </div>
 
@@ -1898,6 +1907,9 @@ function refArc(){
   const c=document.getElementById('arcList');
   const now=new Date();
   const todayStr=now.toISOString().substring(0,10);
+  // Calculate 7 days ago for Recent section
+  const sevenDaysAgo=new Date(now);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
+  const sevenDaysAgoStr=sevenDaysAgo.toISOString().substring(0,10);
 
   // Sort by date desc, then by createdAt desc (most recent first)
   let entries=[...S.entries].sort((a,b)=>{
@@ -1913,17 +1925,10 @@ function refArc(){
 
   if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
 
-  // Split into today (Recent) and past entries
+  // Split into Today, Recent (last 7 days), and Previous
   const todayEntries=entries.filter(e=>e.date===todayStr);
-  const pastEntries=entries.filter(e=>e.date!==todayStr);
-
-  // Group past entries by month
-  const byMonth={};
-  pastEntries.forEach(e=>{
-    const monthKey=e.date.substring(0,7);
-    if(!byMonth[monthKey])byMonth[monthKey]=[];
-    byMonth[monthKey].push(e);
-  });
+  const recentEntries=entries.filter(e=>e.date!==todayStr&&e.date>=sevenDaysAgoStr);
+  const previousEntries=entries.filter(e=>e.date<sevenDaysAgoStr);
 
   // Helper to get practice border class
   function getPrcClass(e){
@@ -1950,72 +1955,117 @@ function refArc(){
 
   let html='';
 
-  // RECENT section (today's entries) - sort by newest added first
+  // TODAY section - only show if entries exist today
   if(todayEntries.length){
     todayEntries.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-    html+='<div class="arc-section">Today <span class="sec-count">'+todayEntries.length+' entries</span></div>';
+    html+='<div class="arc-section">Today <span class="sec-count">'+todayEntries.length+' entr'+(todayEntries.length===1?'y':'ies')+'</span></div>';
     html+='<div class="alist" style="margin-top:8px">'+todayEntries.map(renderEntry).join('')+'</div>';
   }
 
-  // Monthly folders (no separate "Past Entries" header - just show months directly)
-  if(pastEntries.length){
+  // RECENT section - last 7 days (excluding today)
+  if(recentEntries.length){
+    html+='<div class="arc-section">Recent <span class="sec-count">'+recentEntries.length+' entr'+(recentEntries.length===1?'y':'ies')+'</span></div>';
+    // Group by day
+    const byDay={};
+    recentEntries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
+    html+='<div class="alist" style="margin-top:8px">';
+    Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+      const dayEntries=byDay[dayKey];
+      const dayDate=new Date(dayKey);
+      const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const dayNum=dayDate.getDate();
+      const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+      const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
+      html+='<div style="font-size:12px;color:var(--txt2);padding:10px 0 6px;font-weight:600">'+dayLabel+' <span style="font-weight:400">('+dayEntries.length+')</span></div>';
+      dayEntries.sort((a,b)=>(b.pts||0)-(a.pts||0));
+      html+=dayEntries.map(renderEntry).join('');
+    });
+    html+='</div>';
+  }
+
+  // PREVIOUS section - monthly collapsible folders with Ad Hoc / Contracted subfolders
+  if(previousEntries.length){
+    html+='<div class="arc-section">Previous <span class="sec-count">'+previousEntries.length+' entr'+(previousEntries.length===1?'y':'ies')+'</span></div>';
+
+    // Group by month
+    const byMonth={};
+    previousEntries.forEach(e=>{
+      const monthKey=e.date.substring(0,7);
+      if(!byMonth[monthKey])byMonth[monthKey]=[];
+      byMonth[monthKey].push(e);
+    });
+
     // Render each month as collapsible folder
     Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
       const monthEntries=byMonth[monthKey];
       const d=new Date(monthKey+'-01');
       const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
 
-      // Group by practice within month and count
-      const byPractice={};
-      monthEntries.forEach(e=>{
-        const pKey=e.pType==='adhoc'?'adhoc':e.pId;
-        if(!byPractice[pKey])byPractice[pKey]={name:e.pType==='adhoc'?'Ad Hoc':e.pName,entries:[],pType:e.pType,pId:e.pId};
-        byPractice[pKey].entries.push(e);
-      });
+      // Separate Ad Hoc and Contracted entries
+      const adhocEntries=monthEntries.filter(e=>e.pType==='adhoc');
+      const contractEntries=monthEntries.filter(e=>e.pType!=='adhoc');
 
-      // Sort practices by entry count (most to least)
-      const sortedPractices=Object.values(byPractice).sort((a,b)=>b.entries.length-a.entries.length);
-
-      // Build practice summary for month header
-      const prcSummary=sortedPractices.map(p=>p.name+' ('+p.entries.length+')').join(' ');
-
-      html+='<div class="arc-month collapsed" data-month="'+monthKey+'" onclick="toggleArcMonth(this)">'+monthLabel+' <span class="month-count">'+monthEntries.length+' entries</span></div>';
+      html+='<div class="arc-month collapsed" data-month="'+monthKey+'" onclick="toggleArcMonth(this)">'+monthLabel+' <span class="month-count">'+monthEntries.length+' entr'+(monthEntries.length===1?'y':'ies')+'</span></div>';
       html+='<div class="month-group collapsed" id="mg_'+monthKey+'">';
 
-      // Within month, show practice summary
-      html+='<div style="font-size:12px;color:var(--txt2);padding:8px 0;border-bottom:1px solid var(--bdr)">'+prcSummary+'</div>';
-
-      // Group entries by practice
-      sortedPractices.forEach(p=>{
-        const prcColor=p.pType==='adhoc'?'#EF4444':(p.pId==='bupa'?'var(--bupa)':'var(--grove)');
-        html+='<div class="prc-group" data-prc="'+p.pId+'">';
-        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+prcColor+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.entries.length+' entries)</span></div>';
+      // Ad Hoc subfolder (only if exists)
+      if(adhocEntries.length){
+        html+='<div class="prc-group" data-prc="adhoc">';
+        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:#EF4444">Ad Hoc</span> <span style="color:var(--txt3);font-weight:400">('+adhocEntries.length+' entr'+(adhocEntries.length===1?'y':'ies')+')</span></div>';
         html+='<div class="prc-group-entries">';
-        // Group entries by day within practice
-        const byDay={};
-        p.entries.forEach(e=>{
-          const dayKey=e.date;
-          if(!byDay[dayKey])byDay[dayKey]=[];
-          byDay[dayKey].push(e);
+        // Group by practice within Ad Hoc
+        const adhocByPrac={};
+        adhocEntries.forEach(e=>{if(!adhocByPrac[e.pId])adhocByPrac[e.pId]={name:e.pName,entries:[]};adhocByPrac[e.pId].entries.push(e);});
+        Object.values(adhocByPrac).sort((a,b)=>b.entries.length-a.entries.length).forEach(p=>{
+          const byDay={};
+          p.entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
+          Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+            const dayEntries=byDay[dayKey];
+            const dayDate=new Date(dayKey);
+            const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            const dayNum=dayDate.getDate();
+            const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+            const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
+            html+='<div class="day-group" style="border:2px solid #EF4444;border-radius:var(--rs);margin:6px 0;overflow:hidden">';
+            html+='<div style="background:#EF4444;color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+p.name+' - '+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
+            html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
+            html+='</div>';
+          });
         });
-        // Render each day group with outline
-        Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
-          const dayEntries=byDay[dayKey];
-          // Sort by patient count (highest first)
-          dayEntries.sort((a,b)=>(b.pts||0)-(a.pts||0));
-          const dayDate=new Date(dayKey);
-          const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-          const dayNum=dayDate.getDate();
-          const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
-          const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
-          html+='<div class="day-group" style="border:2px solid '+prcColor+';border-radius:var(--rs);margin:6px 0;overflow:hidden">';
-          html+='<div style="background:'+prcColor+';color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
-          html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
-          html+='</div>';
+        html+='</div></div>';
+      }
+
+      // Contracted subfolder (only if exists)
+      if(contractEntries.length){
+        html+='<div class="prc-group" data-prc="contract">';
+        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:var(--pri)">Contracted</span> <span style="color:var(--txt3);font-weight:400">('+contractEntries.length+' entr'+(contractEntries.length===1?'y':'ies')+')</span></div>';
+        html+='<div class="prc-group-entries">';
+        // Group by practice (Bupa, Grove, etc.)
+        const byPractice={};
+        contractEntries.forEach(e=>{
+          if(!byPractice[e.pId])byPractice[e.pId]={name:e.pId==='bupa'?'Bupa':(e.pId==='grove'?'Grove':e.pName),pId:e.pId,entries:[]};
+          byPractice[e.pId].entries.push(e);
         });
-        html+='</div>';
-        html+='</div>';
-      });
+        Object.values(byPractice).sort((a,b)=>b.entries.length-a.entries.length).forEach(p=>{
+          const prcColor=p.pId==='bupa'?'var(--bupa)':'var(--grove)';
+          // Group by day within practice
+          const byDay={};
+          p.entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
+          Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+            const dayEntries=byDay[dayKey];
+            const dayDate=new Date(dayKey);
+            const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            const dayNum=dayDate.getDate();
+            const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+            const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
+            html+='<div class="day-group" style="border:2px solid '+prcColor+';border-radius:var(--rs);margin:6px 0;overflow:hidden">';
+            html+='<div style="background:'+prcColor+';color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+p.name+' - '+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
+            html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
+            html+='</div>';
+          });
+        });
+        html+='</div></div>';
+      }
 
       html+='</div>';
     });
@@ -2107,7 +2157,10 @@ function filtInv(f){
 function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
-const curMonth=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+const todayStr=n.toISOString().substring(0,10);
+// Calculate 7 days ago for Recent section
+const sevenDaysAgo=new Date(n);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
+const sevenDaysAgoStr=sevenDaysAgo.toISOString().substring(0,10);
 
 // Helper to get practice border class
 function getPrcClass(pid,pType){
@@ -2174,7 +2227,7 @@ else{
 }
 } // end ad hoc practice filter else
 
-// Past invoices - grouped by month with practice colors and collapsible folders
+// Past invoices - grouped into Today/Recent/Previous with uniform display
 const pc2=document.getElementById('pInv');
 // Filter by current entity and practice view
 let filteredInvs=S.iEnt==='all'?S.invoices:S.invoices.filter(inv=>{const t=inv.logoType||inv.entity;return t===S.iEnt||t===(S.iEnt==='self'?'Self-Employed':'Ltd Company');});
@@ -2189,41 +2242,73 @@ if(invPracFilter!=='all'){
   });
 }
 
-// Split into recent (this month) and past
-const recentInvs=filteredInvs.filter(inv=>inv.date.substring(0,7)===curMonth);
-const pastInvs=filteredInvs.filter(inv=>inv.date.substring(0,7)!==curMonth);
+// Split into Today, Recent (last 7 days), Previous
+const todayInvs=filteredInvs.filter(inv=>inv.date===todayStr);
+const recentInvs=filteredInvs.filter(inv=>inv.date!==todayStr&&inv.date>=sevenDaysAgoStr);
+const previousInvs=filteredInvs.filter(inv=>inv.date<sevenDaysAgoStr);
 
-// Helper to render a single invoice
+// Helper to render a single invoice - UNIFORM with archive entries
 function renderInv(inv){
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd':'Self';
   // Determine practice color
   let prcClass='';
+  const prcName=inv.isAdhoc?'Ad Hoc':inv.practice;
   if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
   const idx=S.invoices.findIndex(i=>i.num===inv.num);
-  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'"><div class="db"><div class="dy">#'+inv.num+'</div></div><div class="dt"><div class="sv">'+inv.practice+' <span class="ent-badge '+entType+'">'+entLabel+'</span></div><div class="pt">'+inv.period+'</div></div><div class="ac"><div class="gr">'+fc(inv.amount)+'</div></div></div>';
+  // Uniform layout matching archive entries
+  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
+    '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
+    '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+'</div></div>'+
+    '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span></div>'+
+    '</div>';
 }
 
 let invHtml='';
 
-// RECENT section (this month's invoices)
-invHtml+='<div class="inv-section">Recent <span class="sec-count">'+recentInvs.length+' invoice'+(recentInvs.length!==1?'s':'')+'</span></div>';
-if(recentInvs.length){
-  recentInvs.sort((a,b)=>b.date.localeCompare(a.date));
-  invHtml+='<div class="alist" style="margin-top:8px">'+recentInvs.map(renderInv).join('')+'</div>';
-}else{
-  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No invoices this month</div>';
+// TODAY section - only show if invoices exist today
+if(todayInvs.length){
+  todayInvs.sort((a,b)=>b.num.localeCompare(a.num));
+  invHtml+='<div class="inv-section">Today <span class="sec-count">'+todayInvs.length+' invoice'+(todayInvs.length!==1?'s':'')+'</span></div>';
+  invHtml+='<div class="alist" style="margin-top:8px">'+todayInvs.map(renderInv).join('')+'</div>';
 }
 
-// PREVIOUS section
-invHtml+='<div class="inv-section" style="margin-top:20px">Previous <span class="sec-count">'+pastInvs.length+' invoice'+(pastInvs.length!==1?'s':'')+'</span></div>';
+// RECENT section - last 7 days (excluding today)
+if(recentInvs.length){
+  invHtml+='<div class="inv-section">Recent <span class="sec-count">'+recentInvs.length+' invoice'+(recentInvs.length!==1?'s':'')+'</span></div>';
+  // Group by day
+  const byDay={};
+  recentInvs.forEach(inv=>{if(!byDay[inv.date])byDay[inv.date]=[];byDay[inv.date].push(inv);});
+  invHtml+='<div class="alist" style="margin-top:8px">';
+  Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+    const dayInvs=byDay[dayKey];
+    const dayDate=new Date(dayKey);
+    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dayNum=dayDate.getDate();
+    const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+    const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
+    invHtml+='<div style="font-size:12px;color:var(--txt2);padding:10px 0 6px;font-weight:600">'+dayLabel+' <span style="font-weight:400">('+dayInvs.length+')</span></div>';
+    dayInvs.sort((a,b)=>b.num.localeCompare(a.num));
+    invHtml+=dayInvs.map(renderInv).join('');
+  });
+  invHtml+='</div>';
+}
 
-if(pastInvs.length){
-  // Group past invoices by month
+// Show empty state if no today or recent
+if(!todayInvs.length&&!recentInvs.length){
+  invHtml+='<div class="inv-section">Recent <span class="sec-count">0 invoices</span></div>';
+  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No recent invoices</div>';
+}
+
+// PREVIOUS section - monthly collapsible folders with Ad Hoc / Contracted subfolders
+if(previousInvs.length){
+  invHtml+='<div class="inv-section">Previous <span class="sec-count">'+previousInvs.length+' invoice'+(previousInvs.length!==1?'s':'')+'</span></div>';
+
+  // Group by month
   const invByMonth={};
-  pastInvs.sort((a,b)=>b.date.localeCompare(a.date)).forEach(inv=>{
+  previousInvs.forEach(inv=>{
     const monthKey=inv.date.substring(0,7);
     if(!invByMonth[monthKey])invByMonth[monthKey]=[];
     invByMonth[monthKey].push(inv);
@@ -2235,41 +2320,41 @@ if(pastInvs.length){
     const d=new Date(monthKey+'-01');
     const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
 
-    // Group by practice within month and count
-    const byPractice={};
-    monthInvs.forEach(inv=>{
-      const pKey=inv.isAdhoc?'adhoc':(inv.practice||'Other');
-      if(!byPractice[pKey])byPractice[pKey]={name:inv.isAdhoc?'Ad Hoc':inv.practice,invoices:[],isAdhoc:inv.isAdhoc};
-      byPractice[pKey].invoices.push(inv);
-    });
+    // Separate Ad Hoc and Contracted invoices
+    const adhocInvs=monthInvs.filter(inv=>inv.isAdhoc||inv.practice==='Ad Hoc');
+    const contractInvs=monthInvs.filter(inv=>!inv.isAdhoc&&inv.practice!=='Ad Hoc');
 
-    // Sort practices by invoice count (most to least)
-    const sortedPractices=Object.values(byPractice).sort((a,b)=>b.invoices.length-a.invoices.length);
-
-    // Build practice summary for month header
-    const prcSummary=sortedPractices.map(p=>p.name+' ('+p.invoices.length+')').join(' ');
-
-    invHtml+='<div class="arc-month collapsed" data-month="'+monthKey+'">'+monthLabel+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length>1?'s':'')+'</span></div>';
+    invHtml+='<div class="arc-month collapsed" data-month="'+monthKey+'">'+monthLabel+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length!==1?'s':'')+'</span></div>';
     invHtml+='<div class="month-group collapsed" id="invmg_'+monthKey+'">';
 
-    // Within month, show practice summary
-    invHtml+='<div style="font-size:12px;color:var(--txt2);padding:8px 0;border-bottom:1px solid var(--bdr)">'+prcSummary+'</div>';
-
-    // Group invoices by practice
-    sortedPractices.forEach(p=>{
-      let prcColor='var(--grove)';
-      if(p.isAdhoc)prcColor='#EF4444';
-      else if(p.name&&p.name.toLowerCase().includes('bupa'))prcColor='var(--bupa)';
-      invHtml+='<div class="prc-group" data-prc="'+(p.isAdhoc?'adhoc':p.name)+'">';
-      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:'+prcColor+'">'+p.name+'</span> <span style="color:var(--txt3);font-weight:400">('+p.invoices.length+' invoice'+(p.invoices.length>1?'s':'')+')</span></div>';
-      invHtml+='<div class="prc-group-entries">'+p.invoices.map(renderInv).join('')+'</div>';
+    // Ad Hoc subfolder (only if exists)
+    if(adhocInvs.length){
+      invHtml+='<div class="prc-group" data-prc="adhoc">';
+      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:#EF4444">Ad Hoc</span> <span style="color:var(--txt3);font-weight:400">('+adhocInvs.length+' invoice'+(adhocInvs.length!==1?'s':'')+')</span></div>';
+      invHtml+='<div class="prc-group-entries">'+adhocInvs.sort((a,b)=>b.num.localeCompare(a.num)).map(renderInv).join('')+'</div>';
       invHtml+='</div>';
-    });
+    }
+
+    // Contracted subfolder (only if exists)
+    if(contractInvs.length){
+      invHtml+='<div class="prc-group" data-prc="contract">';
+      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:var(--pri)">Contracted</span> <span style="color:var(--txt3);font-weight:400">('+contractInvs.length+' invoice'+(contractInvs.length!==1?'s':'')+')</span></div>';
+      invHtml+='<div class="prc-group-entries">';
+      // Group by practice (Bupa, Grove, etc.)
+      const byPractice={};
+      contractInvs.forEach(inv=>{
+        const pKey=inv.practice||'Other';
+        if(!byPractice[pKey])byPractice[pKey]={name:inv.practice,invoices:[]};
+        byPractice[pKey].invoices.push(inv);
+      });
+      Object.values(byPractice).sort((a,b)=>b.invoices.length-a.invoices.length).forEach(p=>{
+        invHtml+=p.invoices.sort((a,b)=>b.num.localeCompare(a.num)).map(renderInv).join('');
+      });
+      invHtml+='</div></div>';
+    }
 
     invHtml+='</div>';
   });
-}else{
-  invHtml+='<div style="padding:16px;color:var(--txt3);font-size:13px">No previous invoices</div>';
 }
 
 pc2.innerHTML=invHtml;
