@@ -1749,21 +1749,21 @@ if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is in
 const n=new Date();
 const me=getMonth(n.getFullYear(),n.getMonth());
 var entMe=me.filter(function(e){return e.entity===S.ent});
-// Monthly gross and net (net = what Taylor keeps after commission)
+// Monthly gross and net (net = Taylor's commission/profit share)
 let mGross=0,mNet=0;
-entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
+entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
 // Daily calc
 var td=today();
 var dayEntries=entMe.filter(function(e){return e.date===td});
 var dGross=0,dNet=0;
-dayEntries.forEach(function(e){dGross+=e.gross;dNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
+dayEntries.forEach(function(e){dGross+=e.gross;dNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
 // Weekly calc
 var weekStart=new Date(n);weekStart.setDate(n.getDate()-n.getDay()+1);
 var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);
 var ws=weekStart.toISOString().split('T')[0],we=weekEnd.toISOString().split('T')[0];
 var weekEntries=entMe.filter(function(e){return e.date>=ws&&e.date<=we});
 var wGross=0,wNet=0;
-weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*(1-e.comm):e.gross;});
+weekEntries.forEach(function(e){wGross+=e.gross;wNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
 // Update home summary with animations
 const hDayG=document.getElementById('hDayG'),hDayN=document.getElementById('hDayN');
 const hWeekG=document.getElementById('hWeekG'),hWeekN=document.getElementById('hWeekN');
@@ -1885,7 +1885,7 @@ function upPracMSum(pId,comm,animate=false){
 const now=new Date();const y=now.getFullYear();const m=now.getMonth();
 const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
 let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
-const net=gross*(1-comm);
+const net=gross*comm;
 const gEl=document.getElementById('pracMGross');
 const nEl=document.getElementById('pracMNet');
 if(animate){
@@ -2168,7 +2168,8 @@ const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 // Get add-on type name (Airflow, custom name, or null)
 const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoName').value||'Add-on'):ahAoType):null;
-const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:air,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,color:p.color||'adhoc',createdAt:new Date().toISOString()};
+const aoTotal=airPts*air;
+const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:aoTotal,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,color:p.color||'adhoc',createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);upHome(true);
@@ -2194,8 +2195,10 @@ if(e){
   e.pts=(parseInt(e.pts)||0)+pts;
   e.uPrice=parseFloat(e.uPrice)||0;
   e.aoPatients=(parseInt(e.aoPatients)||0)+airPts;
-  e.aoAmt=parseFloat(e.aoAmt)||0;
-  e.gross=(e.pts*e.uPrice)+(e.aoPatients*e.aoAmt);
+  // aoAmt is the TOTAL airflow amount, add the new airflow total
+  const newAoTotal=airPts*air;
+  e.aoAmt=(parseFloat(e.aoAmt)||0)+newAoTotal;
+  e.gross=(e.pts*e.uPrice)+e.aoAmt;
   e.updatedAt=new Date().toISOString();
   save();closeMod2();
   // Reset form
@@ -2411,7 +2414,7 @@ function refArc(){
     const entType=e.entity==='ltd'?'Ltd':'Self';
     const entClass=e.entity==='ltd'?'ltd':'self';
     const aoInfo=e.aoType&&e.aoAmt>0?' +'+e.aoType:'';
-    const net=e.pType==='contract'?(e.gross*(1-(e.comm||0))):e.gross;
+    const net=e.pType==='contract'?(e.gross*(e.comm||0)):e.gross;
     return '<div class="aitem-wrap" id="aw_'+e.id+'"><div class="aitem '+prcClass+'" data-id="'+e.id+'" data-eid="'+e.id+'">'+
       '<div class="ae-left"><div class="ae-prc">'+prcName+'</div><div class="ae-ent '+entClass+'">'+entType+'</div></div>'+
       '<div class="ae-mid"><div class="ae-svc">'+e.svc+'</div><div class="ae-pts">'+e.pts+' pts'+aoInfo+'</div></div>'+
