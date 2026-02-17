@@ -3278,7 +3278,7 @@ const invData={
 };
 
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData);
+await syncInvoiceToCloud(invData);
 
 for(const e of entries){
   await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);
@@ -3351,8 +3351,8 @@ var cm=tg*pComm;
 var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:entType==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,payTerms:S.payTerms,entryCount:me.length,companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+entType);
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData);
-me.forEach(function(e){updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);});
+await syncInvoiceToCloud(invData);
+for(var i=0;i<me.length;i++){await updateEntryInCloud(me[i].id,{invSt:'invoiced',invNo:invNum},me[i].entity||entType);}
 var prcClass2=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 showToast('Generating invoice...',prcClass2);
 await generateAndUploadPDF(invData);
@@ -3407,8 +3407,8 @@ var tg=e.gross;
 var invData={num:invNum,date:today(),practice:e.pName,practiceName:e.pName,practiceAddr:(e.adhocAddr||'').replace(/\\n/g,'\n'),period:fdd(e.date),entity:entKey==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,payTerms:S.payTerms,isAdhoc:true,companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
 console.log('[Invoice Generated] Ad Hoc #'+invNum, e.pName, '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData, entKey);
-updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
+await syncInvoiceToCloud(invData, entKey);
+await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
@@ -3577,7 +3577,7 @@ const invData={
 };
 
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData);
+await syncInvoiceToCloud(invData);
 
 // Update all entries in cloud
 for(const e of entries){
@@ -3678,7 +3678,7 @@ const invData={
 
 console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.length+' entries', '£'+tg.toFixed(2), 'entity='+entKey);
 S.invoices.push(invData);save();
-syncInvoiceToCloud(invData, entKey);
+await syncInvoiceToCloud(invData, entKey);
 
 // Update all entries in cloud
 for(const e of entries){
@@ -4312,11 +4312,16 @@ showToast('\u2713 Invoice #'+inv.num+' re-downloaded');
 async function deleteInvoice(idx){
 var inv=S.invoices[idx];if(!inv)return;
 var entity=inv.logoType||S.iEnt;
-// Unmark entries
-S.entries.forEach(function(e){if(e.invNo===inv.num){e.invSt='pending';e.invNo=null;updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);}});
+// Unmark entries and collect for cloud update
+var entriesToUpdate=S.entries.filter(function(e){return e.invNo===inv.num;});
+entriesToUpdate.forEach(function(e){e.invSt='pending';e.invNo=null;});
 S.invoices.splice(idx,1);
 save();refInv();showToast('Deleting...');
-// Sync to cloud
+// Sync entries to cloud
+for(var i=0;i<entriesToUpdate.length;i++){
+  await updateEntryInCloud(entriesToUpdate[i].id,{invSt:'pending',invNo:null},entriesToUpdate[i].entity||entity);
+}
+// Sync invoice deletion to cloud
 const result=await deleteInvoiceFromCloud(inv.num,entity);
 if(result.success){showToast('\u2713 Invoice #'+inv.num+' deleted');}
 }
