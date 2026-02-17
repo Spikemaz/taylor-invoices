@@ -245,7 +245,7 @@ input[type="date"].fi{min-width:100%;display:block}
 .load-error{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:16px;margin:16px;text-align:center;max-width:300px}
 .load-error .msg{font-size:14px;color:var(--err);margin-bottom:12px}
 .load-error button{background:var(--pri);color:#fff;border:0;padding:10px 20px;border-radius:var(--rs);font-weight:600;cursor:pointer}
-.pending-bar{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--err);color:#fff;padding:8px 16px;font-size:12px;font-weight:600;z-index:1000;display:none;align-items:center;justify-content:space-between}
+.pending-bar{position:fixed;top:env(safe-area-inset-top,0);left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--err);color:#fff;padding:10px 16px;font-size:12px;font-weight:600;z-index:1001;display:none;align-items:center;justify-content:space-between;padding-top:calc(env(safe-area-inset-top,0) + 10px)}
 .pending-bar.show{display:flex}
 .pending-bar button{background:rgba(255,255,255,.25);border:0;color:#fff;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
@@ -644,36 +644,42 @@ async function retryPending() {
 
   for (const op of pendingOps) {
     const d = op.data;
+    const entryId = op.id || d?.data?.id;
+    const invoiceNum = op.num || d?.data?.num;
 
-    // Validate update_entry operations
-    if (d.action === 'update_entry' && d.entryId) {
-      const localEntry = S.entries.find(e => e.id === d.entryId);
+    // Validate update_entry operations - check if entry still exists locally
+    if (d.action === 'update_entry' && entryId) {
+      const localEntry = S.entries.find(e => e.id === entryId);
       if (!localEntry) {
-        // Entry doesn't exist locally - remove this pending op
-        console.log('Removing pending op - entry not found:', d.entryId);
+        console.log('Removing pending op - entry not found locally:', entryId);
         removed++;
         continue;
       }
       // Fix entity mismatch - use entry's actual entity
       if (localEntry.entity && d.entity !== localEntry.entity) {
-        console.log('Fixing pending op entity mismatch:', d.entryId, 'was:', d.entity, 'now:', localEntry.entity);
+        console.log('Fixing pending op entity mismatch:', entryId, 'was:', d.entity, 'now:', localEntry.entity);
         d.entity = localEntry.entity;
         fixed++;
       }
     }
 
-    // Validate update_invoice operations
-    if (d.action === 'update_invoice' && d.invoiceNum) {
-      const localInv = S.invoices.find(i => i.num === d.invoiceNum);
-      if (!localInv) {
-        console.log('Removing pending op - invoice not found:', d.invoiceNum);
+    // Validate delete_entry - if entry doesn't exist locally, we already deleted it
+    if (d.action === 'delete_entry' && entryId) {
+      const localEntry = S.entries.find(e => e.id === entryId);
+      if (!localEntry) {
+        console.log('Removing pending delete - entry already deleted locally:', entryId);
         removed++;
         continue;
       }
-      if (localInv.entity && d.entity !== localInv.entity) {
-        console.log('Fixing pending op entity mismatch:', d.invoiceNum, 'was:', d.entity, 'now:', localInv.entity);
-        d.entity = localInv.entity;
-        fixed++;
+    }
+
+    // Validate delete_invoice - if invoice doesn't exist locally, we already deleted it
+    if (d.action === 'delete_invoice' && invoiceNum) {
+      const localInv = S.invoices.find(i => i.num === invoiceNum);
+      if (!localInv) {
+        console.log('Removing pending delete - invoice already deleted locally:', invoiceNum);
+        removed++;
+        continue;
       }
     }
 
@@ -689,8 +695,11 @@ async function retryPending() {
 
   for (const op of toRetry) {
     const result = await apiCall('sheets-sync', op.data);
-    if (!result.success) {
+    // Only re-queue if it's a network error (offline), not a "not found" or other API error
+    if (!result.success && result.offline) {
       pendingOps.push(op);
+    } else if (!result.success) {
+      console.log('Dropping failed op (not offline):', op.data?.action, result.error);
     }
   }
   save();
