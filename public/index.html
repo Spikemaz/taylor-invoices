@@ -2007,7 +2007,7 @@ function upDLbl(){const el=document.getElementById('logDt');document.getElementB
 function upAhDLbl(){const el=document.getElementById('ahDt');document.getElementById('ahDLbl').textContent=el.value===today()?'Today':fdnDay(el.value);}
 
 // ===== ARCHIVE ENTRY =====
-function doArchive(){
+async function doArchive(){
 const p=S.practices[S.prac];if(!p||!S.svc)return;
 // Ensure entity is valid
 const entType=(S.ent==='self'||S.ent==='ltd')?S.ent:'self';
@@ -2021,7 +2021,7 @@ const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').va
 const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:entType,invSt:'pending',invNo:null,color:p.color||null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
-syncEntryToCloud(entry);
+await syncEntryToCloud(entry);
 upPracMSum(S.prac,pComm,true);
 upHome(true);
 document.getElementById('ptIn').value='0';document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
@@ -2219,7 +2219,7 @@ let rate=Math.max(0,pc(rateEl.value));
 let air=Math.max(0,pc(airEl.value));
 let airPts=Math.max(0,parseInt(airPtsEl.value)||0);if(airPts!==parseInt(airPtsEl.value))airPtsEl.value=airPts;
 const t=(pts*rate)+(airPts*air);document.getElementById('ahTot').textContent=fc(t);document.getElementById('ahArcBtn').disabled=pts===0;}
-function doAhArchive(){const pId=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===pId);if(!p)return;
+async function doAhArchive(){const pId=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===pId);if(!p)return;
 // Ensure entity is valid
 const entType=(S.ent==='self'||S.ent==='ltd')?S.ent:'self';
 const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aaoIn').value),airPts=parseInt(document.getElementById('aapIn').value)||0,dt=document.getElementById('ahDt').value;
@@ -2233,7 +2233,7 @@ const aoTotal=airPts*air;
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:aoTotal,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:entType,color:p.color||'adhoc',createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
-syncEntryToCloud(entry);upHome(true);
+await syncEntryToCloud(entry);upHome(true);
 document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
 function showAhDupMod(ex,pts,air,airPts){
@@ -3073,13 +3073,12 @@ async function deleteInvoiceWithDrive(idx){
   showToast('Deleting invoice...');
 
   // Unmark entries first
-  S.entries.forEach(e=>{
-    if(e.invNo===inv.num){
-      e.invSt='pending';
-      e.invNo=null;
-      updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);
-    }
-  });
+  const entriesToReset=S.entries.filter(e=>e.invNo===inv.num);
+  for(const e of entriesToReset){
+    e.invSt='pending';
+    e.invNo=null;
+    await updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);
+  }
 
   // Delete from cloud (Sheets + Drive)
   const result=await apiCall('sheets-sync',{action:'delete_invoice',data:{num:inv.num,driveLink:inv.driveLink},entity});
