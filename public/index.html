@@ -525,7 +525,7 @@ const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
 const fdnDay=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
-const pad=n=>String(n).padStart(5,'0');
+const pad=n=>{const num=parseInt(n)||1;return String(num).padStart(5,'0');};
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
@@ -810,11 +810,16 @@ async function apiCall(endpoint, data) {
   console.log('[API]', endpoint, data?.action || '', data);
   try {
     updateSyncStatus(isOnline, true); // Show syncing
+    // Add timeout to prevent hanging requests (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(API_BASE + '/api/' + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     const result = await res.json();
     console.log('[API Response]', endpoint, result.success ? 'OK' : 'FAIL', result);
     updateSyncStatus(true); // Online
@@ -822,7 +827,8 @@ async function apiCall(endpoint, data) {
   } catch (e) {
     console.error('[API Error]', endpoint, e);
     updateSyncStatus(false); // Offline
-    return { success: false, error: e.message, offline: true };
+    const isTimeout = e.name === 'AbortError';
+    return { success: false, error: isTimeout ? 'Request timed out' : e.message, offline: true };
   }
 }
 
@@ -1412,8 +1418,11 @@ function mergeCloudData(selfData, ltdData) {
 
 // Normalize entry numeric fields (cloud data comes as strings)
 function normalizeEntry(e) {
+  // Ensure entity is valid
+  const entity = (e.entity === 'self' || e.entity === 'ltd') ? e.entity : 'self';
   return {
     ...e,
+    entity: entity,
     pts: parseInt(e.pts) || 0,
     uPrice: parseFloat(e.uPrice) || 0,
     gross: parseFloat(e.gross) || 0,
@@ -1428,6 +1437,8 @@ function mergeEntries(cloudEntries, entity) {
   let updates = 0;
   if (!cloudEntries || !Array.isArray(cloudEntries)) return 0;
   cloudEntries.forEach(ce => {
+    // Skip entries without valid ID
+    if (!ce.id) return;
     if (ce.entity && ce.entity !== entity) return;
     const normalized = normalizeEntry(ce);
     const localIdx = S.entries.findIndex(e => e.id === ce.id);
@@ -1982,7 +1993,13 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
 }
 upAmt();
 }
-function upAmt(){const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('aoIn').value),aoPts=parseInt(document.getElementById('aoPtsIn').value)||0;
+function upAmt(){
+// Ensure non-negative values
+const ptsEl=document.getElementById('ptIn'),prEl=document.getElementById('prIn'),aoRateEl=document.getElementById('aoIn'),aoPtsEl=document.getElementById('aoPtsIn');
+let pts=Math.max(0,parseInt(ptsEl.value)||0);if(pts!==parseInt(ptsEl.value))ptsEl.value=pts;
+let pr=Math.max(0,pc(prEl.value));
+let aoRate=Math.max(0,pc(aoRateEl.value));
+let aoPts=Math.max(0,parseInt(aoPtsEl.value)||0);if(aoPts!==parseInt(aoPtsEl.value))aoPtsEl.value=aoPts;
 const ao=aoRate*aoPts;const t=(pts*pr)+ao;document.getElementById('totA').textContent=fc(t);
 const p=S.practices[S.prac];if(p){const pComm=p.comm||0.35;const net=t*pComm;document.getElementById('totN').textContent=fc(net);}
 document.getElementById('arcBtn').disabled=pts===0;}
@@ -1992,14 +2009,16 @@ function upAhDLbl(){const el=document.getElementById('ahDt');document.getElement
 // ===== ARCHIVE ENTRY =====
 function doArchive(){
 const p=S.practices[S.prac];if(!p||!S.svc)return;
+// Ensure entity is valid
+const entType=(S.ent==='self'||S.ent==='ltd')?S.ent:'self';
 const pComm=p.comm||0.35;
 const pts=parseInt(document.getElementById('ptIn').value)||0,pr=pc(document.getElementById('prIn').value),aoRate=pc(document.getElementById('aoIn').value),aoPts=parseInt(document.getElementById('aoPtsIn').value)||0,dt=document.getElementById('logDt').value;
 const ao=aoRate*aoPts;
 if(!pts)return;const gr=(pts*pr)+ao;
-const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===S.ent);
+const dup=S.entries.find(e=>e.date===dt&&e.pId===S.prac&&e.svc===S.svc&&e.uPrice===pr&&e.entity===entType);
 if(dup){showDupMod(dup,pts,ao);return;}
 const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').value||'Add-on'):S.aoType):null;
-const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:S.ent,invSt:'pending',invNo:null,color:p.color||null,createdAt:new Date().toISOString()};
+const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:entType,invSt:'pending',invNo:null,color:p.color||null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);
@@ -2062,7 +2081,15 @@ const prcClass=entry.pType==='adhoc'?'prc-adhoc':(entry.pId==='bupa'?'prc-bupa':
 t.className='toast '+prcClass;t.innerHTML='<span>✓ Saved to Sheet</span><button class="ubtn" onclick="doUndo()">UNDO</button><div class="utimer"><div class="ubar" id="uBar"></div></div>';
 t.classList.add('show');requestAnimationFrame(()=>{const b=document.getElementById('uBar');if(b){b.style.width='100%';requestAnimationFrame(()=>{b.style.transitionDuration='5s';b.style.width='0%'});}});
 S.undoT=setTimeout(()=>{t.classList.remove('show');S.undoE=null;},5000);}
-function doUndo(){if(S.undoE){const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const pId=S.undoE.pId;const comm=S.undoE.comm||0;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(pId==='bupa'?'prc-bupa':(pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);upHome(true);if(S.prac&&S.prac===pId)upPracMSum(pId,comm,true);}}
+function doUndo(){if(S.undoE){
+// Check if entry was invoiced in the meantime
+const currentEntry=S.entries.find(e=>e.id===S.undoE.id);
+if(currentEntry&&currentEntry.invSt==='invoiced'){
+  document.getElementById('toast').classList.remove('show');
+  showToast('Cannot undo - entry was invoiced','err');
+  S.undoE=null;clearTimeout(S.undoT);return;
+}
+const entryId=S.undoE.id;const entity=S.undoE.entity||S.ent;const pId=S.undoE.pId;const comm=S.undoE.comm||0;const prcClass=S.undoE.pType==='adhoc'?'prc-adhoc':(pId==='bupa'?'prc-bupa':(pId==='grove'?'prc-grove':''));S.entries=S.entries.filter(e=>e.id!==entryId);save();deleteEntryFromCloud(entryId,entity);S.undoE=null;clearTimeout(S.undoT);document.getElementById('toast').classList.remove('show');showToast('↩ Entry removed',prcClass);upHome(true);if(S.prac&&S.prac===pId)upPracMSum(pId,comm,true);}}
 function showToast(msg,prcClass){const t=document.getElementById('toast');t.className='toast'+(prcClass?' '+prcClass:' ok');t.innerHTML='<span>'+msg+'</span>';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 
 // ===== AD HOC =====
@@ -2184,18 +2211,26 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
 upAhAmt();
 }
 function adjAh(id,d){const elId=id==='ap'?'apIn':(id==='arv'?'arvIn':(id==='aao'?'aaoIn':(id==='aap'?'aapIn':id)));const el=document.getElementById(elId);if(id==='ap'||id==='aap'){const mx=id==='aap'?parseInt(document.getElementById('apIn').value)||0:999;el.value=Math.max(0,Math.min(mx,(parseInt(el.value)||0)+d));}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAhAmt();}
-function upAhAmt(){const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aaoIn').value),airPts=parseInt(document.getElementById('aapIn').value)||0;
+function upAhAmt(){
+// Ensure non-negative values
+const ptsEl=document.getElementById('apIn'),rateEl=document.getElementById('arvIn'),airEl=document.getElementById('aaoIn'),airPtsEl=document.getElementById('aapIn');
+let pts=Math.max(0,parseInt(ptsEl.value)||0);if(pts!==parseInt(ptsEl.value))ptsEl.value=pts;
+let rate=Math.max(0,pc(rateEl.value));
+let air=Math.max(0,pc(airEl.value));
+let airPts=Math.max(0,parseInt(airPtsEl.value)||0);if(airPts!==parseInt(airPtsEl.value))airPtsEl.value=airPts;
 const t=(pts*rate)+(airPts*air);document.getElementById('ahTot').textContent=fc(t);document.getElementById('ahArcBtn').disabled=pts===0;}
 function doAhArchive(){const pId=document.getElementById('ahSel').value;const p=S.ahPrac.find(x=>x.id===pId);if(!p)return;
+// Ensure entity is valid
+const entType=(S.ent==='self'||S.ent==='ltd')?S.ent:'self';
 const pts=parseInt(document.getElementById('apIn').value)||0,rate=pc(document.getElementById('arvIn').value),air=pc(document.getElementById('aaoIn').value),airPts=parseInt(document.getElementById('aapIn').value)||0,dt=document.getElementById('ahDt').value;
 if(!pts)return;const gr=(pts*rate)+(airPts*air);
 // Check for duplicate (same date, practice, service, rate, entity)
-const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===S.ent);
+const dup=S.entries.find(e=>e.date===dt&&e.pId===pId&&e.svc===ahSvc&&e.uPrice===rate&&e.entity===entType);
 if(dup){showAhDupMod(dup,pts,air,airPts);return;}
 // Get add-on type name (Airflow, custom name, or null)
 const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoName').value||'Add-on'):ahAoType):null;
 const aoTotal=airPts*air;
-const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:aoTotal,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:S.ent,color:p.color||'adhoc',createdAt:new Date().toISOString()};
+const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:aoTotal,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:entType,color:p.color||'adhoc',createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
 S.entries.push(entry);save();showUndo(entry);
 syncEntryToCloud(entry);upHome(true);
@@ -2698,10 +2733,17 @@ async function saveEntry(id){
 }
 async function delEntry(id){
   var e=S.entries.find(function(x){return x.id===id});
-  var entity=e?e.entity||S.ent:S.ent;
-  const prcClass=e?(e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''))):'';
-  console.log('[Entry Deleted]', e?.pName, e?.svc, e?.pts+'pts', 'id='+id);
-  S.entries=S.entries.filter(function(e){return e.id!==id});
+  if(!e){closeMod2();showToast('Entry not found');return;}
+  // Prevent deleting invoiced entries
+  if(e.invSt==='invoiced'){
+    closeMod2();
+    showToast('Cannot delete - entry is invoiced (#'+e.invNo+')','err');
+    return;
+  }
+  var entity=e.entity||S.ent;
+  const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
+  console.log('[Entry Deleted]', e.pName, e.svc, e.pts+'pts', 'id='+id);
+  S.entries=S.entries.filter(function(x){return x.id!==id});
   save();closeMod2();refArc();showToast('Deleting...',prcClass);
   // Sync deletion to cloud (queues on failure)
   const result=await deleteEntryFromCloud(id, entity);
@@ -3066,7 +3108,7 @@ const pComm=p.comm||0.35;
 // Group by service
 const svcs={};me.forEach(e=>{if(!svcs[e.svc])svcs[e.svc]={pts:0,price:e.uPrice,total:0};svcs[e.svc].pts+=e.pts;svcs[e.svc].total+=e.pts*e.uPrice;});
 // Add-ons (group by type with price/qty)
-const addons={};me.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const rate=e.aoAmt/e.aoPatients;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
+const addons={};me.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const aoPts=e.aoPatients||1;const rate=e.aoAmt/aoPts;if(!addons[aType])addons[aType]={pts:0,price:rate,total:0};addons[aType].pts+=e.aoPatients;addons[aType].total+=e.aoAmt;}});
 let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
@@ -3158,7 +3200,17 @@ if(!entries.length){showToast('Entries not found');return;}
 // Disable button to prevent double-click
 document.getElementById('cpGenBtn').disabled=true;
 document.getElementById('cpGenBtn').textContent='Generating...';
-await genCpInvMulti(pid,entries);
+// Check for mixed entities and split if needed
+const selfEntries=entries.filter(e=>e.entity==='self');
+const ltdEntries=entries.filter(e=>e.entity==='ltd');
+if(selfEntries.length>0&&ltdEntries.length>0){
+  // Mixed entities - generate separate invoices
+  await genCpInvMulti(pid,selfEntries);
+  await genCpInvMulti(pid,ltdEntries);
+  showToast('Generated 2 invoices (split by entity)');
+}else{
+  await genCpInvMulti(pid,entries);
+}
 closeMod2();
 }
 
@@ -3169,7 +3221,14 @@ const pComm=p.comm||0.35;
 // Use entity from first entry (all selected entries should be same entity)
 const entType=entries[0].entity||'self';
 const ent=S.ents[entType];
-const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
+if(!ent){showToast('Invalid entity configuration');return;}
+// Use entity-specific invoice counter based on actual entry entity
+const invNum=pad(entType==='ltd'?S.nextInvLtd:S.nextInvSelf);
+// Store original states for rollback
+const originalStates=entries.map(e=>({id:e.id,invSt:e.invSt,invNo:e.invNo}));
+const originalNextInv=entType==='ltd'?S.nextInvLtd:S.nextInvSelf;
+try{
+if(entType==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 
 // Mark all entries as invoiced
 entries.forEach(e=>{e.invSt='invoiced';e.invNo=invNum;});save();
@@ -3200,7 +3259,7 @@ const svcs={};entries.forEach(e=>{
 });
 
 // Add-ons (group by date+type)
-const addons={};entries.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const key=e.date+'@'+aType;const rate=e.aoAmt/e.aoPatients;if(!addons[key])addons[key]={date:e.date,type:aType,pts:0,price:rate,total:0};addons[key].pts+=e.aoPatients;addons[key].total+=e.aoAmt;}});
+const addons={};entries.forEach(e=>{if(e.aoAmt>0&&e.aoPatients>0){const aType=e.aoType||'Add-on';const key=e.date+'@'+aType;const aoPts=e.aoPatients||1;const rate=e.aoAmt/aoPts;if(!addons[key])addons[key]={date:e.date,type:aType,pts:0,price:rate,total:0};addons[key].pts+=e.aoPatients;addons[key].total+=e.aoAmt;}});
 let airTotal=0;Object.values(addons).forEach(a=>airTotal+=a.total);
 let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
@@ -3230,6 +3289,20 @@ showToast('Generating invoice...',prcClass);
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass);
 refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
+}catch(err){
+  // Rollback on failure
+  console.error('[Invoice Generation Failed] Rolling back...', err);
+  originalStates.forEach(orig=>{
+    const e=S.entries.find(x=>x.id===orig.id);
+    if(e){e.invSt=orig.invSt;e.invNo=orig.invNo;}
+  });
+  if(entType==='ltd')S.nextInvLtd=originalNextInv;else S.nextInvSelf=originalNextInv;
+  // Remove the failed invoice from local storage
+  S.invoices=S.invoices.filter(i=>i.num!==invNum);
+  save();
+  showToast('Invoice failed - changes rolled back','err');
+  throw err;
+}
 }
 
 // ===== GENERATE PDF (uses jsPDF-like approach via canvas) =====
@@ -3238,10 +3311,17 @@ var p=S.practices[pid];if(!p)return;
 var pComm=p.comm||0.35;
 var me=getMonth(y,m).filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
 if(!me.length){showToast('No entries to invoice');return;}
-// Determine entity from entries (use first entry's entity)
-var entType=me[0].entity;
+// Determine entity from entries (use first entry's entity, default to 'self')
+var entType=me[0].entity||'self';
 var ent=S.ents[entType];
-var invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
+if(!ent){showToast('Invalid entity configuration');return;}
+// Use entity-specific invoice counter based on actual entry entity
+var invNum=pad(entType==='ltd'?S.nextInvLtd:S.nextInvSelf);
+// Store original states for rollback
+var originalStates=me.map(function(e){return{id:e.id,invSt:e.invSt,invNo:e.invNo};});
+var originalNextInv=entType==='ltd'?S.nextInvLtd:S.nextInvSelf;
+try{
+if(entType==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 me.forEach(function(e){e.invSt='invoiced';e.invNo=invNum;});save();
 
 // Determine period based on dates
@@ -3279,6 +3359,18 @@ await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded',prcClass2);
 refInv();
 document.getElementById('nInv').textContent=pad(getNextInvI());
+}catch(err){
+  // Rollback on failure
+  console.error('[Invoice Generation Failed] Rolling back...', err);
+  originalStates.forEach(function(orig){
+    var e=S.entries.find(function(x){return x.id===orig.id;});
+    if(e){e.invSt=orig.invSt;e.invNo=orig.invNo;}
+  });
+  if(entType==='ltd')S.nextInvLtd=originalNextInv;else S.nextInvSelf=originalNextInv;
+  S.invoices=S.invoices.filter(function(i){return i.num!==invNum;});
+  save();
+  showToast('Invoice failed - changes rolled back','err');
+}
 }
 
 async function genAhInv(id){
@@ -3301,6 +3393,10 @@ if(sameDayEntries.length>1){
 // Single entry - original logic
 var ent=S.ents[entKey];
 var invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
+// Store original state for rollback
+var originalInvSt=e.invSt,originalInvNo=e.invNo;
+var originalNextInv=entKey==='ltd'?S.nextInvLtd:S.nextInvSelf;
+try{
 if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 e.invSt='invoiced';e.invNo=invNum;
 var svcs={};svcs[e.date+'@'+e.svc+'@'+e.uPrice]={date:e.date,name:e.svc,pts:e.pts,price:e.uPrice,total:e.pts*e.uPrice};
@@ -3317,6 +3413,15 @@ showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
+}catch(err){
+  // Rollback on failure
+  console.error('[Invoice Generation Failed] Rolling back...', err);
+  e.invSt=originalInvSt;e.invNo=originalInvNo;
+  if(entKey==='ltd')S.nextInvLtd=originalNextInv;else S.nextInvSelf=originalNextInv;
+  S.invoices=S.invoices.filter(function(i){return i.num!==invNum;});
+  save();
+  showToast('Invoice failed - changes rolled back','err');
+}
 }
 
 // Show entry selection modal for multi-entry ad hoc invoice
@@ -3369,7 +3474,17 @@ if(!entries.length){showToast('Entries not found');return;}
 // Disable button to prevent double-click
 document.getElementById('ahGenBtn').disabled=true;
 document.getElementById('ahGenBtn').textContent='Generating...';
-await genAhInvMulti(entries);
+// Check for mixed entities and split if needed
+const selfEntries=entries.filter(e=>e.entity==='self');
+const ltdEntries=entries.filter(e=>e.entity==='ltd');
+if(selfEntries.length>0&&ltdEntries.length>0){
+  // Mixed entities - generate separate invoices
+  await genAhInvMultiWithEntity(selfEntries,'self');
+  await genAhInvMultiWithEntity(ltdEntries,'ltd');
+  showToast('Generated 2 invoices (split by entity)');
+}else{
+  await genAhInvMulti(entries);
+}
 closeMod2();
 }
 
@@ -3386,7 +3501,14 @@ if(!entries.length)return;
 // Determine entity from entries (use first entry's entity)
 const entType=entries[0].entity||'self';
 const ent=S.ents[entType];
-const invNum=pad(getNextInvI());setNextInvI(getNextInvI()+1);
+if(!ent){showToast('Invalid entity configuration');return;}
+// Use entity-specific invoice counter based on actual entry entity
+const invNum=pad(entType==='ltd'?S.nextInvLtd:S.nextInvSelf);
+// Store original states for rollback
+const originalStates=entries.map(e=>({id:e.id,invSt:e.invSt,invNo:e.invNo}));
+const originalNextInv=entType==='ltd'?S.nextInvLtd:S.nextInvSelf;
+try{
+if(entType==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 const pName=entries[0].pName;
 const pAddr=entries[0].adhocAddr||'';
 
@@ -3466,6 +3588,19 @@ showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated & uploaded','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
+}catch(err){
+  // Rollback on failure
+  console.error('[Invoice Generation Failed] Rolling back...', err);
+  originalStates.forEach(orig=>{
+    const e=S.entries.find(x=>x.id===orig.id);
+    if(e){e.invSt=orig.invSt;e.invNo=orig.invNo;}
+  });
+  if(entType==='ltd')S.nextInvLtd=originalNextInv;else S.nextInvSelf=originalNextInv;
+  S.invoices=S.invoices.filter(i=>i.num!==invNum);
+  save();
+  showToast('Invoice failed - changes rolled back','err');
+  throw err;
+}
 }
 
 // Generate invoice for multiple ad hoc entries with specific entity (for auto-combine)
@@ -3473,6 +3608,10 @@ async function genAhInvMultiWithEntity(entries, entKey){
 if(!entries.length)return;
 const ent=S.ents[entKey];
 const invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
+// Store original states for rollback
+const originalStates=entries.map(e=>({id:e.id,invSt:e.invSt,invNo:e.invNo}));
+const originalNextInv=entKey==='ltd'?S.nextInvLtd:S.nextInvSelf;
+try{
 if(entKey==='ltd')S.nextInvLtd++;else S.nextInvSelf++;
 const pName=entries[0].pName;
 const pAddr=entries[0].adhocAddr||'';
@@ -3550,6 +3689,19 @@ showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
 showToast('\u2713 Invoice #'+invNum+' generated ('+entries.length+' entries combined)','prc-adhoc');
 refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
+}catch(err){
+  // Rollback on failure
+  console.error('[Invoice Generation Failed] Rolling back...', err);
+  originalStates.forEach(orig=>{
+    const e=S.entries.find(x=>x.id===orig.id);
+    if(e){e.invSt=orig.invSt;e.invNo=orig.invNo;}
+  });
+  if(entKey==='ltd')S.nextInvLtd=originalNextInv;else S.nextInvSelf=originalNextInv;
+  S.invoices=S.invoices.filter(i=>i.num!==invNum);
+  save();
+  showToast('Invoice failed - changes rolled back','err');
+  throw err;
+}
 }
 
 // ===== SETTINGS =====
@@ -4213,19 +4365,36 @@ document.querySelectorAll('.swipe-del').forEach(function(el){el.style.opacity='0
 }
 });
 
-// Invoice button delegation
-document.addEventListener('click',function(ev){
+// Invoice button delegation with debounce
+let invActionLock=false;
+document.addEventListener('click',async function(ev){
 var btn=ev.target.closest('[data-action]');if(!btn)return;
 var action=btn.getAttribute('data-action');
-if(action==='preview'){previewInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
-if(action==='generate'){genInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
-if(action==='cpselect'){showCpSelect(btn.getAttribute('data-pid'));}
-if(action==='ahpreview'){previewAhInv(btn.getAttribute('data-eid'));}
-if(action==='ahgenerate'){genAhInv(btn.getAttribute('data-eid'));}
-if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
-if(action==='ahgenall'){genAhAll(btn.getAttribute('data-pid'));}
-if(action==='redownload'){redownloadInvoice(parseInt(btn.getAttribute('data-idx')));}
-if(action==='delinv'){deleteInvoice(parseInt(btn.getAttribute('data-idx')));}
+// Debounce for generate actions to prevent double-clicks
+const genActions=['generate','ahgenerate','ahgenall','redownload'];
+if(genActions.includes(action)){
+  if(invActionLock)return;
+  invActionLock=true;
+  btn.disabled=true;
+  btn.style.opacity='0.6';
+}
+try{
+  if(action==='preview'){previewInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
+  if(action==='generate'){await genInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
+  if(action==='cpselect'){showCpSelect(btn.getAttribute('data-pid'));}
+  if(action==='ahpreview'){previewAhInv(btn.getAttribute('data-eid'));}
+  if(action==='ahgenerate'){await genAhInv(btn.getAttribute('data-eid'));}
+  if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
+  if(action==='ahgenall'){await genAhAll(btn.getAttribute('data-pid'));}
+  if(action==='redownload'){await redownloadInvoice(parseInt(btn.getAttribute('data-idx')));}
+  if(action==='delinv'){deleteInvoice(parseInt(btn.getAttribute('data-idx')));}
+}finally{
+  if(genActions.includes(action)){
+    invActionLock=false;
+    btn.disabled=false;
+    btn.style.opacity='1';
+  }
+}
 });
 </script>
 </body>
