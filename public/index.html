@@ -4239,8 +4239,20 @@ Object.keys(svcs).forEach(key => {
   y += 22;
 });
 
-// Airflow if present
-if (inv.airTotal > 0) {
+// Add-ons if present (uses inv.addons with proper price/qty breakdown)
+const addons = inv.addons || {};
+Object.keys(addons).forEach(key => {
+  const a = addons[key];
+  doc.setTextColor(26, 26, 26);
+  doc.text((a.type || 'Add-on') + ' Add-on', 50, y + 4);
+  doc.text('£' + (a.price || 0).toFixed(2), 260, y + 4);
+  doc.text(String(a.pts || 0), 390, y + 4, { align: 'right' });
+  doc.text('£' + (a.total || 0).toFixed(2), W - 50, y + 4, { align: 'right' });
+  doc.setDrawColor(229, 231, 235); doc.setLineWidth(1); doc.line(40, y + 10, W - 40, y + 10);
+  y += 22;
+});
+// Fallback for older invoices without addons object
+if (Object.keys(addons).length === 0 && inv.airTotal > 0) {
   doc.setTextColor(26, 26, 26);
   doc.text('Airflow Add-on', 50, y + 4);
   doc.text('£' + inv.airTotal.toFixed(2), W - 50, y + 4, { align: 'right' });
