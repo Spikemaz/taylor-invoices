@@ -2329,7 +2329,7 @@ if(svcsStr){
 }
 S.ahPrac.push({id:'ah'+Date.now(),name:nm,short:short,addr:addr,color:color,svcs:svcs,active:true});
 save();closeMod2();popAh();refreshSettings();showToast('\u2713 '+nm+' added');
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);});
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);}).catch(e=>{console.error('[Ad Hoc Practice Sync Failed]',e);showToast('Sync failed - saved locally','err');});
 }
 
 function showAddPractice(){
@@ -2374,7 +2374,7 @@ if(isAdhoc){
   var air=parseFloat(document.getElementById('npAir').value)||0;
   S.ahPrac.push({id:'ah'+Date.now(),name:nm,addr:addr,rate:rate,air:air,active:true});
   save();closeMod2();popAh();showToast('✓ '+nm+' added (Ad Hoc)');
-  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);});
+  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced]',nm);}).catch(e=>{console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 }else{
   // Save as Contracted practice
   var comm=(parseFloat(document.getElementById('npComm').value)||35)/100;
@@ -2388,7 +2388,7 @@ if(isAdhoc){
   days.forEach(function(d){S.dayMap[d]=id;});
   save();closeMod2();showToast('✓ '+nm+' added (Contracted)');
   rebuildHomeCards();
-  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Contract Practice Synced]',nm);});
+  syncPracticesToCloud().then(r=>{if(r.success)console.log('[Contract Practice Synced]',nm);}).catch(e=>{console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 }
 }
 function rebuildHomeCards(){
@@ -3812,7 +3812,7 @@ if(isAdhoc){
   S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true,color:color});
   save();closeMod2();refreshSettings();
   showToast('\u2713 '+name+' added (Ad Hoc)');
-  syncPracticesToCloud().then(function(r){if(r.success)console.log('[Ad Hoc Practice Synced]',name);});
+  syncPracticesToCloud().then(function(r){if(r.success)console.log('[Ad Hoc Practice Synced]',name);}).catch(function(e){console.error('[Sync Failed]',e);showToast('Sync failed','err');});
   return;
 }
 // Save as Contracted practice
@@ -3837,7 +3837,7 @@ S.practices[newId]=p;
 save();closeMod2();refreshSettings();buildDayMap();
 console.log('[Practice '+(isNew?'Added':'Updated')+']',p.short,'svcs=',Object.keys(p.svcs||{}),'days=',p.days,'color=',p.color);
 showToast('\u2713 '+(isNew?'Added':'Updated')+' '+p.short);
-syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Synced to Cloud]',p.short);else console.error('[Practice Sync Failed]',r);});
+syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Synced to Cloud]',p.short);else console.error('[Practice Sync Failed]',r);}).catch(function(e){console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 }
 function deletePrac(id){
 var p=S.practices[id];if(!p)return;
@@ -3847,7 +3847,7 @@ delete S.practices[id];
 save();closeMod2();refreshSettings();buildDayMap();
 console.log('[Practice Deleted]',p.short);
 showToast('\u2713 Deleted '+p.short);
-syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Delete Synced to Cloud]');else console.error('[Practice Delete Sync Failed]',r);});
+syncPracticesToCloud().then(function(r){if(r.success)console.log('[Practice Delete Synced to Cloud]');else console.error('[Practice Delete Sync Failed]',r);}).catch(function(e){console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 }
 function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementById('sEnt').textContent=S.ent==='self'?'Self-Employed':'Ltd Company';}
 
@@ -3864,7 +3864,7 @@ document.getElementById('_efC').onclick=function(){closeMod2()};
 document.getElementById('_efS').onclick=function(){
 var v=document.getElementById('_efVal').value.trim();
 if(field==='addr')v=v.replace(/\n/g,'\\n');
-S.ents[entType][field]=v;save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Updated');};
+S.ents[entType][field]=v;save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Updated');};
 },50);
 }
 function editBankField(entType){
@@ -3883,7 +3883,7 @@ S.ents[entType].bank=document.getElementById('_ebBank').value.trim();
 S.ents[entType].bName=document.getElementById('_ebName').value.trim();
 S.ents[entType].acc=document.getElementById('_ebAcc').value.trim();
 S.ents[entType].sort=document.getElementById('_ebSort').value.trim();
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Bank details updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Bank details updated');};
 },50);
 }
 function editCompanyNo(){
@@ -3897,7 +3897,7 @@ setTimeout(function(){
 document.getElementById('_ecC').onclick=function(){closeMod2()};
 document.getElementById('_ecS').onclick=function(){
 S.ents.ltd.companyNo=document.getElementById('_ecVal').value.trim();
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Company number updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Company number updated');};
 },50);
 }
 function editDayMapping(dayNum){
@@ -3913,7 +3913,7 @@ setTimeout(function(){
 document.getElementById('_dmC').onclick=function(){closeMod2()};
 document.getElementById('_dmS').onclick=function(){
 S.dayMap[dayNum]=document.getElementById('_dmVal').value;
-save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud();showToast('\u2713 Updated');};
+save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Updated');};
 },50);
 }
 function editInvNum(){
@@ -3929,7 +3929,7 @@ document.getElementById('_inC').onclick=function(){closeMod2()};
 document.getElementById('_inS').onclick=function(){
 S.nextInvSelf=parseInt(document.getElementById('_inValSelf').value)||1;
 S.nextInvLtd=parseInt(document.getElementById('_inValLtd').value)||1;
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Invoice numbers updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Invoice numbers updated');};
 },50);
 }
 function editPayTerms(){
@@ -3941,7 +3941,7 @@ setTimeout(function(){
 document.getElementById('_ptC').onclick=function(){closeMod2()};
 document.getElementById('_ptS').onclick=function(){
 S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Payment terms updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Payment terms updated');};
 },50);
 }
 function viewLogo(ent){
@@ -3967,7 +3967,7 @@ setTimeout(function(){
 document.getElementById('_ifC').onclick=function(){closeMod2()};
 document.getElementById('_ifS').onclick=function(){
 S.invoiceFooter=document.getElementById('_ifVal').value.trim()||'Thank you for your continued support.';
-save();closeMod2();refreshSettings();syncSettingsToCloud();showToast('\u2713 Footer message updated');};
+save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Footer message updated');};
 },50);
 }
 function clearAllData(){
@@ -4087,8 +4087,8 @@ if(idx===null){
 }
 save();closeMod2();refreshSettings();popAh();
 showToast('\u2713 '+(idx===null?'Added':'Updated')+' '+name);
-syncSettingsToCloud();
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced to Practices]',name);});
+syncSettingsToCloud().catch(e=>{console.error('[Settings Sync Failed]',e);});
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synced to Practices]',name);}).catch(e=>{console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 }
 function deleteAhPracSettings(idx){
 var p=S.ahPrac[idx];if(!p)return;
@@ -4096,9 +4096,9 @@ if(!confirm('Delete '+p.name+'? This cannot be undone.')){return;}
 console.log('[Ad Hoc Practice Deleted]',p.name);
 S.ahPrac.splice(idx,1);
 save();closeMod2();refreshSettings();popAh();
-syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Delete Synced]');});
+syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Delete Synced]');}).catch(e=>{console.error('[Sync Failed]',e);showToast('Sync failed','err');});
 showToast('\u2713 Deleted '+p.name);
-syncSettingsToCloud();
+syncSettingsToCloud().catch(e=>{console.error('[Settings Sync Failed]',e);});
 }
 function refreshSettings(){
 var se=S.ents.self,lt=S.ents.ltd;var el;
