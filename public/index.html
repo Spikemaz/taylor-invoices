@@ -1255,7 +1255,9 @@ async function regenerateInvoicePDF(invoiceNum, entity) {
 
     // Calculate new totals
     const commRate = parseFloat(inv.commRate) || 0;
-    const amount = inv.isAdhoc ? gross : gross * (1 - commRate / 100);
+    // For contract invoices: Taylor earns commission percentage of gross
+    // For ad hoc invoices: Taylor bills full amount (no commission split)
+    const amount = inv.isAdhoc ? gross : gross * (commRate / 100);
 
     // Update invoice data
     inv.svcs = svcs;
