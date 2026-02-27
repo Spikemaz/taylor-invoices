@@ -4177,7 +4177,34 @@ function generatePDF(inv){
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
 const W = 595, H = 842;
+const PAGE_BOTTOM = H - 120; // Leave space for footer
+const TABLE_TOP = 80; // Where table starts on continuation pages
 let y = 40;
+let pageNum = 1;
+
+// Helper function to check if we need a new page and add table header
+function checkPageBreak(neededSpace) {
+  if (y + neededSpace > PAGE_BOTTOM) {
+    // Add page number to current page footer
+    doc.setFontSize(9); doc.setTextColor(156, 163, 175);
+    doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+    // Add new page
+    doc.addPage();
+    pageNum++;
+    y = TABLE_TOP;
+    // Re-draw table header on new page
+    doc.setFillColor(27, 67, 50); doc.rect(40, y, W - 80, 22, 'F');
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
+    doc.text('Service', 50, y + 15);
+    doc.text('Price', 260, y + 15);
+    doc.text('Qty', 390, y + 15, { align: 'right' });
+    doc.text('Subtotal', W - 50, y + 15, { align: 'right' });
+    y += 30;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+    return true;
+  }
+  return false;
+}
 
 // Add logo
 const logoData = LOGO[inv.logoType] || LOGO.self;
@@ -4229,6 +4256,7 @@ y += 30;
 doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
 const svcs = inv.svcs || {};
 Object.keys(svcs).forEach(key => {
+  checkPageBreak(22);
   const s = svcs[key];
   doc.setTextColor(26, 26, 26);
   doc.text(s.name || '', 50, y + 4);
@@ -4242,6 +4270,7 @@ Object.keys(svcs).forEach(key => {
 // Add-ons if present (uses inv.addons with proper price/qty breakdown)
 const addons = inv.addons || {};
 Object.keys(addons).forEach(key => {
+  checkPageBreak(22);
   const a = addons[key];
   doc.setTextColor(26, 26, 26);
   doc.text((a.type || 'Add-on') + ' Add-on', 50, y + 4);
@@ -4253,11 +4282,21 @@ Object.keys(addons).forEach(key => {
 });
 // Fallback for older invoices without addons object
 if (Object.keys(addons).length === 0 && inv.airTotal > 0) {
+  checkPageBreak(22);
   doc.setTextColor(26, 26, 26);
   doc.text('Airflow Add-on', 50, y + 4);
   doc.text('£' + inv.airTotal.toFixed(2), W - 50, y + 4, { align: 'right' });
   doc.setDrawColor(229, 231, 235); doc.line(40, y + 10, W - 40, y + 10);
   y += 22;
+}
+
+// Check if we need a new page for totals section (need ~200pt for totals + bank details)
+if (y + 200 > PAGE_BOTTOM) {
+  doc.setFontSize(9); doc.setTextColor(156, 163, 175);
+  doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+  doc.addPage();
+  pageNum++;
+  y = TABLE_TOP;
 }
 
 // Totals
@@ -4281,8 +4320,17 @@ doc.setTextColor(27, 67, 50); doc.setFont('helvetica', 'bold'); doc.setFontSize(
 doc.text('Balance Due', 300, y);
 doc.text('£' + (inv.amount || 0).toFixed(2), W - 50, y, { align: 'right' });
 
-// Bank details
-y = Math.max(y + 40, 560);
+// Bank details - check if we need a new page
+if (y + 150 > PAGE_BOTTOM) {
+  doc.setFontSize(9); doc.setTextColor(156, 163, 175);
+  doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+  doc.addPage();
+  pageNum++;
+  y = TABLE_TOP;
+} else {
+  y = Math.max(y + 40, 560);
+}
+
 doc.setDrawColor(229, 231, 235); doc.line(40, y, W - 40, y);
 y += 16;
 doc.setTextColor(107, 114, 128); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
@@ -4302,12 +4350,15 @@ doc.text('Please ensure the invoice reference (' + inv.num + ') is quoted with p
 y += 18;
 doc.text(inv.footerMsg || S.invoiceFooter || 'Thank you for your continued support.', 40, y);
 
-// Footer
+// Footer on last page
 doc.setDrawColor(229, 231, 235); doc.line(40, H - 50, W - 40, H - 50);
 doc.setFontSize(9); doc.setTextColor(156, 163, 175);
 doc.text(inv.entName + ' | Invoice ' + inv.num, W / 2, H - 32, { align: 'center' });
 if (inv.companyNo) {
   doc.text('Company No: ' + inv.companyNo, W / 2, H - 20, { align: 'center' });
+}
+if (pageNum > 1) {
+  doc.text('Page ' + pageNum, W / 2, H - 8, { align: 'center' });
 }
 
 // Download

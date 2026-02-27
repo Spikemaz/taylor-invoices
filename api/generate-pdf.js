@@ -34,7 +34,40 @@ module.exports = async (req, res) => {
 
     const W = 595; // A4 width in points
     const H = 842; // A4 height in points
+    const PAGE_BOTTOM = H - 120; // Leave space for footer
+    const TABLE_TOP = 80; // Where table starts on continuation pages
     let y = 40;
+    let pageNum = 1;
+
+    // Helper function to check if we need a new page and add table header
+    function checkPageBreak(neededSpace) {
+      if (y + neededSpace > PAGE_BOTTOM) {
+        // Add page number to current page footer
+        doc.setFontSize(9);
+        doc.setTextColor(156, 163, 175);
+        doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+        // Add new page
+        doc.addPage();
+        pageNum++;
+        y = TABLE_TOP;
+        // Re-draw table header on new page
+        doc.setFillColor(27, 67, 50);
+        doc.rect(40, y, W - 80, 22, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('Date', 50, y + 15);
+        doc.text('Service', 140, y + 15);
+        doc.text('Price', 320, y + 15);
+        doc.text('Qty', 410, y + 15, { align: 'right' });
+        doc.text('Subtotal', W - 50, y + 15, { align: 'right' });
+        y += 30;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        return true;
+      }
+      return false;
+    }
 
     // Set default font
     doc.setFont('helvetica');
@@ -145,6 +178,7 @@ module.exports = async (req, res) => {
     });
 
     svcKeys.forEach((key) => {
+      checkPageBreak(22);
       const s = svcs[key];
       doc.setTextColor(26, 26, 26);
 
@@ -176,6 +210,7 @@ module.exports = async (req, res) => {
     });
 
     addonKeys.forEach((key) => {
+      checkPageBreak(22);
       const addon = addons[key];
       doc.setTextColor(26, 26, 26);
       // Handle new format {date, type, pts, price, total}
@@ -198,6 +233,7 @@ module.exports = async (req, res) => {
     });
     // Fallback for old invoices without addons object
     if (Object.keys(addons).length === 0 && inv.airTotal > 0) {
+      checkPageBreak(22);
       doc.setTextColor(26, 26, 26);
       doc.text('', 50, y + 4);
       doc.text('Airflow Add-on', 140, y + 4);
@@ -205,6 +241,16 @@ module.exports = async (req, res) => {
       doc.setDrawColor(229, 231, 235);
       doc.line(40, y + 10, W - 40, y + 10);
       y += 22;
+    }
+
+    // Check if we need a new page for totals section (need ~200pt for totals + bank details)
+    if (y + 200 > PAGE_BOTTOM) {
+      doc.setFontSize(9);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+      doc.addPage();
+      pageNum++;
+      y = TABLE_TOP;
     }
 
     // Totals section
@@ -239,8 +285,18 @@ module.exports = async (req, res) => {
     doc.text('Balance Due', 300, y);
     doc.text('\u00a3' + (inv.amount || 0).toFixed(2), W - 50, y, { align: 'right' });
 
-    // Bank details section
-    y = Math.max(y + 40, 600);
+    // Bank details section - check if we need a new page
+    if (y + 150 > PAGE_BOTTOM) {
+      doc.setFontSize(9);
+      doc.setTextColor(156, 163, 175);
+      doc.text('Page ' + pageNum, W / 2, H - 30, { align: 'center' });
+      doc.addPage();
+      pageNum++;
+      y = TABLE_TOP;
+    } else {
+      y = Math.max(y + 40, 600);
+    }
+
     doc.setDrawColor(229, 231, 235);
     doc.line(40, y, W - 40, y);
     y += 16;
@@ -273,7 +329,7 @@ module.exports = async (req, res) => {
     y += 18;
     doc.text(inv.footerMsg || 'Thank you for your continued support.', 40, y);
 
-    // Footer
+    // Footer on last page
     doc.setDrawColor(229, 231, 235);
     doc.line(40, H - 50, W - 40, H - 50);
     doc.setFontSize(9);
@@ -282,6 +338,9 @@ module.exports = async (req, res) => {
     // Add company number for Ltd invoices
     if (inv.companyNo) {
       doc.text('Company No: ' + inv.companyNo, W / 2, H - 20, { align: 'center' });
+    }
+    if (pageNum > 1) {
+      doc.text('Page ' + pageNum, W / 2, H - 8, { align: 'center' });
     }
 
     // Get PDF as base64
