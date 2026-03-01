@@ -417,6 +417,14 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="scr" id="scr-invoices">
 <div class="entbox">
 <div class="esw"><button class="ebtn act" onclick="setInvEnt('all')" id="iEA">All</button><button class="ebtn" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
+<div class="month-nav">
+<button class="month-nav-btn" id="iMonthPrev" onclick="navInvMonth(-1)">‹</button>
+<div style="text-align:center">
+<div class="month-nav-title" id="iMonthTitle">March 2026</div>
+<div class="month-nav-sub" id="iMonthSub">Current Month</div>
+</div>
+<button class="month-nav-btn" id="iMonthNext" onclick="navInvMonth(1)">›</button>
+</div>
 </div>
 <div class="frow" id="iFilt">
 <button class="fc act" onclick="filtInv('all')">All</button>
@@ -2928,9 +2936,29 @@ async function delEntry(id){
 
 // ===== INVOICES =====
 let invPracFilter='all';
+let invViewMonth=null; // {year, month} for invoice month navigation
+
+function navInvMonth(dir){
+  const now=new Date();
+  if(!invViewMonth){
+    invViewMonth={year:now.getFullYear(),month:now.getMonth()};
+  }
+  let newMonth=invViewMonth.month+dir;
+  let newYear=invViewMonth.year;
+  if(newMonth<0){newMonth=11;newYear--;}
+  else if(newMonth>11){newMonth=0;newYear++;}
+  // Don't allow navigating into the future
+  const futureLimit=new Date(now.getFullYear(),now.getMonth(),1);
+  const newDate=new Date(newYear,newMonth,1);
+  if(newDate>futureLimit)return;
+  invViewMonth={year:newYear,month:newMonth};
+  refInv();
+}
+
 function resetInvFilters(){
   console.log('[resetInvFilters] Called');
   S.iEnt='all';invPracFilter='all';
+  invViewMonth=null; // Reset to current month
   document.getElementById('iEA').className='ebtn act';
   document.getElementById('iES').className='ebtn';
   document.getElementById('iEL').className='ebtn';
@@ -2947,13 +2975,24 @@ function filtInv(f){
   refInv();
 }
 function refInv(){
-const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
-const me=getMonth(y,m);
-console.log('[refInv] Checking month:', y, m, '- Total entries this month:', me.length, '- S.iEnt:', S.iEnt);
-console.log('[refInv] All entries count:', S.entries.length, '- Practices:', Object.keys(S.practices));
-if(me.length===0 && S.entries.length>0){
-  console.log('[refInv] Sample entry dates:', S.entries.slice(0,3).map(e=>e.date));
-}
+const n=new Date();
+// Use invViewMonth if set, otherwise current month
+const viewYear=invViewMonth?invViewMonth.year:n.getFullYear();
+const viewMonth=invViewMonth?invViewMonth.month:n.getMonth();
+const isCurrentMonth=viewYear===n.getFullYear()&&viewMonth===n.getMonth();
+
+// Update month navigator UI
+const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const iMonthTitle=document.getElementById('iMonthTitle');
+const iMonthSub=document.getElementById('iMonthSub');
+const iMonthNext=document.getElementById('iMonthNext');
+if(iMonthTitle)iMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
+if(iMonthSub)iMonthSub.textContent=isCurrentMonth?'Current Month':'';
+if(iMonthNext)iMonthNext.disabled=isCurrentMonth;
+
+// Get entries for the selected month
+const me=getMonth(viewYear,viewMonth);
+console.log('[refInv] Month:', viewYear, viewMonth, '- Entries this month:', me.length, '- S.iEnt:', S.iEnt);
 const todayStr=n.toISOString().substring(0,10);
 // Calculate 7 days ago for Recent section
 const sevenDaysAgo=new Date(n);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
@@ -2983,10 +3022,10 @@ mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.sh
 '<div class="ia">';
 if(pe.length>1){
   mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
-  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Combine Invoice</button>';
+  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Combine Invoice</button>';
 }else{
-  mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Preview</button>';
-  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+y+'" data-m="'+m+'">Generate PDF</button>';
+  mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Preview</button>';
+  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Generate PDF</button>';
 }
 mh+='</div></div>';
 });
