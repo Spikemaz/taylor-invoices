@@ -3341,12 +3341,17 @@ async function deleteInvoiceWithDrive(idx){
   closeMod2();
   showToast('Deleting invoice...');
 
-  // Unmark entries first
+  // Unmark entries first (batch update to avoid API quota issues)
   const entriesToReset=S.entries.filter(e=>e.invNo===inv.num);
-  for(const e of entriesToReset){
-    e.invSt='pending';
-    e.invNo=null;
-    await updateEntryInCloud(e.id,{invSt:'pending',invNo:null},e.entity||entity);
+  if(entriesToReset.length>0){
+    // Update local state
+    for(const e of entriesToReset){
+      e.invSt='pending';
+      e.invNo=null;
+    }
+    // Batch update to cloud
+    const entryUpdates=entriesToReset.map(e=>({id:e.id,updates:{invSt:'pending',invNo:null}}));
+    await batchUpdateEntriesInCloud(entryUpdates,entity);
   }
 
   // Delete from cloud (Sheets + Drive)
@@ -4745,9 +4750,10 @@ var entriesToUpdate=S.entries.filter(function(e){return e.invNo===inv.num;});
 entriesToUpdate.forEach(function(e){e.invSt='pending';e.invNo=null;});
 S.invoices.splice(idx,1);
 save();refInv();showToast('Deleting...');
-// Sync entries to cloud
-for(var i=0;i<entriesToUpdate.length;i++){
-  await updateEntryInCloud(entriesToUpdate[i].id,{invSt:'pending',invNo:null},entriesToUpdate[i].entity||entity);
+// Batch sync entries to cloud (avoids API quota issues)
+if(entriesToUpdate.length>0){
+  var entryUpdates=entriesToUpdate.map(function(e){return{id:e.id,updates:{invSt:'pending',invNo:null}};});
+  await batchUpdateEntriesInCloud(entryUpdates,entity);
 }
 // Sync invoice deletion to cloud
 const result=await deleteInvoiceFromCloud(inv.num,entity);
