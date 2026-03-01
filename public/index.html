@@ -945,6 +945,21 @@ async function updateEntryInCloud(id, updates, entity) {
   return result;
 }
 
+// Batch update multiple entries at once (reduces API quota usage)
+async function batchUpdateEntriesInCloud(entries, entity) {
+  entity = entity || S.ent;
+  // entries = [{id, updates}, {id, updates}, ...]
+  const result = await apiCall('sheets-sync', { action: 'batch_update_entries', data: { entries }, entity });
+  if (!result.success && result.offline) {
+    // Queue individual updates for retry
+    for (const {id, updates} of entries) {
+      addPendingOp({ type: 'update_entry', data: { action: 'update_entry', data: { id, updates }, entity }, id, updates });
+    }
+    showToast('Updates queued - will sync when online', 'err');
+  }
+  return result;
+}
+
 // Delete invoice from cloud - queues on failure (but not if already deleted/not found)
 async function deleteInvoiceFromCloud(num, entity) {
   entity = entity || S.iEnt;
@@ -3622,9 +3637,9 @@ const invData={
 S.invoices.push(invData);save();
 await syncInvoiceToCloud(invData);
 
-for(const e of entries){
-  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);
-}
+// Batch update all entries at once
+const entryUpdates=entries.map(e=>({id:e.id,updates:{invSt:'invoiced',invNo:invNum}}));
+await batchUpdateEntriesInCloud(entryUpdates,entType);
 
 const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 showToast('Generating invoice...',prcClass);
@@ -3694,7 +3709,9 @@ var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practi
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+entType);
 S.invoices.push(invData);save();
 await syncInvoiceToCloud(invData);
-for(var i=0;i<me.length;i++){await updateEntryInCloud(me[i].id,{invSt:'invoiced',invNo:invNum},me[i].entity||entType);}
+// Batch update all entries at once (single API call instead of N calls)
+var entryUpdates=me.map(function(e){return{id:e.id,updates:{invSt:'invoiced',invNo:invNum}};});
+await batchUpdateEntriesInCloud(entryUpdates,entType);
 var prcClass2=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 showToast('Generating invoice...',prcClass2);
 await generateAndUploadPDF(invData);
@@ -3929,10 +3946,9 @@ const invData={
 S.invoices.push(invData);save();
 await syncInvoiceToCloud(invData);
 
-// Update all entries in cloud
-for(const e of entries){
-  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum},e.entity||entType);
-}
+// Batch update all entries at once
+const entryUpdates2=entries.map(e=>({id:e.id,updates:{invSt:'invoiced',invNo:invNum}}));
+await batchUpdateEntriesInCloud(entryUpdates2,entType);
 
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);
@@ -4030,10 +4046,9 @@ console.log('[Invoice Generated] Ad Hoc Combined #'+invNum, pName, entries.lengt
 S.invoices.push(invData);save();
 await syncInvoiceToCloud(invData, entKey);
 
-// Update all entries in cloud
-for(const e of entries){
-  await updateEntryInCloud(e.id,{invSt:'invoiced',invNo:invNum}, entKey);
-}
+// Batch update all entries at once
+const entryUpdates3=entries.map(e=>({id:e.id,updates:{invSt:'invoiced',invNo:invNum}}));
+await batchUpdateEntriesInCloud(entryUpdates3, entKey);
 
 showToast('Generating invoice...','prc-adhoc');
 await generateAndUploadPDF(invData);

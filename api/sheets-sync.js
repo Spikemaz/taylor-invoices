@@ -228,6 +228,7 @@ module.exports = async (req, res) => {
       case 'append_entry': return await appendEntry(sheets, sheetId, data, res);
       case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res);
       case 'update_entry': return await updateEntry(sheets, sheetId, data, res);
+      case 'batch_update_entries': return await batchUpdateEntries(sheets, sheetId, data, res);
       case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res);
       case 'load_all': return await loadAll(sheets, sheetId, res);
       case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res);
@@ -337,6 +338,65 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
   });
 
   return res.status(200).json({ success: true, message: 'Entry updated', id });
+}
+
+// Batch update multiple entries at once (reduces API calls from N*2 to 2)
+async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
+  if (!entries || !entries.length) {
+    return res.status(400).json({ error: 'No entries provided' });
+  }
+
+  // Single read to get all rows
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'Entries!A:T',
+  });
+
+  const rows = response.data.values || [];
+  const updateRequests = [];
+  const results = [];
+
+  for (const { id, updates } of entries) {
+    const rowIndex = rows.findIndex(row => row[0] === id);
+    if (rowIndex === -1) {
+      results.push({ id, success: false, error: 'not found' });
+      continue;
+    }
+
+    const currentRow = rows[rowIndex];
+    const updatedRow = ENTRY_COLUMNS.map((col, i) => {
+      if (updates.hasOwnProperty(col)) {
+        const val = updates[col];
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'object') return JSON.stringify(val);
+        return val;
+      }
+      return currentRow[i] || '';
+    });
+
+    updateRequests.push({
+      range: `Entries!A${rowIndex + 1}:T${rowIndex + 1}`,
+      values: [updatedRow]
+    });
+    results.push({ id, success: true });
+  }
+
+  // Single batch update
+  if (updateRequests.length > 0) {
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: updateRequests
+      }
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: `Updated ${updateRequests.length} entries`,
+    results
+  });
 }
 
 async function deleteEntry(sheets, sheetId, { id }, res) {
