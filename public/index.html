@@ -552,6 +552,28 @@ const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
 
+// Parse invoice period to extract year/month for Drive folder
+// Handles: "February 2026", "11/02/2026", "Week of 11/02/2026", "01/02/2026 - 15/02/2026"
+const parsePeriodForFolder=(period)=>{
+  if(!period)return{year:new Date().getFullYear().toString(),month:new Date().toLocaleString('en-GB',{month:'long'})};
+  // Try "Month Year" format (e.g., "February 2026")
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  for(const m of monthNames){
+    if(period.includes(m)){
+      const yearMatch=period.match(/\d{4}/);
+      return{year:yearMatch?yearMatch[0]:new Date().getFullYear().toString(),month:m};
+    }
+  }
+  // Try DD/MM/YYYY format - extract first date found
+  const dateMatch=period.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(dateMatch){
+    const d=new Date(parseInt(dateMatch[3]),parseInt(dateMatch[2])-1,parseInt(dateMatch[1]));
+    return{year:d.getFullYear().toString(),month:d.toLocaleString('en-GB',{month:'long'})};
+  }
+  // Fallback to today
+  return{year:new Date().getFullYear().toString(),month:new Date().toLocaleString('en-GB',{month:'long'})};
+};
+
 // Animated counter - smoothly transitions between values
 function animateValue(el,start,end,duration=1200){
 const range=end-start;
@@ -1209,15 +1231,16 @@ async function generateAndUploadPDF(invData) {
 
     // Try to upload to Drive via Vercel API
     // If this fails (service account quota), Apps Script will upload when it detects the invoice
-    const invoiceDate = new Date(invData.date);
+    // Use the invoice PERIOD (not date) to determine folder - so Feb entries go to Feb folder even if invoiced in March
+    const periodInfo = parsePeriodForFolder(invData.period);
     let driveResult = { success: false };
     try {
       driveResult = await apiCall('drive-upload', {
         fileName: pdfResult.fileName,
         pdfBase64: pdfResult.pdfBase64,
         entity: invData.logoType,
-        year: invoiceDate.getFullYear().toString(),
-        month: invoiceDate.toLocaleString('en-GB', { month: 'long' }),
+        year: periodInfo.year,
+        month: periodInfo.month,
         isAdhoc: invData.isAdhoc || false
       });
     } catch (driveErr) {

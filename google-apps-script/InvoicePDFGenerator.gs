@@ -540,6 +540,7 @@ function generatePDFFromVercel(rowData, headers) {
 /**
  * Get or create folder structure:
  * Taylor Invoices / Self-Employed (or Ltd Company) / Invoices / 2026 / February / [Ad Hoc/]
+ * Uses the invoice PERIOD (not date) to determine folder - so Feb entries go to Feb folder even if invoiced in March
  */
 function getOrCreateInvoiceFolder(inv) {
   // Root folder: Taylor Invoices
@@ -560,14 +561,16 @@ function getOrCreateInvoiceFolder(inv) {
   let invoicesFolder = getSubfolder(entityFolder, 'Invoices');
   if (!invoicesFolder) invoicesFolder = entityFolder.createFolder('Invoices');
 
-  // Year folder inside Invoices
-  const date = inv.date ? new Date(inv.date) : new Date();
-  const year = date.getFullYear().toString();
+  // Parse period to get year/month (period examples: "February 2026", "11/02/2026", "Week of 11/02/2026")
+  const periodInfo = parsePeriodForFolder(inv.period);
+  const year = periodInfo.year;
+  const month = periodInfo.month;
+
+  Logger.log('Folder path: ' + entityName + '/Invoices/' + year + '/' + month + (inv.isAdhoc ? '/Ad Hoc' : ''));
+
   let yearFolder = getSubfolder(invoicesFolder, year);
   if (!yearFolder) yearFolder = invoicesFolder.createFolder(year);
 
-  // Month folder inside Year
-  const month = Utilities.formatDate(date, 'Europe/London', 'MMMM');
   let monthFolder = getSubfolder(yearFolder, month);
   if (!monthFolder) monthFolder = yearFolder.createFolder(month);
 
@@ -579,6 +582,46 @@ function getOrCreateInvoiceFolder(inv) {
   }
 
   return monthFolder;
+}
+
+/**
+ * Parse invoice period to extract year/month for folder structure
+ * Handles: "February 2026", "11/02/2026", "Week of 11/02/2026", "01/02/2026 - 15/02/2026"
+ */
+function parsePeriodForFolder(period) {
+  const now = new Date();
+  const fallback = {
+    year: now.getFullYear().toString(),
+    month: Utilities.formatDate(now, 'Europe/London', 'MMMM')
+  };
+
+  if (!period) return fallback;
+
+  // Try "Month Year" format (e.g., "February 2026")
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  for (const m of monthNames) {
+    if (period.indexOf(m) !== -1) {
+      const yearMatch = period.match(/\d{4}/);
+      return {
+        year: yearMatch ? yearMatch[0] : now.getFullYear().toString(),
+        month: m
+      };
+    }
+  }
+
+  // Try DD/MM/YYYY format - extract first date found
+  const dateMatch = period.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dateMatch) {
+    const d = new Date(parseInt(dateMatch[3]), parseInt(dateMatch[2]) - 1, parseInt(dateMatch[1]));
+    return {
+      year: d.getFullYear().toString(),
+      month: Utilities.formatDate(d, 'Europe/London', 'MMMM')
+    };
+  }
+
+  // Fallback to today
+  return fallback;
 }
 
 /**
