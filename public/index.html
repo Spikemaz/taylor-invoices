@@ -2700,12 +2700,16 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry
 // Show warning if entry is already invoiced
 if(e.invSt==='invoiced'&&e.invNo){_h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';}
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
-// Entity toggle
+// Entity toggle (inline styles for modal visibility)
 var curEnt=e.entity||'self';
 _h+='<div class="fg"><label class="fl">Entity</label>';
-_h+='<div class="esw" style="margin-top:4px">';
-_h+='<button class="ebtn'+(curEnt!=='ltd'?' act':'')+'" id="_edEntSelf" type="button">Self-Employed</button>';
-_h+='<button class="ebtn'+(curEnt==='ltd'?' act':'')+'" id="_edEntLtd" type="button">Ltd Company</button>';
+_h+='<div style="display:flex;gap:6px;margin-top:4px">';
+_h+='<button style="flex:1;padding:8px 12px;border:2px solid '+(curEnt!=='ltd'?'var(--pri)':'var(--bdr)');
+_h+=';background:'+(curEnt!=='ltd'?'var(--pri)':'#fff')+';color:'+(curEnt!=='ltd'?'#fff':'var(--txt)');
+_h+=';border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" id="_edEntSelf" type="button">Self-Employed</button>';
+_h+='<button style="flex:1;padding:8px 12px;border:2px solid '+(curEnt==='ltd'?'var(--pri)':'var(--bdr)');
+_h+=';background:'+(curEnt==='ltd'?'var(--pri)':'#fff')+';color:'+(curEnt==='ltd'?'#fff':'var(--txt)');
+_h+=';border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" id="_edEntLtd" type="button">Ltd Company</button>';
 _h+='</div></div>';
 // Service dropdown - get services for this practice
 var svcOptions='';
@@ -2749,8 +2753,14 @@ var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){save
 // Entity toggle handlers
 var selfBtn=document.getElementById('_edEntSelf');
 var ltdBtn=document.getElementById('_edEntLtd');
-if(selfBtn)selfBtn.onclick=function(){this.classList.add('act');ltdBtn.classList.remove('act');};
-if(ltdBtn)ltdBtn.onclick=function(){this.classList.add('act');selfBtn.classList.remove('act');};
+if(selfBtn)selfBtn.onclick=function(){
+  this.style.background='var(--pri)';this.style.borderColor='var(--pri)';this.style.color='#fff';
+  ltdBtn.style.background='#fff';ltdBtn.style.borderColor='var(--bdr)';ltdBtn.style.color='var(--txt)';
+};
+if(ltdBtn)ltdBtn.onclick=function(){
+  this.style.background='var(--pri)';this.style.borderColor='var(--pri)';this.style.color='#fff';
+  selfBtn.style.background='#fff';selfBtn.style.borderColor='var(--bdr)';selfBtn.style.color='var(--txt)';
+};
 },50);
 }
 // Handle service change in edit modal
@@ -2780,8 +2790,9 @@ async function saveEntry(id){
   const hadInvoice=e.invSt==='invoiced'&&e.invNo;
   const invoiceNum=e.invNo;
   const oldEntity=e.entity||'self';
-  // Get new entity value from toggle
-  const newEntity=document.getElementById('_edEntLtd').classList.contains('act')?'ltd':'self';
+  // Get new entity value from toggle (check if Ltd button has green background)
+  const ltdBtn=document.getElementById('_edEntLtd');
+  const newEntity=(ltdBtn&&ltdBtn.style.background==='var(--pri)')?'ltd':'self';
   const entityChanged=newEntity!==oldEntity;
   // Get form values
   e.date=document.getElementById('edDt').value;
