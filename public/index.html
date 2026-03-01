@@ -3011,8 +3011,16 @@ const mc=document.getElementById('mInv');let mh='';
 Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
 // Practice filter
 if(invPracFilter!=='all'&&invPracFilter!==pid)return;
-var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
-console.log('[refInv] Practice:', pid, '- Matching entries:', pe.length, '- me count:', me.filter(e=>e.pId===pid).length);
+var allForPrac=me.filter(function(e){return e.pId===pid&&e.pType!=='adhoc'});
+var pe=allForPrac.filter(function(e){return e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
+var totalPts=allForPrac.reduce((s,e)=>s+e.pts,0);
+var filteredPts=pe.reduce((s,e)=>s+e.pts,0);
+console.log('[refInv] Practice:', pid, '- All entries:', allForPrac.length, 'pts:', totalPts, '- After filter:', pe.length, 'pts:', filteredPts);
+if(allForPrac.length!==pe.length){
+  var invoiced=allForPrac.filter(e=>e.invSt==='invoiced');
+  var wrongEntity=allForPrac.filter(e=>e.invSt==='pending'&&S.iEnt!=='all'&&e.entity!==S.iEnt);
+  console.log('[refInv] Excluded - invoiced:', invoiced.length, 'wrong entity:', wrongEntity.length);
+}
 if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
