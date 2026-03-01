@@ -1966,15 +1966,16 @@ function setAhEntity(t){switchEntity(t);}
 // Invoice entity - also updates input entity and header for consistency
 function setInvEnt(t){
   S.iEnt=t;
+  // Update button classes FIRST (before switchEntity which has side effects)
+  document.getElementById('iEA').className='ebtn'+(t==='all'?' act':'');
+  document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');
   // Update header - show "All" or switch entity
   if(t==='all'){
     document.getElementById('hdrE').textContent='All';
   }else{
     switchEntity(t);
   }
-  document.getElementById('iEA').className='ebtn'+(t==='all'?' act':'');
-  document.getElementById('iES').className='ebtn'+(t==='self'?' act':'');
-  document.getElementById('iEL').className='ebtn'+(t==='ltd'?' act':'');
   refInv();
 }
 
@@ -2946,6 +2947,11 @@ function filtInv(f){
 function refInv(){
 const n=new Date(),y=n.getFullYear(),m=n.getMonth(),mn=n.toLocaleString('en-GB',{month:'long',year:'numeric'});
 const me=getMonth(y,m);
+console.log('[refInv] Checking month:', y, m, '- Total entries this month:', me.length, '- S.iEnt:', S.iEnt);
+console.log('[refInv] All entries count:', S.entries.length, '- Practices:', Object.keys(S.practices));
+if(me.length===0 && S.entries.length>0){
+  console.log('[refInv] Sample entry dates:', S.entries.slice(0,3).map(e=>e.date));
+}
 const todayStr=n.toISOString().substring(0,10);
 // Calculate 7 days ago for Recent section
 const sevenDaysAgo=new Date(n);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
@@ -2965,6 +2971,7 @@ Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.
 // Practice filter
 if(invPracFilter!=='all'&&invPracFilter!==pid)return;
 var pe=me.filter(function(e){return e.pId===pid&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)&&e.pType!=='adhoc'});
+console.log('[refInv] Practice:', pid, '- Matching entries:', pe.length, '- me count:', me.filter(e=>e.pId===pid).length);
 if(!pe.length)return;
 var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
 var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
