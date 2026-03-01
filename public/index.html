@@ -136,8 +136,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .arc-month .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
 .arc-month::before{content:'▼';font-size:10px;color:var(--txt3);transition:transform .2s}
 .arc-month.collapsed::before{transform:rotate(-90deg)}
-.month-group{overflow:hidden;transition:max-height .3s ease}
-.month-group.collapsed{max-height:0!important}
+.month-group{overflow:hidden;max-height:none}
+.month-group.collapsed{display:none}
 .prc-group{margin:8px 0;padding:8px 12px;background:var(--bg);border-radius:var(--rs);cursor:pointer}
 .prc-group-hdr{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
 .prc-group-hdr::before{content:'▼';font-size:9px;color:var(--txt3);transition:transform .2s}
@@ -2684,9 +2684,6 @@ function toggleArcMonth(el){
   const group=document.getElementById('mg_'+monthKey);
   if(group){
     group.classList.toggle('collapsed');
-    if(!group.classList.contains('collapsed')){
-      group.style.maxHeight=group.scrollHeight+'px';
-    }
   }
 }
 
@@ -3062,7 +3059,6 @@ pc2.querySelectorAll('.arc-month').forEach(hdr=>{
     const isCollapsed=this.classList.toggle('collapsed');
     if(grp){
       grp.classList.toggle('collapsed',isCollapsed);
-      if(!isCollapsed)grp.style.maxHeight=grp.scrollHeight+'px';
     }
   };
 });
