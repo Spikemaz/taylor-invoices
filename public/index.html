@@ -416,7 +416,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <!-- INVOICES -->
 <div class="scr" id="scr-invoices">
 <div class="entbox">
-<div class="esw"><button class="ebtn" onclick="setInvEnt('all')" id="iEA">All</button><button class="ebtn act" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
+<div class="esw"><button class="ebtn act" onclick="setInvEnt('all')" id="iEA">All</button><button class="ebtn" onclick="setInvEnt('self')" id="iES">Self-Employed</button><button class="ebtn" onclick="setInvEnt('ltd')" id="iEL">Ltd Company</button></div>
 </div>
 <div class="frow" id="iFilt">
 <button class="fc act" onclick="filtInv('all')">All</button>
@@ -886,10 +886,13 @@ async function initDriveFoldersManual() {
 async function syncEntryToCloud(entry) {
   const entity = entry.entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'append_entry', data: entry, entity });
-  if (!result.success) {
-    console.error('Failed to sync entry:', result);
+  // Only queue if offline (network error), not for other API errors
+  if (!result.success && result.offline) {
+    console.error('Failed to sync entry (offline):', result);
     addPendingOp({ type: 'append_entry', data: { action: 'append_entry', data: entry, entity }, entry });
     showToast('Saved locally - will sync when online', 'err');
+  } else if (!result.success) {
+    console.error('Failed to sync entry (API error):', result);
   }
   return result;
 }
@@ -898,9 +901,12 @@ async function syncEntryToCloud(entry) {
 async function syncInvoiceToCloud(invoice) {
   const entity = invoice.logoType || S.iEnt;
   const result = await apiCall('sheets-sync', { action: 'append_invoice', data: invoice, entity });
-  if (!result.success) {
+  // Only queue if offline (network error), not for other API errors
+  if (!result.success && result.offline) {
     addPendingOp({ type: 'append_invoice', data: { action: 'append_invoice', data: invoice, entity }, invoice });
     showToast('Invoice saved locally - will sync when online', 'err');
+  } else if (!result.success) {
+    console.error('Failed to sync invoice (API error):', result);
   }
   return result;
 }
@@ -923,7 +929,8 @@ async function deleteEntryFromCloud(id, entity) {
 async function updateEntryInCloud(id, updates, entity) {
   entity = entity || S.ent;
   const result = await apiCall('sheets-sync', { action: 'update_entry', data: { id, updates }, entity });
-  if (!result.success) {
+  // Only queue if offline (network error), not for 404 or other API errors
+  if (!result.success && result.offline) {
     addPendingOp({ type: 'update_entry', data: { action: 'update_entry', data: { id, updates }, entity }, id, updates });
     showToast('Update queued - will sync when online', 'err');
   }
@@ -2693,6 +2700,13 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry
 // Show warning if entry is already invoiced
 if(e.invSt==='invoiced'&&e.invNo){_h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';}
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
+// Entity toggle
+var curEnt=e.entity||'self';
+_h+='<div class="fg"><label class="fl">Entity</label>';
+_h+='<div class="esw" style="margin-top:4px">';
+_h+='<button class="ebtn'+(curEnt!=='ltd'?' act':'')+'" id="_edEntSelf" type="button">Self-Employed</button>';
+_h+='<button class="ebtn'+(curEnt==='ltd'?' act':'')+'" id="_edEntLtd" type="button">Ltd Company</button>';
+_h+='</div></div>';
 // Service dropdown - get services for this practice
 var svcOptions='';
 var practiceServices=[];
@@ -2732,6 +2746,11 @@ setTimeout(function(){
 var delB=document.getElementById('_edDel');if(delB)delB.onclick=function(){delEntry(id)};
 var canB=document.getElementById('_edCancel');if(canB)canB.onclick=function(){closeMod2()};
 var savB=document.getElementById('_edSave');if(savB)savB.onclick=function(){saveEntry(id)};
+// Entity toggle handlers
+var selfBtn=document.getElementById('_edEntSelf');
+var ltdBtn=document.getElementById('_edEntLtd');
+if(selfBtn)selfBtn.onclick=function(){this.classList.add('act');ltdBtn.classList.remove('act');};
+if(ltdBtn)ltdBtn.onclick=function(){this.classList.add('act');selfBtn.classList.remove('act');};
 },50);
 }
 // Handle service change in edit modal
@@ -2760,6 +2779,10 @@ async function saveEntry(id){
   const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
   const hadInvoice=e.invSt==='invoiced'&&e.invNo;
   const invoiceNum=e.invNo;
+  const oldEntity=e.entity||'self';
+  // Get new entity value from toggle
+  const newEntity=document.getElementById('_edEntLtd').classList.contains('act')?'ltd':'self';
+  const entityChanged=newEntity!==oldEntity;
   // Get form values
   e.date=document.getElementById('edDt').value;
   // Handle service - check for custom selection
@@ -2788,6 +2811,30 @@ async function saveEntry(id){
   e.comm=parseFloat(e.comm)||0;
   if(e.pType==='contract')e.commAmt=e.gross*e.comm;
   e.updatedAt=new Date().toISOString();
+
+  // Handle entity change
+  if(entityChanged){
+    // If entry has an invoice, move entire invoice with all its entries
+    if(hadInvoice){
+      const invIdx=S.invoices.findIndex(inv=>inv.num===invoiceNum);
+      if(invIdx>=0){
+        closeMod2();
+        // Store entry changes to apply after invoice move
+        showInvoiceEntityChangeFromEntry(invIdx,oldEntity,newEntity,e,id);
+        return;
+      }
+    }
+    // Regular entry entity change (no invoice attached)
+    e.entity=newEntity;
+    console.log('[Entry Entity Changed]', e.pName, oldEntity, '->', newEntity, 'id='+e.id);
+    save();closeMod2();refArc();showToast('Changing entity...',prcClass);
+    const result=await changeEntryEntity(e.id,oldEntity,newEntity,e);
+    if(result.success){showToast('Entry moved to '+(newEntity==='ltd'?'Ltd Company':'Self-Employed'),prcClass);}
+    else{showToast('Entity change queued',prcClass);}
+    return;
+  }
+
+  // No entity change - normal update
   console.log('[Entry Updated]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'addon='+e.aoType, 'id='+e.id);
   save();closeMod2();refArc();showToast('Syncing...',prcClass);
   // Sync to cloud (queues on failure)
@@ -2801,6 +2848,52 @@ async function saveEntry(id){
       showToast('Entry updated',prcClass);
     }
   }
+}
+
+// Change entry entity (delete from old sheet, add to new sheet)
+async function changeEntryEntity(id,oldEntity,newEntity,entryData){
+  try{
+    // 1. Delete from old entity's sheet
+    await apiCall('sheets-sync',{action:'delete_entry',data:{id},entity:oldEntity});
+    // 2. Append to new entity's sheet
+    const result=await apiCall('sheets-sync',{action:'append_entry',data:entryData,entity:newEntity});
+    return{success:true};
+  }catch(err){
+    console.error('Entity change failed:',err);
+    return{success:false,error:err};
+  }
+}
+
+// Handle entity change for an invoiced entry - moves the whole invoice
+function showInvoiceEntityChangeFromEntry(invIdx,oldEntity,newEntity,editedEntry,editedEntryId){
+  const inv=S.invoices[invIdx];
+  const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
+  _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">This entry is part of Invoice #'+inv.num+'</p>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Moving to <strong>'+newLabel+'</strong> will:</p>';
+  _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
+  _h+='<li>Delete the old PDF from Drive</li>';
+  _h+='<li>Generate a new PDF with '+newLabel+' details</li>';
+  _h+='<li>Move '+affectedEntries.length+' linked entries to '+newLabel+'</li>';
+  _h+='</ul>';
+  _h+='<div class="brow"><button class="btn btn-s" id="_ceBack">Cancel</button>';
+  _h+='<button class="btn btn-p" id="_ceConfirm">Change Entity</button></div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_ceBack').onclick=()=>{closeMod2();editEntry(editedEntryId);};
+    document.getElementById('_ceConfirm').onclick=async()=>{
+      // First apply the entry changes
+      const e=S.entries.find(x=>x.id===editedEntryId);
+      if(e){Object.assign(e,editedEntry);}
+      // Then change invoice entity
+      await changeInvoiceEntity(invIdx,oldEntity,newEntity);
+    };
+  },50);
 }
 async function delEntry(id){
   var e=S.entries.find(function(x){return x.id===id});
@@ -3094,6 +3187,7 @@ function showInvoiceOptionsModal(idx){
   }
 
   _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invRedownload">Re-download PDF</button>';
+  _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invChangeEntity">Change to '+(entType==='ltd'?'Self-Employed':'Ltd Company')+'</button>';
   _h+='<button class="btn btn-d" style="width:100%;margin-bottom:8px" id="_invDelete">Delete Invoice</button>';
   _h+='<button class="btn btn-s" style="width:100%" onclick="closeMod2()">Cancel</button>';
 
@@ -3101,6 +3195,7 @@ function showInvoiceOptionsModal(idx){
 
   setTimeout(()=>{
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
+    document.getElementById('_invChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
     document.getElementById('_invDelete').onclick=()=>showDeleteInvoiceConfirmModal(idx);
   },50);
 }
@@ -3162,6 +3257,92 @@ async function deleteInvoiceWithDrive(idx){
     showToast('Invoice #'+inv.num+' deleted');
   }else{
     showToast('Invoice removed locally (cloud sync may be pending)','err');
+  }
+}
+
+// ===== CHANGE INVOICE ENTITY =====
+function changeInvoiceEntityConfirm(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+  const oldEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const newEntity=oldEntity==='ltd'?'self':'ltd';
+  const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
+  _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">Move Invoice #'+inv.num+' to <strong>'+newLabel+'</strong>?</p>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">This will:</p>';
+  _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
+  if(inv.driveLink)_h+='<li>Delete the old PDF from Drive</li>';
+  _h+='<li>Generate a new PDF with '+newLabel+' details</li>';
+  _h+='<li>Move '+affectedEntries.length+' linked entries to '+newLabel+'</li>';
+  _h+='</ul>';
+  _h+='<div class="brow"><button class="btn btn-s" id="_ceBack">Cancel</button>';
+  _h+='<button class="btn btn-p" id="_ceConfirm">Change Entity</button></div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_ceBack').onclick=()=>{closeMod2();showInvoiceOptionsModal(idx);};
+    document.getElementById('_ceConfirm').onclick=()=>changeInvoiceEntity(idx,oldEntity,newEntity);
+  },50);
+}
+
+async function changeInvoiceEntity(idx,oldEntity,newEntity){
+  closeMod2();
+  showToast('Changing entity...');
+
+  const inv=S.invoices[idx];
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+  const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
+  const oldDriveLink=inv.driveLink; // Save for trash
+
+  try{
+    // 1. Delete invoice from old entity's sheet (this adds to Trash tab for Apps Script to delete PDF)
+    showToast('Moving invoice...');
+    await apiCall('sheets-sync',{action:'delete_invoice',data:{num:inv.num,driveLink:oldDriveLink},entity:oldEntity});
+
+    // 3. Move all linked entries to new entity
+    showToast('Moving '+affectedEntries.length+' entries...');
+    for(const e of affectedEntries){
+      const eOldEntity=e.entity||oldEntity;
+      e.entity=newEntity;
+      await apiCall('sheets-sync',{action:'delete_entry',data:{id:e.id},entity:eOldEntity});
+      await apiCall('sheets-sync',{action:'append_entry',data:e,entity:newEntity});
+    }
+
+    // 4. Update invoice entity and details for new entity
+    const newEntDetails=S.ents[newEntity];
+    inv.entity=newLabel;
+    inv.logoType=newEntity;
+    inv.entName=newEntDetails.name;
+    inv.entAddr=newEntDetails.addr;
+    inv.entPhone=newEntDetails.phone;
+    inv.bankName=newEntDetails.bank;
+    inv.bankAccName=newEntDetails.bName;
+    inv.bankAcc=newEntDetails.acc;
+    inv.bankSort=newEntDetails.sort;
+    if(newEntity==='ltd')inv.companyNo=newEntDetails.companyNo;
+    else delete inv.companyNo;
+    inv.driveLink=null; // Will be set after PDF regeneration
+
+    // 5. Append invoice to new entity's sheet
+    await apiCall('sheets-sync',{action:'append_invoice',data:inv,entity:newEntity});
+
+    // 6. Save locally
+    save();
+
+    // 7. Regenerate PDF with new entity details
+    showToast('Generating new PDF...');
+    await regenerateInvoicePDF(inv.num,newEntity);
+
+    refInv();
+    showToast('Moved to '+newLabel);
+  }catch(err){
+    console.error('Entity change failed:',err);
+    save();refInv();
+    showToast('Entity change failed - some data may need manual sync','err');
   }
 }
 
