@@ -488,7 +488,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="sgrp-hdr">Invoice Settings</div>
 <div class="ssec">
 <div class="srow" onclick="editInvNum()"><span class="la">Next Invoice #</span><span class="va" id="nInv">S:00002 L:00001</span></div>
-<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">5 working days</span></div>
+<div class="srow" onclick="editPayTerms()"><span class="la">Payment Terms</span><span class="va" id="sPayTerms">10 working days</span></div>
 <div class="srow" onclick="editInvoiceFooter()"><span class="la">Footer Message</span><span class="va" id="sFooter">Thank you...</span></div>
 </div>
 </div>
@@ -531,7 +531,7 @@ self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingha
 ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',email:'',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:'15011714'}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
-nextInvSelf:2,nextInvLtd:1,payTerms:'5 working days',invoiceFooter:'Thank you for your continued support.'
+nextInvSelf:2,nextInvLtd:1,payTerms:'10 working days',invoiceFooter:'Thank you for your continued support.'
 };
 // Helper to get/set nextInv for current entity
 function getNextInv(){return S.ent==='ltd'?S.nextInvLtd:S.nextInvSelf;}
@@ -4311,7 +4311,7 @@ showModal(_h);
 setTimeout(function(){
 document.getElementById('_ptC').onclick=function(){closeMod2()};
 document.getElementById('_ptS').onclick=function(){
-S.payTerms=document.getElementById('_ptVal').value.trim()||'5 working days';
+S.payTerms=document.getElementById('_ptVal').value.trim()||'10 working days';
 save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Payment terms updated');};
 },50);
 }
@@ -4484,7 +4484,7 @@ el=document.getElementById('ltd_bank');if(el)el.textContent=(lt.bank||'Bank')+' 
 el=document.getElementById('ltd_compNo');if(el)el.textContent=lt.companyNo||'Not set';
 el=document.getElementById('sEnt');if(el)el.textContent=S.ent==='self'?'Self-Employed':'Ltd Company';
 el=document.getElementById('nInv');if(el)el.textContent='S:'+pad(S.nextInvSelf)+' L:'+pad(S.nextInvLtd);
-el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'5 working days';
+el=document.getElementById('sPayTerms');if(el)el.textContent=S.payTerms||'10 working days';
 el=document.getElementById('sFooter');if(el){var ft=S.invoiceFooter||'Thank you...';el.textContent=ft.length>20?ft.substring(0,20)+'...':ft;}
 el=document.getElementById('se_email');if(el)el.textContent=se.email||'Not set';
 el=document.getElementById('ltd_email');if(el)el.textContent=lt.email||'Not set';
@@ -4714,7 +4714,7 @@ doc.text('Account Number: ' + (inv.bankAcc || ''), 40, y); y += 13;
 doc.text('Sort Code: ' + (inv.bankSort || ''), 40, y); y += 20;
 
 doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
-doc.text('Payment Terms: Payment is due within ' + (inv.payTerms || '5 working days') + ' of the invoice date.', 40, y);
+doc.text('Payment Terms: Payment is due within ' + (inv.payTerms || '10 working days') + ' of the invoice date.', 40, y);
 y += 14;
 doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 114, 128);
 doc.text('Please ensure the invoice reference (' + inv.num + ') is quoted with payment.', 40, y);
