@@ -1582,6 +1582,28 @@ async function runDataMigrations() {
       console.error('[Migration] Failed to sync changes to cloud:', e);
     }
   }
+
+  // Fix orphaned invoiced entries (entries marked invoiced but invoice doesn't exist)
+  const orphanedEntries = S.entries.filter(e => e.invSt === 'invoiced' && e.invNo && !S.invoices.some(inv => inv.num === e.invNo));
+  if (orphanedEntries.length > 0) {
+    console.log('[Migration] Found', orphanedEntries.length, 'orphaned invoiced entries - resetting to pending');
+    for (const e of orphanedEntries) {
+      console.log('[Migration] Resetting entry:', e.id, 'invNo:', e.invNo);
+      e.invSt = 'pending';
+      e.invNo = null;
+    }
+    save();
+    // Sync to cloud
+    for (const e of orphanedEntries) {
+      try {
+        await updateEntryInCloud(e.id, {invSt: 'pending', invNo: null}, e.entity || 'self');
+      } catch (err) {
+        console.error('[Migration] Failed to sync orphaned entry reset:', err);
+      }
+    }
+    console.log('[Migration] Orphaned entries reset complete');
+  }
+
   console.log('[Migration] S.practices at end:', JSON.stringify(Object.keys(S.practices)));
   console.log('[Migration] === END runDataMigrations ===');
 }
