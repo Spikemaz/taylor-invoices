@@ -1789,7 +1789,7 @@ if(nx)nx.classList.add('act');
 if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
 if(n==='archive'){resetArcFilters();refArc();}
-if(n==='invoices'){resetInvFilters();refInv();}
+if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters and refInv');try{resetInvFilters();refInv();}catch(err){console.error('[showScreen] Error in invoices:',err);}}
 if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
@@ -2929,12 +2929,14 @@ async function delEntry(id){
 // ===== INVOICES =====
 let invPracFilter='all';
 function resetInvFilters(){
+  console.log('[resetInvFilters] Called');
   S.iEnt='all';invPracFilter='all';
   document.getElementById('iEA').className='ebtn act';
   document.getElementById('iES').className='ebtn';
   document.getElementById('iEL').className='ebtn';
   document.querySelectorAll('#iFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
   document.getElementById('hdrE').textContent='All';
+  console.log('[resetInvFilters] Done, calling refInv...');
 }
 function filtInv(f){
   invPracFilter=f;
