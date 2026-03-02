@@ -3313,6 +3313,7 @@ function showInvoiceOptionsModal(idx){
     _h+='<a href="'+inv.driveLink+'" target="_blank" class="btn btn-p" style="width:100%;margin-bottom:8px;text-decoration:none;display:block;text-align:center">View PDF in Drive</a>';
   }
 
+  _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEdit">Edit Invoice Entries</button>';
   _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invRedownload">Re-download PDF</button>';
   _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invChangeEntity">Change to '+(entType==='ltd'?'Self-Employed':'Ltd Company')+'</button>';
   _h+='<button class="btn btn-d" style="width:100%;margin-bottom:8px" id="_invDelete">Delete Invoice</button>';
@@ -3321,10 +3322,350 @@ function showInvoiceOptionsModal(idx){
   showModal(_h);
 
   setTimeout(()=>{
+    document.getElementById('_invEdit').onclick=()=>{closeMod2();showEditInvoiceModal(idx);};
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
     document.getElementById('_invChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
     document.getElementById('_invDelete').onclick=()=>showDeleteInvoiceConfirmModal(idx);
   },50);
+}
+
+// ===== EDIT INVOICE ENTRIES MODAL =====
+function showEditInvoiceModal(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
+
+  // Get all entries for this invoice
+  const entries=S.entries.filter(e=>e.invNo===inv.num);
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Edit Invoice #'+inv.num+'</h3>';
+  _h+='<div style="font-size:12px;opacity:0.8;margin-top:4px">'+inv.practice+' · '+inv.period+'</div></div>';
+
+  // Summary section
+  _h+='<div style="background:#f0fdf4;border:1px solid var(--pri-lt);border-radius:8px;padding:12px;margin-bottom:16px">';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Entries:</span><strong>'+entries.length+'</strong></div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Gross Total:</span><strong>'+fc(inv.gross)+'</strong></div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--pri)"><span>Balance Due:</span><strong>'+fc(inv.amount)+'</strong></div>';
+  _h+='</div>';
+
+  // Entry list
+  _h+='<div style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:8px">Entries (tap to edit)</div>';
+  _h+='<div style="max-height:280px;overflow-y:auto;margin-bottom:16px">';
+
+  if(entries.length===0){
+    _h+='<div style="text-align:center;padding:20px;color:var(--txt2)">No entries found</div>';
+  }else{
+    entries.sort((a,b)=>a.date.localeCompare(b.date));
+    entries.forEach((e,i)=>{
+      const dayName=new Date(e.date).toLocaleDateString('en-GB',{weekday:'short'});
+      const aoText=e.aoType?' + '+e.aoType:'';
+      _h+='<div class="inv-entry-item" data-entryid="'+e.id+'" style="background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer">';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+      _h+='<div><div style="font-size:13px;font-weight:600;color:var(--txt)">'+fdn(e.date)+' ('+dayName+')</div>';
+      _h+='<div style="font-size:12px;color:var(--txt2)">'+e.svc+aoText+' · '+e.pts+' pts @ '+fc(e.uPrice)+'</div></div>';
+      _h+='<div style="text-align:right"><div style="font-size:14px;font-weight:600;color:var(--pri)">'+fc(e.gross)+'</div>';
+      _h+='<div style="font-size:11px;color:var(--txt3)">tap to edit</div></div>';
+      _h+='</div></div>';
+    });
+  }
+  _h+='</div>';
+
+  // Action buttons
+  _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEditRegen">Save Changes &amp; Regenerate PDF</button>';
+  _h+='<div style="display:flex;gap:8px">';
+  _h+='<button class="btn btn-s" style="flex:1" id="_invEditBack">Back</button>';
+  _h+='<button class="btn btn-s" style="flex:1" id="_invEditDone">Done (No PDF Update)</button>';
+  _h+='</div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_invEditRegen').onclick=()=>{closeMod2();regenerateInvoiceAfterEdit(idx);};
+    document.getElementById('_invEditBack').onclick=()=>{closeMod2();showInvoiceOptionsModal(idx);};
+    document.getElementById('_invEditDone').onclick=()=>{closeMod2();refInv();};
+    // Add click handlers to each entry item
+    document.querySelectorAll('.inv-entry-item').forEach(item=>{
+      item.onclick=()=>{
+        const entryId=item.dataset.entryid;
+        closeMod2();
+        editEntryFromInvoice(entryId,idx);
+      };
+    });
+  },50);
+}
+
+// Edit entry from invoice context - returns to invoice edit modal after save
+function editEntryFromInvoice(entryId,invoiceIdx){
+  const e=S.entries.find(x=>x.id===entryId);
+  if(!e)return;
+
+  const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
+  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
+
+  // Show invoice context warning
+  _h+='<div style="background:#EFF6FF;border:1px solid #3B82F6;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#1E40AF">Editing entry for <strong>Invoice #'+e.invNo+'</strong></div>';
+
+  _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
+
+  // Service dropdown
+  var svcOptions='';
+  var practiceServices=[];
+  var currentSvcInList=false;
+  if(e.pType==='adhoc'){
+    practiceServices=['Hygiene','Therapy'];
+  }else if(S.practices[e.pId]&&S.practices[e.pId].svcs){
+    practiceServices=Object.keys(S.practices[e.pId].svcs);
+  }
+  practiceServices.forEach(function(svc){
+    var sel=(svc===e.svc)?' selected':'';
+    if(svc===e.svc)currentSvcInList=true;
+    svcOptions+='<option value="'+svc+'"'+sel+'>'+svc+'</option>';
+  });
+  if(!currentSvcInList&&e.svc){
+    svcOptions+='<option value="'+e.svc+'" selected>'+e.svc+'</option>';
+  }
+  svcOptions+='<option value="_custom_">Custom...</option>';
+  _h+='<div class="fg"><label class="fl">Service</label><select class="fi" id="edSvc" onchange="onEditSvcChange()">'+svcOptions+'</select></div>';
+  _h+='<div class="fg" id="edSvcCustomRow" style="display:none"><label class="fl">Custom Service Name</label><input class="fi" id="edSvcCustom" placeholder="e.g. Whitening"></div>';
+
+  _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Patients</label><input class="fi" id="edPts" type="number" value="'+e.pts+'"></div>';
+  _h+='<div class="fg" style="flex:1"><label class="fl">Price (£)</label><input class="fi" id="edPr" type="number" value="'+e.uPrice.toFixed(2)+'" step="0.01"></div></div>';
+
+  // Add-on section
+  _h+='<div class="fg"><label class="fl">Add-on</label><select class="fi" id="edAoType" onchange="onEditAddonChange()"><option value="">None</option><option value="Airflow"'+(e.aoType==='Airflow'?' selected':'')+'>Airflow</option><option value="custom"'+(e.aoType&&e.aoType!=='Airflow'?' selected':'')+'>Custom</option></select></div>';
+  var customName=(e.aoType&&e.aoType!=='Airflow')?e.aoType:'';
+  _h+='<div class="fg" id="edAoCustomRow" style="display:'+(e.aoType&&e.aoType!=='Airflow'?'block':'none')+'"><label class="fl">Custom Add-on Name</label><input class="fi" id="edAoName" value="'+customName+'" placeholder="e.g. Whitening"></div>';
+  _h+='<div id="edAoFields" style="display:'+(e.aoType?'flex':'none')+';gap:10px"><div class="fg" style="flex:1"><label class="fl">Add-on Rate (£)</label><input class="fi" id="edAoRate" type="number" value="'+((e.aoPatients&&e.aoPatients>0)?(e.aoAmt/e.aoPatients).toFixed(2):(e.aoAmt||0).toFixed(2))+'" step="0.01"></div>';
+  _h+='<div class="fg" style="flex:1"><label class="fl">Add-on Patients</label><input class="fi" id="edAoPts" type="number" value="'+(e.aoPatients||0)+'"></div></div>';
+
+  _h+='<div class="brow"><button class="btn btn-d" id="_edDel">Delete</button><button class="btn btn-s" id="_edCancel">Cancel</button><button class="btn btn-p" id="_edSave">Save</button></div>';
+
+  showModal(_h,prcClass);
+
+  setTimeout(function(){
+    document.getElementById('_edDel').onclick=function(){deleteEntryFromInvoice(entryId,invoiceIdx)};
+    document.getElementById('_edCancel').onclick=function(){closeMod2();showEditInvoiceModal(invoiceIdx);};
+    document.getElementById('_edSave').onclick=function(){saveEntryFromInvoice(entryId,invoiceIdx)};
+  },50);
+}
+
+// Save entry changes from invoice edit context
+async function saveEntryFromInvoice(entryId,invoiceIdx){
+  const e=S.entries.find(x=>x.id===entryId);
+  if(!e)return;
+
+  const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
+  const invoiceNum=e.invNo;
+  const entity=e.entity||S.ent;
+
+  // Get form values
+  e.date=document.getElementById('edDt').value;
+  var svcVal=document.getElementById('edSvc').value;
+  if(svcVal==='_custom_'){
+    e.svc=document.getElementById('edSvcCustom').value.trim()||'Service';
+  }else{
+    e.svc=svcVal;
+  }
+  e.pts=parseInt(document.getElementById('edPts').value)||0;
+  e.uPrice=parseFloat(document.getElementById('edPr').value)||0;
+
+  // Handle add-on
+  const aoTypeVal=document.getElementById('edAoType').value;
+  const aoRate=parseFloat(document.getElementById('edAoRate').value)||0;
+  const aoPts=parseInt(document.getElementById('edAoPts').value)||0;
+  if(aoTypeVal===''){
+    e.aoType=null;e.aoAmt=0;e.aoPatients=0;
+  }else if(aoTypeVal==='Airflow'){
+    e.aoType='Airflow';e.aoAmt=aoRate*aoPts;e.aoPatients=aoPts;
+  }else{
+    const customName=document.getElementById('edAoName').value.trim()||'Add-on';
+    e.aoType=customName;e.aoAmt=aoRate*aoPts;e.aoPatients=aoPts;
+  }
+  e.gross=(e.pts*e.uPrice)+e.aoAmt;
+  e.comm=parseFloat(e.comm)||0;
+  if(e.pType==='contract')e.commAmt=e.gross*e.comm;
+  e.updatedAt=new Date().toISOString();
+
+  console.log('[Entry Updated from Invoice]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
+  save();
+  closeMod2();
+  showToast('Saving entry...',prcClass);
+
+  // Sync to cloud
+  const result=await updateEntryInCloud(e.id, e, entity);
+  if(result.success){
+    showToast('Entry saved',prcClass);
+  }
+
+  // Return to invoice edit modal (entry changes will be reflected)
+  setTimeout(()=>showEditInvoiceModal(invoiceIdx),300);
+}
+
+// Delete entry from invoice context
+async function deleteEntryFromInvoice(entryId,invoiceIdx){
+  const e=S.entries.find(x=>x.id===entryId);
+  if(!e)return;
+
+  const inv=S.invoices[invoiceIdx];
+  const entity=e.entity||S.ent;
+  const entries=S.entries.filter(x=>x.invNo===inv.num);
+
+  // Warning if this is the last entry
+  if(entries.length<=1){
+    showModal('<h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Cannot Delete</h3><p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This is the only entry in the invoice. Delete the invoice instead.</p><button class="btn btn-s" style="width:100%" onclick="closeMod2();showEditInvoiceModal('+invoiceIdx+')">OK</button>');
+    return;
+  }
+
+  // Confirm deletion
+  let _h='<h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Delete Entry?</h3>';
+  _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:8px">'+fdn(e.date)+' · '+e.svc+' · '+fc(e.gross)+'</p>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">This will remove the entry from Invoice #'+inv.num+' and update the PDF.</p>';
+  _h+='<div class="brow"><button class="btn btn-s" id="_delEntryCancel">Cancel</button><button class="btn btn-d" id="_delEntryConfirm">Delete</button></div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_delEntryCancel').onclick=()=>{closeMod2();editEntryFromInvoice(entryId,invoiceIdx);};
+    document.getElementById('_delEntryConfirm').onclick=async()=>{
+      closeMod2();
+      showToast('Deleting entry...');
+
+      // Remove from local state
+      const idx=S.entries.findIndex(x=>x.id===entryId);
+      if(idx>=0)S.entries.splice(idx,1);
+      save();
+
+      // Delete from cloud
+      await apiCall('sheets-sync',{action:'delete_entry',data:{id:entryId},entity});
+
+      showToast('Entry deleted');
+
+      // Regenerate invoice PDF with remaining entries
+      setTimeout(()=>regenerateInvoiceAfterEdit(invoiceIdx),300);
+    };
+  },50);
+}
+
+// Regenerate invoice PDF after editing entries
+async function regenerateInvoiceAfterEdit(invoiceIdx){
+  const inv=S.invoices[invoiceIdx];
+  if(!inv)return;
+
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entries=S.entries.filter(e=>e.invNo===inv.num);
+
+  // Check if there are any entries left
+  if(entries.length===0){
+    showToast('No entries remaining - delete the invoice','err');
+    showEditInvoiceModal(invoiceIdx);
+    return;
+  }
+
+  showToast('Regenerating invoice PDF...');
+
+  // Rebuild invoice totals from current entries
+  const svcs={};
+  let gross=0;
+  const addons={};
+
+  entries.forEach(e=>{
+    const key=e.svc+'@'+e.uPrice;
+    if(!svcs[key]){
+      svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+    }
+    svcs[key].pts+=e.pts;
+    svcs[key].total+=e.pts*e.uPrice;
+    gross+=e.pts*e.uPrice;
+
+    if(e.aoType&&e.aoAmt>0){
+      const aoKey=e.aoType;
+      if(!addons[aoKey]){
+        addons[aoKey]={pts:0,price:0,total:0};
+      }
+      addons[aoKey].pts+=e.aoPatients||1;
+      addons[aoKey].total+=e.aoAmt;
+      if(e.aoPatients>0){
+        addons[aoKey].price=e.aoAmt/e.aoPatients;
+      }
+      gross+=e.aoAmt;
+    }
+  });
+
+  // Recalculate period from entries
+  const dates=entries.map(e=>e.date).sort();
+  const minDate=dates[0];
+  const maxDate=dates[dates.length-1];
+  let period;
+  if(minDate===maxDate){
+    period=fdd(minDate);
+  }else{
+    const d1=new Date(minDate),d2=new Date(maxDate);
+    const diff=(d2-d1)/(1000*60*60*24);
+    if(diff<=7){
+      period='Week of '+fdd(minDate);
+    }else if(d1.getMonth()===d2.getMonth()&&d1.getFullYear()===d2.getFullYear()){
+      period=d1.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    }else{
+      period=fdd(minDate)+' - '+fdd(maxDate);
+    }
+  }
+
+  // Calculate new amount
+  const commRate=parseFloat(inv.commRate)||0;
+  const amount=inv.isAdhoc?gross:gross*(commRate/100);
+
+  // Update invoice data
+  inv.svcs=svcs;
+  inv.addons=addons;
+  inv.gross=gross;
+  inv.amount=amount;
+  inv.period=period;
+  inv.updatedAt=new Date().toISOString();
+
+  // Store old drive link for trash (Apps Script will delete old PDF)
+  const oldDriveLink=inv.driveLink;
+
+  // Queue old PDF for deletion if it exists
+  if(oldDriveLink){
+    await apiCall('sheets-sync',{
+      action:'queue_pdf_deletion',
+      data:{num:inv.num,driveLink:oldDriveLink,reason:'invoice_edit'},
+      entity
+    });
+  }
+
+  // Clear driveLink (will be set after new PDF upload)
+  inv.driveLink=null;
+  save();
+
+  // Update invoice in cloud
+  await apiCall('sheets-sync',{action:'update_invoice',data:{num:inv.num,updates:{
+    svcs:JSON.stringify(inv.svcs),
+    addons:JSON.stringify(inv.addons),
+    gross:inv.gross,
+    amount:inv.amount,
+    period:inv.period,
+    driveLink:null,
+    updatedAt:inv.updatedAt
+  }},entity});
+
+  // Generate new PDF
+  try{
+    const pdfResult=await generateAndUploadPDF(inv);
+    if(pdfResult&&pdfResult.drive&&pdfResult.drive.success){
+      inv.driveLink=pdfResult.drive.webViewLink;
+      save();
+    }
+    showToast('Invoice updated');
+  }catch(err){
+    console.error('PDF regeneration error:',err);
+    showToast('Invoice saved (PDF will sync later)','err');
+  }
+
+  // Return to invoice edit modal to show updated totals
+  showEditInvoiceModal(invoiceIdx);
 }
 
 function showDeleteInvoiceConfirmModal(idx){

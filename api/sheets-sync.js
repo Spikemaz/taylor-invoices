@@ -244,6 +244,7 @@ module.exports = async (req, res) => {
       case 'setup_log_tab': return await setupLogTab(sheets, sheetId, res);
       case 'setup_tabs': return await setupAllTabs(sheets, res);
       case 'trigger_pdf_regeneration': return await triggerPdfRegeneration(sheets, sheetId, data, res);
+      case 'queue_pdf_deletion': return await queuePdfDeletion(sheets, sheetId, data, res);
       default: return res.status(400).json({ error: `Unknown action: ${action}` });
     }
   } catch (error) {
@@ -519,6 +520,37 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
     message: `Invoice #${num} moved to Trash${hasPdf ? ' (PDF will be moved by Apps Script)' : ''}`,
     num,
     hasPdf
+  });
+}
+
+// Queue a PDF for deletion via Trash tab (Apps Script will process it)
+// Used when editing invoices - old PDF needs to be replaced
+async function queuePdfDeletion(sheets, sheetId, { num, driveLink, reason }, res) {
+  if (!driveLink) {
+    return res.status(200).json({ success: true, message: 'No PDF to delete' });
+  }
+
+  // Add to Trash tab as pdf_replacement type so Apps Script knows to move the old PDF
+  const trashData = {
+    num,
+    driveLink,
+    reason: reason || 'invoice_edit'
+  };
+
+  await moveToTrash(sheets, sheetId, 'pdf_replacement', trashData);
+
+  // Log the action
+  await writeLog(sheets, sheetId, {
+    action: 'PDF_REPLACE',
+    dataType: 'invoice',
+    recordId: num,
+    changes: `Old PDF queued for deletion: ${driveLink} (reason: ${reason || 'invoice_edit'})`
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: `PDF queued for deletion (Apps Script will move to Trash)`,
+    num
   });
 }
 
