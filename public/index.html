@@ -3339,15 +3339,23 @@ function showEditInvoiceModal(idx){
   // Get all entries for this invoice
   const entries=S.entries.filter(e=>e.invNo===inv.num);
 
+  // Calculate totals from entries (not from invoice object - entries may have been edited)
+  let calcGross=0;
+  entries.forEach(e=>{
+    calcGross+=(e.pts*e.uPrice)+(e.aoAmt||0);
+  });
+  const commRate=parseFloat(inv.commRate)||0;
+  const calcAmount=inv.isAdhoc?calcGross:calcGross*(commRate/100);
+
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
   _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Edit Invoice #'+inv.num+'</h3>';
   _h+='<div style="font-size:12px;opacity:0.8;margin-top:4px">'+inv.practice+' · '+inv.period+'</div></div>';
 
-  // Summary section
+  // Summary section - show calculated values from entries
   _h+='<div style="background:#f0fdf4;border:1px solid var(--pri-lt);border-radius:8px;padding:12px;margin-bottom:16px">';
   _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Entries:</span><strong>'+entries.length+'</strong></div>';
-  _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Gross Total:</span><strong>'+fc(inv.gross)+'</strong></div>';
-  _h+='<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--pri)"><span>Balance Due:</span><strong>'+fc(inv.amount)+'</strong></div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>Gross Total:</span><strong>'+fc(calcGross)+'</strong></div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--pri)"><span>Balance Due:</span><strong>'+fc(calcAmount)+'</strong></div>';
   _h+='</div>';
 
   // Entry list
@@ -3490,17 +3498,17 @@ async function saveEntryFromInvoice(entryId,invoiceIdx){
 
   console.log('[Entry Updated from Invoice]', e.pName, e.svc, e.pts+'pts', '£'+e.gross.toFixed(2), 'id='+e.id);
   save();
-  closeMod2();
-  showToast('Saving entry...',prcClass);
 
-  // Sync to cloud
+  // Sync to cloud (don't close modal until done to prevent flashing)
+  showToast('Saving...',prcClass);
   const result=await updateEntryInCloud(e.id, e, entity);
   if(result.success){
     showToast('Entry saved',prcClass);
   }
 
-  // Return to invoice edit modal (entry changes will be reflected)
-  setTimeout(()=>showEditInvoiceModal(invoiceIdx),300);
+  // Close edit modal and return to invoice edit modal
+  closeMod2();
+  setTimeout(()=>showEditInvoiceModal(invoiceIdx),100);
 }
 
 // Delete entry from invoice context
@@ -3566,23 +3574,24 @@ async function regenerateInvoiceAfterEdit(invoiceIdx){
   showToast('Regenerating invoice PDF...');
 
   // Rebuild invoice totals from current entries
+  // Use date@svc@price key format to match original invoice generation
   const svcs={};
   let gross=0;
   const addons={};
 
   entries.forEach(e=>{
-    const key=e.svc+'@'+e.uPrice;
+    const key=e.date+'@'+e.svc+'@'+e.uPrice;
     if(!svcs[key]){
-      svcs[key]={name:e.svc,pts:0,price:e.uPrice,total:0};
+      svcs[key]={date:e.date,name:e.svc,pts:0,price:e.uPrice,total:0};
     }
     svcs[key].pts+=e.pts;
     svcs[key].total+=e.pts*e.uPrice;
     gross+=e.pts*e.uPrice;
 
     if(e.aoType&&e.aoAmt>0){
-      const aoKey=e.aoType;
+      const aoKey=e.date+'@'+e.aoType;
       if(!addons[aoKey]){
-        addons[aoKey]={pts:0,price:0,total:0};
+        addons[aoKey]={date:e.date,type:e.aoType,pts:0,price:0,total:0};
       }
       addons[aoKey].pts+=e.aoPatients||1;
       addons[aoKey].total+=e.aoAmt;
