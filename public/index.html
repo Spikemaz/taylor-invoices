@@ -3348,8 +3348,14 @@ function showEditInvoiceModal(idx){
   const calcAmount=inv.isAdhoc?calcGross:calcGross*(commRate/100);
 
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Edit Invoice #'+inv.num+'</h3>';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Edit Invoice</h3>';
   _h+='<div style="font-size:12px;opacity:0.8;margin-top:4px">'+inv.practice+' · '+inv.period+'</div></div>';
+
+  // Invoice number and date fields
+  _h+='<div style="display:flex;gap:10px;margin-bottom:12px">';
+  _h+='<div class="fg" style="flex:1;margin-bottom:0"><label class="fl">Invoice #</label><input class="fi" id="_invEditNum" type="text" value="'+inv.num+'" style="font-weight:600"></div>';
+  _h+='<div class="fg" style="flex:1;margin-bottom:0"><label class="fl">Invoice Date</label><input class="fi" id="_invEditDate" type="date" value="'+inv.date+'"></div>';
+  _h+='</div>';
 
   // Summary section - show calculated values from entries
   _h+='<div style="background:#f0fdf4;border:1px solid var(--pri-lt);border-radius:8px;padding:12px;margin-bottom:16px">';
@@ -3390,9 +3396,25 @@ function showEditInvoiceModal(idx){
   showModal(_h);
 
   setTimeout(()=>{
-    document.getElementById('_invEditRegen').onclick=()=>{closeMod2();regenerateInvoiceAfterEdit(idx);};
+    document.getElementById('_invEditRegen').onclick=()=>{
+      const newNum=document.getElementById('_invEditNum').value.trim();
+      const newDate=document.getElementById('_invEditDate').value;
+      if(!newNum){showToast('Invoice number required','err');return;}
+      closeMod2();
+      regenerateInvoiceAfterEdit(idx,newNum,newDate);
+    };
     document.getElementById('_invEditBack').onclick=()=>{closeMod2();showInvoiceOptionsModal(idx);};
-    document.getElementById('_invEditDone').onclick=()=>{closeMod2();refInv();};
+    document.getElementById('_invEditDone').onclick=()=>{
+      // Save invoice number/date changes without regenerating PDF
+      const newNum=document.getElementById('_invEditNum').value.trim();
+      const newDate=document.getElementById('_invEditDate').value;
+      if(!newNum){showToast('Invoice number required','err');return;}
+      if(newNum!==inv.num||newDate!==inv.date){
+        saveInvoiceMetadataOnly(idx,newNum,newDate);
+      }else{
+        closeMod2();refInv();
+      }
+    };
     // Add click handlers to each entry item
     document.querySelectorAll('.inv-entry-item').forEach(item=>{
       item.onclick=()=>{
@@ -3557,18 +3579,40 @@ async function deleteEntryFromInvoice(entryId,invoiceIdx){
 }
 
 // Regenerate invoice PDF after editing entries
-async function regenerateInvoiceAfterEdit(invoiceIdx){
+async function regenerateInvoiceAfterEdit(invoiceIdx,newNum,newDate){
   const inv=S.invoices[invoiceIdx];
   if(!inv)return;
 
   const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
-  const entries=S.entries.filter(e=>e.invNo===inv.num);
+  const oldNum=inv.num;
+  const entries=S.entries.filter(e=>e.invNo===oldNum);
 
   // Check if there are any entries left
   if(entries.length===0){
     showToast('No entries remaining - delete the invoice','err');
     showEditInvoiceModal(invoiceIdx);
     return;
+  }
+
+  // Handle invoice number change
+  if(newNum&&newNum!==oldNum){
+    // Check if new number already exists
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv);
+    if(existingInv){
+      showToast('Invoice #'+newNum+' already exists','err');
+      showEditInvoiceModal(invoiceIdx);
+      return;
+    }
+    // Update all linked entries with new invoice number
+    entries.forEach(e=>{e.invNo=newNum;});
+    inv.num=newNum;
+    console.log('[Invoice Number Changed]',oldNum,'->',newNum);
+  }
+
+  // Handle invoice date change
+  if(newDate&&newDate!==inv.date){
+    inv.date=newDate;
+    console.log('[Invoice Date Changed] to',newDate);
   }
 
   showToast('Regenerating invoice PDF...');
@@ -3649,16 +3693,28 @@ async function regenerateInvoiceAfterEdit(invoiceIdx){
   inv.driveLink=null;
   save();
 
-  // Update invoice in cloud
-  await apiCall('sheets-sync',{action:'update_invoice',data:{num:inv.num,updates:{
+  // Update invoice in cloud (use oldNum to find the record, include new num if changed)
+  const invoiceUpdates={
     svcs:JSON.stringify(inv.svcs),
     addons:JSON.stringify(inv.addons),
     gross:inv.gross,
     amount:inv.amount,
     period:inv.period,
+    date:inv.date,
     driveLink:null,
     updatedAt:inv.updatedAt
-  }},entity});
+  };
+  // If invoice number changed, include the new number in updates
+  if(newNum&&newNum!==oldNum){
+    invoiceUpdates.num=newNum;
+  }
+  await apiCall('sheets-sync',{action:'update_invoice',data:{num:oldNum,updates:invoiceUpdates},entity});
+
+  // If invoice number changed, batch update all entries with new invoice number
+  if(newNum&&newNum!==oldNum){
+    const entryUpdates=entries.map(e=>({id:e.id,updates:{invNo:newNum}}));
+    await batchUpdateEntriesInCloud(entryUpdates,entity);
+  }
 
   // Generate new PDF
   try{
@@ -3673,8 +3729,54 @@ async function regenerateInvoiceAfterEdit(invoiceIdx){
     showToast('Invoice saved (PDF will sync later)','err');
   }
 
-  // Return to invoice edit modal to show updated totals
-  showEditInvoiceModal(invoiceIdx);
+  refInv();
+}
+
+// Save only invoice number and date without regenerating PDF
+async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
+  const inv=S.invoices[invoiceIdx];
+  if(!inv)return;
+
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const oldNum=inv.num;
+  const entries=S.entries.filter(e=>e.invNo===oldNum);
+
+  closeMod2();
+  showToast('Saving changes...');
+
+  // Check if new number already exists
+  if(newNum!==oldNum){
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv);
+    if(existingInv){
+      showToast('Invoice #'+newNum+' already exists','err');
+      return;
+    }
+    // Update all linked entries with new invoice number
+    entries.forEach(e=>{e.invNo=newNum;});
+    inv.num=newNum;
+  }
+
+  // Update date
+  if(newDate&&newDate!==inv.date){
+    inv.date=newDate;
+  }
+
+  inv.updatedAt=new Date().toISOString();
+  save();
+
+  // Update invoice in cloud
+  const invoiceUpdates={date:inv.date,updatedAt:inv.updatedAt};
+  if(newNum!==oldNum)invoiceUpdates.num=newNum;
+  await apiCall('sheets-sync',{action:'update_invoice',data:{num:oldNum,updates:invoiceUpdates},entity});
+
+  // If invoice number changed, batch update all entries
+  if(newNum!==oldNum){
+    const entryUpdates=entries.map(e=>({id:e.id,updates:{invNo:newNum}}));
+    await batchUpdateEntriesInCloud(entryUpdates,entity);
+  }
+
+  showToast('Invoice updated');
+  refInv();
 }
 
 function showDeleteInvoiceConfirmModal(idx){
