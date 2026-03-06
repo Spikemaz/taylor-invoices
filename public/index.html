@@ -187,7 +187,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ie-ent.self{background:#E0F7FA;color:#0891B2}.ie-ent.ltd{background:#DCFCE7;color:#166534}
 .ie-mid{flex:1;min-width:0;overflow:hidden;padding-right:8px}
 .ie-prc{font-size:14px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ie-per{font-size:11px;color:var(--txt3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ie-per{font-size:11px;color:var(--txt3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.ie-type{font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.ie-type.contract{background:#dbeafe;color:#1d4ed8}.ie-type.adhoc{background:#fee2e2;color:#dc2626}
 .ie-amt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;background:var(--pri-dk);padding:5px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
 .ie-bal{font-size:13px;font-weight:700;color:#86efac}
 .ie-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 6px;border-radius:4px}
@@ -3199,9 +3201,11 @@ function getInvEntity(inv){
 function renderInv(inv){
   const entType=getInvEntity(inv);
   const entLabel=entType==='ltd'?'Ltd':'Self';
+  const isAdhoc=inv.isAdhoc||inv.practice==='Ad Hoc';
+  const typeLabel=isAdhoc?'Ad Hoc':'Contract';
   let prcClass='';
-  const prcName=inv.isAdhoc?'Ad Hoc':inv.practice;
-  if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
+  const prcName=isAdhoc?(inv.practice||'Ad Hoc'):inv.practice;
+  if(isAdhoc)prcClass='prc-adhoc';
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
   const idx=S.invoices.findIndex(i=>i.num===inv.num&&getInvEntity(i)===entType);
@@ -3217,7 +3221,7 @@ function renderInv(inv){
   }
   return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
     '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
-    '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+'</div></div>'+
+    '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+' <span class="ie-type '+(isAdhoc?'adhoc':'contract')+'">'+typeLabel+'</span></div></div>'+
     '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span><span class="ie-status '+statusBadgeClass+'">'+statusLabel+'</span></div>'+
     '</div>';
 }
