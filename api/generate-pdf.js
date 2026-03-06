@@ -286,6 +286,7 @@ module.exports = async (req, res) => {
     doc.text('\u00a3' + (inv.amount || 0).toFixed(2), W - 50, y, { align: 'right' });
 
     // Bank details section - check if we need a new page
+    // Only need ~150pt for payment details section
     if (y + 150 > PAGE_BOTTOM) {
       doc.setFontSize(9);
       doc.setTextColor(156, 163, 175);
@@ -294,7 +295,8 @@ module.exports = async (req, res) => {
       pageNum++;
       y = TABLE_TOP;
     } else {
-      y = Math.max(y + 40, 600);
+      // Just add spacing after Balance Due, don't force to position 600
+      y += 40;
     }
 
     doc.setDrawColor(229, 231, 235);
