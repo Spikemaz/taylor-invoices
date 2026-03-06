@@ -3277,8 +3277,14 @@ if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none
 // ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
 const pc2=document.getElementById('pInv');
 
-// Filter invoices by entity and practice
-let filteredInvs=S.iEnt==='all'?[...S.invoices]:S.invoices.filter(inv=>getInvEntity(inv)===S.iEnt);
+// Filter invoices by selected month (based on invoice date)
+const monthPrefix=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+let filteredInvs=S.invoices.filter(inv=>inv.date&&inv.date.startsWith(monthPrefix));
+
+// Filter by entity
+if(S.iEnt!=='all'){
+  filteredInvs=filteredInvs.filter(inv=>getInvEntity(inv)===S.iEnt);
+}
 if(invPracFilter!=='all'){
   filteredInvs=filteredInvs.filter(inv=>{
     const prac=(inv.practice||'').toLowerCase();
