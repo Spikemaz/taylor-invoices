@@ -2793,21 +2793,7 @@ function refArc(){
   const byDay={};
   entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
 
-  // Calculate month totals
-  let totalGross=0,totalNet=0;
-  entries.forEach(e=>{
-    totalGross+=e.gross||0;
-    totalNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
-  });
-
   let html='';
-
-  // Month summary
-  html+='<div class="arc-summary" style="display:flex;justify-content:space-between;padding:12px 16px;background:var(--card);border-radius:var(--rs);margin-bottom:12px;border:1px solid var(--bdr)">';
-  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Entries</div><div style="font-size:18px;font-weight:700;color:var(--txt)">'+entries.length+'</div></div>';
-  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Gross</div><div style="font-size:18px;font-weight:700;color:var(--txt)">'+fc(totalGross)+'</div></div>';
-  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Net</div><div style="font-size:18px;font-weight:700;color:var(--pri)">'+fc(totalNet)+'</div></div>';
-  html+='</div>';
 
   // Render entries grouped by day
   html+='<div class="alist">';
