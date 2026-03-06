@@ -676,69 +676,76 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
 
 // Update invoice payment status (paid/unpaid)
 async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate }, res) {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetId,
-    range: 'Invoices!A:AC',
-  });
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: 'Invoices!A:AE',
+    });
 
-  const rows = response.data.values || [];
-  const headers = rows[0] || INVOICE_COLUMNS;
-  const rowIndex = rows.findIndex((row, i) => i > 0 && (row[0] === num || row[0] === String(num)));
+    const rows = response.data.values || [];
+    let headers = rows[0] || [...INVOICE_COLUMNS];
+    const rowIndex = rows.findIndex((row, i) => i > 0 && (row[0] === num || row[0] === String(num)));
 
-  if (rowIndex === -1) {
-    return res.status(404).json({ error: 'Invoice not found', num });
-  }
+    if (rowIndex === -1) {
+      return res.status(404).json({ error: 'Invoice not found', num });
+    }
 
-  // Find column indices for paidStatus and paidDate
-  const paidStatusIdx = headers.indexOf('paidStatus');
-  const paidDateIdx = headers.indexOf('paidDate');
+    // Find column indices for paidStatus and paidDate
+    let paidStatusIdx = headers.indexOf('paidStatus');
+    let paidDateIdx = headers.indexOf('paidDate');
 
-  // If columns don't exist in header, add them
-  if (paidStatusIdx === -1 || paidDateIdx === -1) {
-    // Update header row to include new columns
-    const newHeaders = [...headers];
-    if (paidStatusIdx === -1) newHeaders.push('paidStatus');
-    if (paidDateIdx === -1) newHeaders.push('paidDate');
+    // If columns don't exist in header, add them
+    if (paidStatusIdx === -1 || paidDateIdx === -1) {
+      if (paidStatusIdx === -1) {
+        headers.push('paidStatus');
+        paidStatusIdx = headers.length - 1;
+      }
+      if (paidDateIdx === -1) {
+        headers.push('paidDate');
+        paidDateIdx = headers.length - 1;
+      }
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: 'Invoices!A1',
+        valueInputOption: 'RAW',
+        requestBody: { values: [headers] }
+      });
+    }
+
+    // Update the row with payment status
+    const currentRow = [...rows[rowIndex]];
+
+    // Ensure row has enough columns
+    while (currentRow.length <= Math.max(paidStatusIdx, paidDateIdx)) {
+      currentRow.push('');
+    }
+
+    currentRow[paidStatusIdx] = paidStatus || '';
+    currentRow[paidDateIdx] = paidDate || '';
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
-      range: 'Invoices!A1:AC1',
+      range: `Invoices!A${rowIndex + 1}`,
       valueInputOption: 'RAW',
-      requestBody: { values: [newHeaders] }
+      requestBody: { values: [currentRow] }
     });
+
+    // Log the status change
+    await writeLog(sheets, sheetId, {
+      action: 'UPDATE',
+      dataType: 'invoice',
+      recordId: num,
+      changes: `Payment status: ${paidStatus}${paidDate ? ' on ' + paidDate : ''}`,
+      previousData: {},
+      newData: { paidStatus, paidDate }
+    });
+
+    return res.status(200).json({ success: true, message: 'Invoice status updated', num, paidStatus });
+  } catch (error) {
+    console.error('updateInvoiceStatus error:', error);
+    return res.status(500).json({ error: 'Failed to update invoice status', message: error.message });
   }
-
-  // Update the row with payment status
-  const currentRow = rows[rowIndex];
-  const psIdx = paidStatusIdx >= 0 ? paidStatusIdx : headers.length;
-  const pdIdx = paidDateIdx >= 0 ? paidDateIdx : headers.length + (paidStatusIdx === -1 ? 1 : 0);
-
-  // Ensure row has enough columns
-  while (currentRow.length <= Math.max(psIdx, pdIdx)) {
-    currentRow.push('');
-  }
-
-  currentRow[psIdx] = paidStatus || '';
-  currentRow[pdIdx] = paidDate || '';
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: sheetId,
-    range: `Invoices!A${rowIndex + 1}:AC${rowIndex + 1}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [currentRow] }
-  });
-
-  // Log the status change
-  await writeLog(sheets, sheetId, {
-    action: 'UPDATE',
-    dataType: 'invoice',
-    recordId: num,
-    changes: `Payment status: ${paidStatus}${paidDate ? ' on ' + paidDate : ''}`,
-    previousData: {},
-    newData: { paidStatus, paidDate }
-  });
-
-  return res.status(200).json({ success: true, message: 'Invoice status updated', num, paidStatus });
 }
 
 // Trigger PDF regeneration by clearing driveLink and setting needsRegeneration flag

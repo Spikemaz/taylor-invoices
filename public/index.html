@@ -3322,13 +3322,17 @@ function showInvoiceOptionsModal(idx){
   _h+='<div style="font-size:18px;font-weight:700;color:var(--pri);margin-top:8px">'+fc(inv.amount)+'</div>';
   _h+='</div>';
 
-  // Payment status toggle - prominent at top
-  _h+='<div style="background:'+(isPaid?'#f0fdf4':'#fef2f2')+';border:2px solid '+(isPaid?'#16a34a':'#dc2626')+';border-radius:var(--r);padding:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">';
-  _h+='<div><div style="font-size:13px;font-weight:600;color:'+(isPaid?'#16a34a':'#dc2626')+'">'+(isPaid?'PAID':'UNPAID')+'</div>';
-  if(isPaid&&inv.paidDate){_h+='<div style="font-size:11px;color:var(--txt2)">Paid on '+fdd(inv.paidDate)+'</div>';}
-  _h+='</div>';
-  _h+='<button id="_invTogglePaid" class="btn" style="background:'+(isPaid?'#dc2626':'#16a34a')+';color:#fff;padding:8px 16px;font-size:13px">Mark as '+(isPaid?'Unpaid':'Paid')+'</button>';
-  _h+='</div>';
+  // Payment status toggle - clean full-width button style
+  _h+='<button id="_invTogglePaid" style="width:100%;padding:14px 16px;margin-bottom:12px;border-radius:var(--r);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--f);font-size:14px;font-weight:600;';
+  if(isPaid){
+    _h+='background:#f0fdf4;color:#16a34a;border:2px solid #16a34a">';
+    _h+='<span style="font-size:18px">✓</span> PAID';
+    if(inv.paidDate){_h+=' <span style="font-weight:400;font-size:12px;opacity:0.8">('+fdd(inv.paidDate)+')</span>';}
+  }else{
+    _h+='background:#fef2f2;color:#dc2626;border:2px solid #dc2626">';
+    _h+='<span style="font-size:14px">○</span> UNPAID — Tap to mark paid';
+  }
+  _h+='</button>';
 
   // Show Drive link if available
   if(inv.driveLink){
