@@ -732,7 +732,7 @@ function save() {
     const pData = {};
     Object.keys(S.practices).forEach(k => {
       const p = S.practices[k];
-      pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract' };
+      pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract', paidHours: p.paidHours || {}, ptsPerHour: p.ptsPerHour || 2 };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
       ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter
@@ -5029,7 +5029,7 @@ _h+='<div class="brow"><button class="btn btn-s" id="_dmC">Cancel</button><butto
 showModal(_h);
 setTimeout(function(){
 document.getElementById('_dmC').onclick=function(){closeMod2()};
-document.getElementById('_dmS').onclick=function(){
+document.getElementById('_dmS').onclick=async function(){
 var oldPrac=S.dayMap[dayNum];
 var newPrac=document.getElementById('_dmVal').value;
 var newHours=parseFloat(document.getElementById('_dmHours').value)||7;
@@ -5050,7 +5050,16 @@ if(newPrac&&newPrac!=='home'&&S.practices[newPrac]){
   if(!S.practices[newPrac].paidHours)S.practices[newPrac].paidHours={};
   S.practices[newPrac].paidHours[dayNum]=newHours;
 }
-save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});syncPracticesToCloud().catch(function(e){console.error('[Practice Sync Failed]',e);});showToast('\u2713 Updated');};
+closeMod2();buildDayMap();refreshSettings();
+showToast('Saving to cloud...');
+try{
+  await Promise.all([syncSettingsToCloud(),syncPracticesToCloud()]);
+  save(); // Only save locally after cloud succeeds
+  showToast('\u2713 Saved to cloud');
+}catch(e){
+  console.error('[Sync Failed]',e);
+  showToast('Cloud sync failed','err');
+}};
 },50);
 }
 function toggleDmHours(){
@@ -6209,7 +6218,7 @@ function updateEstPts(pId,dow){
   estEl.textContent='~'+Math.round(paidH*ptsPerHour)+' pts';
 }
 
-function saveWorkSchedule(){
+async function saveWorkSchedule(){
   Object.keys(S.practices||{}).forEach(pId=>{
     const p=S.practices[pId];
     if(!p||!p.days)return;
@@ -6227,11 +6236,17 @@ function saveWorkSchedule(){
       }
     });
   });
-  save();
   closeMod2();
-  showToast('Work schedule updated');
-  if(S.scr==='analytics')refreshAnalytics();
-  syncPracticesToCloud().catch(e=>console.error('[Sync Failed]',e));
+  showToast('Saving to cloud...');
+  try{
+    await syncPracticesToCloud();
+    save(); // Only save locally after cloud succeeds
+    showToast('\u2713 Saved to cloud');
+    if(S.scr==='analytics')refreshAnalytics();
+  }catch(e){
+    console.error('[Sync Failed]',e);
+    showToast('Cloud sync failed','err');
+  }
 }
 
 // Schedule Exception Management
