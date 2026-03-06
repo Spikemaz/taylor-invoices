@@ -64,6 +64,8 @@ const PRACTICE_COLORS = {
   bupa: { bg: { red: 0.91, green: 0.94, blue: 0.996 }, text: { red: 0, green: 0.34, blue: 0.66 } },      // #e8f0fe bg, #0057a8 text
   grove: { bg: { red: 0.91, green: 0.96, blue: 0.91 }, text: { red: 0.18, green: 0.42, blue: 0.31 } },   // #e8f5e9 bg, #2d6a4f text
   adhoc: { bg: { red: 0.996, green: 0.886, blue: 0.886 }, text: { red: 0.937, green: 0.267, blue: 0.267 } }, // #FEE2E2 bg, #EF4444 text
+  haddenham: { bg: { red: 0.996, green: 0.886, blue: 0.886 }, text: { red: 0.937, green: 0.267, blue: 0.267 } }, // Same as adhoc - red
+  bankhouse: { bg: { red: 0.996, green: 0.886, blue: 0.886 }, text: { red: 0.937, green: 0.267, blue: 0.267 } }, // Same as adhoc - red
   purple: { bg: { red: 0.93, green: 0.89, blue: 0.99 }, text: { red: 0.486, green: 0.227, blue: 0.929 } }, // #ede9fe bg, #7c3aed text
   orange: { bg: { red: 1, green: 0.95, blue: 0.88 }, text: { red: 0.96, green: 0.62, blue: 0.04 } },     // #fff7e0 bg, #f59e0b text
   teal: { bg: { red: 0.8, green: 0.98, blue: 0.96 }, text: { red: 0.08, green: 0.72, blue: 0.65 } },     // #ccfbf1 bg, #14b8a6 text
@@ -109,7 +111,7 @@ async function applyRowColor(sheets, sheetId, sheetName, rowIndex, colorScheme) 
               startRowIndex: rowIndex,
               endRowIndex: rowIndex + 1,
               startColumnIndex: 0,
-              endColumnIndex: 20 // Cover all columns
+              endColumnIndex: 35 // Cover all columns (A to AI)
             },
             cell: {
               userEnteredFormat: {
@@ -608,9 +610,17 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
 
   // Apply color coding based on practice
   const rowIndex = await getLastRowIndex(sheets, sheetId, 'Invoices');
-  const practiceId = invoice.practice ? invoice.practice.toLowerCase() : '';
+  // Use pId if available, otherwise try to match practice name to known practices
+  let practiceId = invoice.pId || '';
+  if (!practiceId && invoice.practice) {
+    const practiceLower = invoice.practice.toLowerCase();
+    if (practiceLower.includes('bupa')) practiceId = 'bupa';
+    else if (practiceLower.includes('grove')) practiceId = 'grove';
+    else if (practiceLower.includes('haddenham')) practiceId = 'haddenham';
+    else if (practiceLower.includes('bankhouse') || practiceLower.includes('bank house')) practiceId = 'bankhouse';
+  }
   const isAdhoc = invoice.isAdhoc === true || invoice.isAdhoc === 'true';
-  const colorScheme = getPracticeColor(practiceId, isAdhoc ? 'adhoc' : 'contract', invoice.color);
+  const colorScheme = getPracticeColor(practiceId, isAdhoc ? 'adhoc' : 'contract', invoice.logoType);
   await applyRowColor(sheets, sheetId, 'Invoices', rowIndex, colorScheme);
 
   // Log the invoice creation
