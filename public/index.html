@@ -110,9 +110,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .toast .utimer{width:100%;height:3px;background:rgba(255,255,255,.2);position:absolute;bottom:0;left:0;border-radius:0 0 12px 12px;overflow:hidden}
 .toast .ubar{height:100%;background:#fff;transition:width linear}
 .alist{display:flex;flex-direction:column;gap:8px}
-.aitem{background:var(--card);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid #d1d5db;border-left:5px solid var(--bdr);box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;transition:all .15s}
+.aitem{background:var(--card);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:2px solid var(--bdr);border-left:5px solid var(--bdr);box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
-.aitem.prc-bupa{border-left-color:var(--bupa)}.aitem.prc-grove{border-left-color:var(--grove)}.aitem.prc-adhoc{border-left-color:#EF4444}
+.aitem.prc-bupa{border-color:var(--bupa);border-left-color:var(--bupa)}.aitem.prc-grove{border-color:var(--grove);border-left-color:var(--grove)}.aitem.prc-adhoc{border-color:#EF4444;border-left-color:#EF4444}
+.aitem[data-inv].inv-unpaid{border-left-color:#dc2626}.aitem[data-inv].inv-paid{border-left-color:#16a34a}.aitem[data-inv].inv-overdue{border-left-color:#f59e0b}
 .ae-left{min-width:50px;max-width:50px;text-align:center;flex-shrink:0}
 .ae-prc{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
 .ae-ent{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
@@ -514,7 +515,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="fc act" onclick="filtInv('all')">All</button>
 <button class="fc prc-bupa" onclick="filtInv('bupa')">Bupa</button>
 <button class="fc prc-grove" onclick="filtInv('grove')">Grove</button>
-<button class="fc prc-adhoc" onclick="filtInv('adhoc')">Ad Hoc</button>
+</div>
+<div class="frow" id="iTypeFilt">
+<button class="fc act" onclick="filtInvType('all')" id="iTypeAll">All</button>
+<button class="fc" onclick="filtInvType('contract')" id="iTypeContract">Contract</button>
+<button class="fc prc-adhoc" onclick="filtInvType('adhoc')" id="iTypeAdhoc">Ad Hoc</button>
 </div>
 <div class="sh" id="awaitingApprovalHeader" style="display:none">Awaiting Approval</div>
 <div id="mInv"></div>
@@ -3085,6 +3090,7 @@ async function delEntry(id){
 
 // ===== INVOICES =====
 let invPracFilter='all';
+let invTypeFilter='all'; // 'all', 'contract', 'adhoc'
 let invViewMonth=null; // {year, month} for invoice month navigation
 
 function navInvMonth(dir){
@@ -3132,12 +3138,13 @@ function isInvoiceOverdue(inv){
 
 function resetInvFilters(){
   console.log('[resetInvFilters] Called');
-  S.iEnt='all';invPracFilter='all';
+  S.iEnt='all';invPracFilter='all';invTypeFilter='all';
   invViewMonth=null; // Reset to current month
   document.getElementById('iEA').className='ebtn act';
   document.getElementById('iES').className='ebtn';
   document.getElementById('iEL').className='ebtn';
   document.querySelectorAll('#iFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
+  document.querySelectorAll('#iTypeFilt .fc').forEach(c=>{c.classList.toggle('act',c.id==='iTypeAll');});
   document.getElementById('hdrE').textContent='All';
   console.log('[resetInvFilters] Done, calling refInv...');
 }
@@ -3147,6 +3154,13 @@ function filtInv(f){
     var txt=c.textContent.toLowerCase().replace(/\s+/g,'');
     c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));
   });
+  refInv();
+}
+function filtInvType(f){
+  invTypeFilter=f;
+  document.getElementById('iTypeAll').classList.toggle('act',f==='all');
+  document.getElementById('iTypeContract').classList.toggle('act',f==='contract');
+  document.getElementById('iTypeAdhoc').classList.toggle('act',f==='adhoc');
   refInv();
 }
 function refInv(){
@@ -3223,6 +3237,8 @@ function renderEntityGroup(invs,entityType,label){
 
 // ===== SECTION 1: AWAITING APPROVAL =====
 const mc=document.getElementById('mInv');let mh='';
+// Skip contract section if type filter is adhoc
+if(invTypeFilter!=='adhoc'){
 Object.keys(S.practices).forEach(function(pid){
   var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
   if(invPracFilter!=='all'&&invPracFilter!==pid)return;
@@ -3243,11 +3259,14 @@ Object.keys(S.practices).forEach(function(pid){
   }
   mh+='</div></div>';
 });
+}
 mc.innerHTML=mh;
 
 // Ad hoc pending entries
 const ac=document.getElementById('ahInv');
-if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
+// Skip adhoc section if type filter is contract
+if(invTypeFilter==='contract'){ac.innerHTML='';}
+else if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
 else{
   const ahe=me.filter(e=>e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
   if(!ahe.length){ac.innerHTML='';}
@@ -3282,14 +3301,22 @@ if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none
 // ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
 const pc2=document.getElementById('pInv');
 
-// Filter invoices by entity and practice
+// Filter invoices by entity, practice, and type
 let filteredInvs=S.iEnt==='all'?[...S.invoices]:S.invoices.filter(inv=>getInvEntity(inv)===S.iEnt);
 if(invPracFilter!=='all'){
   filteredInvs=filteredInvs.filter(inv=>{
     const prac=(inv.practice||'').toLowerCase();
-    if(invPracFilter==='adhoc')return inv.isAdhoc||prac==='ad hoc';
     if(invPracFilter==='bupa')return prac.includes('bupa');
     if(invPracFilter==='grove')return prac.includes('grove');
+    return true;
+  });
+}
+// Apply type filter (contract/adhoc)
+if(invTypeFilter!=='all'){
+  filteredInvs=filteredInvs.filter(inv=>{
+    const isAdhoc=inv.isAdhoc||inv.practice==='Ad Hoc';
+    if(invTypeFilter==='adhoc')return isAdhoc;
+    if(invTypeFilter==='contract')return !isAdhoc;
     return true;
   });
 }
