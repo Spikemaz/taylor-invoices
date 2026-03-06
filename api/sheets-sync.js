@@ -962,7 +962,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     // Clear all data and formatting from row 2 onwards
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A2:M100',
+      range: 'Practices!A2:O100',
     });
 
     // Clear formatting for rows 2-100 to remove any leftover colored rows
@@ -980,7 +980,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
                   startRowIndex: 1, // Row 2 (0-indexed)
                   endRowIndex: 100,
                   startColumnIndex: 0,
-                  endColumnIndex: 13
+                  endColumnIndex: 15  // Columns A-O (15 columns)
                 },
                 cell: {
                   userEnteredFormat: {
@@ -1001,7 +1001,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
       // Use update with explicit range starting at A2 to avoid header issues
       await sheets.spreadsheets.values.update({
         spreadsheetId: targetSheetId,
-        range: `Practices!A2:M${rows.length + 1}`,
+        range: `Practices!A2:O${rows.length + 1}`,
         valueInputOption: 'RAW',
         requestBody: { values: rows }
       });
