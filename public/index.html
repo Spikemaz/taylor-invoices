@@ -5910,23 +5910,38 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // Invoice aging - show how long unpaid invoices have been outstanding
+  // Invoice aging - show days remaining until payment due (based on payment terms)
   if(unpaidInvoices.length>0){
     _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin:12px 0 8px">UNPAID INVOICE AGING</div>';
+    // Parse payment terms to get days (default 5 working days ≈ 7 calendar days)
+    const payTermsDays = parseInt(S.payTerms) || 5;
+    const dueDaysCalendar = Math.ceil(payTermsDays * 7 / 5); // Convert working days to calendar days
+
     unpaidInvoices.sort((a,b)=>a.date.localeCompare(b.date)).forEach(inv=>{
       const invDate=new Date(inv.date);
-      const daysOld=Math.floor((now-invDate)/(1000*60*60*24));
-      const isOverdue=daysOld>30;
-      const agingColor=daysOld>30?'var(--err)':daysOld>14?'var(--warn)':'var(--txt2)';
-      const agingLabel=daysOld<=7?'This week':daysOld<=14?daysOld+' days':daysOld<=30?Math.floor(daysOld/7)+' weeks':Math.floor(daysOld/30)+' month'+(daysOld>=60?'s':'');
+      const dueDate=new Date(invDate.getTime() + dueDaysCalendar * 24 * 60 * 60 * 1000);
+      const daysRemaining=Math.floor((dueDate-now)/(1000*60*60*24));
+      const isOverdue=daysRemaining<0;
+      const agingColor=isOverdue?'var(--err)':daysRemaining<=3?'var(--warn)':'var(--ok)';
+      let agingLabel;
+      if(isOverdue){
+        const daysOverdue=Math.abs(daysRemaining);
+        agingLabel=daysOverdue===1?'1 day overdue':daysOverdue+' days overdue';
+      }else if(daysRemaining===0){
+        agingLabel='Due today';
+      }else if(daysRemaining===1){
+        agingLabel='Due tomorrow';
+      }else{
+        agingLabel=daysRemaining+' days left';
+      }
       _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+agingColor+'">';
       _h+='<div>';
       _h+='<div style="font-size:12px;font-weight:500">#'+inv.num+' - '+(inv.practice||inv.practiceName||'Unknown')+'</div>';
-      _h+='<div style="font-size:10px;color:var(--txt2)">'+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</div>';
+      _h+='<div style="font-size:10px;color:var(--txt2)">Issued: '+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</div>';
       _h+='</div>';
       _h+='<div style="text-align:right">';
       _h+='<div style="font-size:14px;font-weight:600;color:var(--err)">'+fc(inv.amount||0)+'</div>';
-      _h+='<div style="font-size:10px;color:'+agingColor+';font-weight:500">'+agingLabel+(isOverdue?' OVERDUE':'')+'</div>';
+      _h+='<div style="font-size:10px;color:'+agingColor+';font-weight:500">'+agingLabel+'</div>';
       _h+='</div>';
       _h+='</div>';
     });
@@ -6104,21 +6119,45 @@ function refreshAnalytics(){
       totalProjPts+=p.projectedPtsToDate;
       totalActualPts+=p.actualPts;
     });
+
+    // Calculate ad-hoc actuals (not part of projections but counts toward total actual)
+    const adhocEntries=currentMonthEntries.filter(e=>e.pType==='adhoc');
+    let adhocPts=0,adhocNet=0;
+    adhocEntries.forEach(e=>{
+      adhocPts+=e.pts||0;
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      adhocNet+=g; // Ad-hoc is 100% (no commission deduction)
+    });
+
+    // Total actual includes both contract and ad-hoc
+    const grandTotalActualPts=totalActualPts+adhocPts;
+    const grandTotalActualNet=totalActualNet+adhocNet;
+
+    // Variance is only for contract work (comparing to projections)
     const totalNetVariance=totalActualNet-totalProjNet;
     const totalPtsVariance=totalActualPts-totalProjPts;
 
     _h+='<div class="analytics-card">';
     _h+='<h3 class="analytics-title">Projections vs Actuals - '+monthName+'</h3>';
-    _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Based on expected patients per day at each practice</div>';
+    _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Contract work vs projections (ad-hoc shown separately)</div>';
 
-    // Summary bar
+    // Summary bar - contract work only for comparison
     const varColor=totalNetVariance>=0?'var(--ok)':'var(--err)';
     const varSign=totalNetVariance>=0?'+':'';
-    _h+='<div style="display:flex;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:16px">';
+    _h+='<div style="display:flex;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px">';
     _h+='<div><div style="font-size:12px;color:var(--txt2)">Expected (to date)</div><div style="font-size:18px;font-weight:600">'+fc(totalProjNet)+'</div><div style="font-size:12px;color:var(--txt2)">'+totalProjPts+' patients</div></div>';
-    _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Actual</div><div style="font-size:18px;font-weight:600;color:var(--pri)">'+fc(totalActualNet)+'</div><div style="font-size:12px;color:var(--txt2)">'+totalActualPts+' patients</div></div>';
+    _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Contract Actual</div><div style="font-size:18px;font-weight:600;color:var(--pri)">'+fc(totalActualNet)+'</div><div style="font-size:12px;color:var(--txt2)">'+totalActualPts+' patients</div></div>';
     _h+='<div style="text-align:right"><div style="font-size:12px;color:var(--txt2)">Variance</div><div style="font-size:18px;font-weight:600;color:'+varColor+'">'+varSign+fc(totalNetVariance)+'</div><div style="font-size:12px;color:'+varColor+'">'+(totalPtsVariance>=0?'+':'')+totalPtsVariance+' pts</div></div>';
     _h+='</div>';
+
+    // Show ad-hoc and combined total if there's ad-hoc work
+    if(adhocPts>0){
+      _h+='<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(124,58,237,0.1);border-radius:var(--rs);margin-bottom:16px;border-left:3px solid var(--adhoc)">';
+      _h+='<div><div style="font-size:11px;color:var(--adhoc)">+ Ad-Hoc Work</div><div style="font-size:14px;font-weight:600;color:var(--adhoc)">'+fc(adhocNet)+'</div></div>';
+      _h+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2)">'+adhocPts+' patients</div></div>';
+      _h+='<div style="text-align:right"><div style="font-size:11px;color:var(--txt2)">Total Month</div><div style="font-size:14px;font-weight:600">'+fc(grandTotalActualNet)+'</div><div style="font-size:11px;color:var(--txt2)">'+grandTotalActualPts+' pts</div></div>';
+      _h+='</div>';
+    }
 
     // Per-practice breakdown
     _h+='<div style="font-size:13px;font-weight:600;margin-bottom:8px">By Practice</div>';
@@ -6308,6 +6347,7 @@ function refreshAnalytics(){
   let projectedPts=0;
   let projectedNet=0;
   let totalWeeklyHours=0;
+  let calMonthFullProjectedPts=0; // Full month projection for consistency
 
   // Count from calendar view month - split into actual (past) and projected (future)
   // Now supports split days with multiple practices per day
@@ -6324,6 +6364,18 @@ function refreshAnalytics(){
     // Get actual entries for this date
     const dayEntries=allEntries.filter(e=>e.date===dateStr);
     const hasEntry=dayEntries.length>0;
+
+    // Calculate full month projected patients (for all scheduled days)
+    if(isWorkDay){
+      dayPractices.forEach(prac => {
+        const p=S.practices[prac.pId];
+        if(p){
+          const paidH = prac.hours || 7;
+          const ptsPerHour=p.ptsPerHour||2;
+          calMonthFullProjectedPts+=paidH*ptsPerHour;
+        }
+      });
+    }
 
     if(hasEntry){
       // Use actual data
@@ -6372,10 +6424,10 @@ function refreshAnalytics(){
   _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualDaysWorked+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / '+calTotalDays+' scheduled</span></div>';
   _h+='</div>';
 
-  // Patients
+  // Patients - use calMonthFullProjectedPts for full month target
   _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
   _h+='<div style="font-size:11px;color:var(--txt2)">Patients</div>';
-  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualPts+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / ~'+Math.round(calTotalPts)+' projected</span></div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualPts+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / ~'+Math.round(calMonthFullProjectedPts)+' projected</span></div>';
   _h+='</div>';
 
   // Take home - actual
