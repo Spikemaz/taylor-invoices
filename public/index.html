@@ -3230,7 +3230,7 @@ Object.keys(S.practices).forEach(function(pid){
   '<div class="ia">';
   if(pe.length>1){
     mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
-    mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Combine Invoice</button>';
+    mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Generate Invoice</button>';
   }else{
     mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Preview</button>';
     mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Generate PDF</button>';
@@ -3261,7 +3261,7 @@ else{
         ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
       }else{
         ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
-        ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
+        ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Generate Invoice</button>';
       }
       ahHtml+='</div></div>';
     });
@@ -3386,9 +3386,8 @@ function showInvoiceOptionsModal(idx){
     _h+='<a href="'+inv.driveLink+'" target="_blank" class="btn btn-s" style="width:100%;margin-bottom:8px;text-decoration:none;display:block;text-align:center">View PDF in Drive</a>';
   }
 
-  _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEdit">Edit Invoice Entries</button>';
+  _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEdit">Edit Invoice</button>';
   _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invRedownload">Re-download PDF</button>';
-  _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invChangeEntity">Change to '+(entType==='ltd'?'Self-Employed':'Ltd Company')+'</button>';
   _h+='<button class="btn btn-d" style="width:100%;margin-bottom:8px" id="_invDelete">Delete Invoice</button>';
   _h+='<button class="btn btn-s" style="width:100%" onclick="closeMod2()">Cancel</button>';
 
@@ -3409,7 +3408,6 @@ function showInvoiceOptionsModal(idx){
     }
     document.getElementById('_invEdit').onclick=()=>{closeMod2();showEditInvoiceModal(idx);};
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
-    document.getElementById('_invChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
     document.getElementById('_invDelete').onclick=()=>showDeleteInvoiceConfirmModal(idx);
   },50);
 }
@@ -3582,6 +3580,9 @@ function showEditInvoiceModal(idx){
   }
   _h+='</div>';
 
+  // Change Entity button
+  _h+='<button class="btn btn-s" style="width:100%;margin-bottom:12px" id="_invEditChangeEntity">Change to '+(entType==='ltd'?'Self-Employed':'Ltd Company')+'</button>';
+
   // Action buttons
   _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEditRegen">Save Changes &amp; Regenerate PDF</button>';
   _h+='<div style="display:flex;gap:8px">';
@@ -3600,6 +3601,7 @@ function showEditInvoiceModal(idx){
       regenerateInvoiceAfterEdit(idx,newNum,newDate);
     };
     document.getElementById('_invEditBack').onclick=()=>{closeMod2();showInvoiceOptionsModal(idx);};
+    document.getElementById('_invEditChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
     document.getElementById('_invEditDone').onclick=()=>{
       // Save invoice number/date changes without regenerating PDF
       const newNum=document.getElementById('_invEditNum').value.trim();
