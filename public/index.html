@@ -632,6 +632,7 @@ const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'nu
 const fdnDay=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
 const pad=n=>{const num=parseInt(n)||1;return String(num).padStart(5,'0');};
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
+const ordinalSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return (s[(v-20)%10]||s[v]||s[0]);};
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
 
@@ -5685,9 +5686,29 @@ function refreshAnalytics(){
   _h+='</div>';
 
   // ============= ENHANCED PATIENT METRICS =============
-  // Last month calculations
+  // Get today's day of month for fair comparison
+  const todayDay=now.getDate();
+
+  // Last month - SAME DATE RANGE (1st to today's date)
   const lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
-  const lastMonthKey=lastMonthDate.getFullYear()+'-'+String(lastMonthDate.getMonth()+1).padStart(2,'0');
+  const lastMonthYear=lastMonthDate.getFullYear();
+  const lastMonthNum=lastMonthDate.getMonth()+1;
+  const lastMonthKey=lastMonthYear+'-'+String(lastMonthNum).padStart(2,'0');
+
+  // Filter last month entries up to the same day as today
+  const lastMonthEntriesSameRange=allEntries.filter(e=>{
+    if(!e.date||!e.date.startsWith(lastMonthKey))return false;
+    const dayOfMonth=parseInt(e.date.split('-')[2]);
+    return dayOfMonth<=todayDay;
+  });
+  let lastMonthPtsSameRange=0,lastMonthNetSameRange=0;
+  lastMonthEntriesSameRange.forEach(e=>{
+    lastMonthPtsSameRange+=e.pts||0;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    lastMonthNetSameRange+=e.pType==='adhoc'?gross:gross*(e.comm||0);
+  });
+
+  // Full last month totals (for reference)
   const lastMonthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(lastMonthKey));
   let lastMonthPts=0,lastMonthNet=0;
   lastMonthEntries.forEach(e=>{
@@ -5695,7 +5716,8 @@ function refreshAnalytics(){
     const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
     lastMonthNet+=e.pType==='adhoc'?gross:gross*(e.comm||0);
   });
-  const lastMonthAvgPP=lastMonthPts>0?lastMonthNet/lastMonthPts:0;
+
+  const lastMonthAvgPP=lastMonthPtsSameRange>0?lastMonthNetSameRange/lastMonthPtsSameRange:0;
   const thisMonthAvgPP=monthPatients>0?monthNet/monthPatients:0;
 
   // This month projected (from schedule)
@@ -5743,29 +5765,36 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // This Month vs Last Month comparison
-  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">THIS MONTH vs LAST MONTH</div>';
+  // This Month vs Last Month comparison (same date range: 1st to today)
+  const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
+  const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
+  const dateRangeLabel='1st-'+todayDay+ordinalSuffix(todayDay);
+
+  // Calculate change based on same date range
+  const ptsVsLastSameRange=monthPatients-lastMonthPtsSameRange;
+  const netVsLastSameRange=monthNet-lastMonthNetSameRange;
+
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">SAME PERIOD COMPARISON</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-bottom:8px">Comparing '+dateRangeLabel+' of each month</div>';
   _h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-bottom:16px;align-items:center">';
 
-  // Last month
-  const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
+  // Last month (same range)
   _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+'</div>';
-  _h+='<div style="font-size:16px;font-weight:600">'+lastMonthPts+' pts</div>';
-  _h+='<div style="font-size:13px;color:var(--pri)">'+fc(lastMonthNet)+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' 1-'+todayDay+'</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+lastMonthPtsSameRange+' pts</div>';
+  _h+='<div style="font-size:13px;color:var(--pri)">'+fc(lastMonthNetSameRange)+'</div>';
   _h+='</div>';
 
   // Arrow with change
-  const changeColor=ptsVsLast>=0?'var(--ok)':'var(--err)';
+  const changeColor=ptsVsLastSameRange>=0?'var(--ok)':'var(--err)';
   _h+='<div style="text-align:center">';
   _h+='<div style="font-size:20px;color:var(--txt2)">&rarr;</div>';
-  _h+='<div style="font-size:11px;color:'+changeColor+'">'+(ptsVsLast>=0?'+':'')+ptsVsLast+' pts</div>';
+  _h+='<div style="font-size:11px;color:'+changeColor+'">'+(ptsVsLastSameRange>=0?'+':'')+ptsVsLastSameRange+' pts</div>';
   _h+='</div>';
 
   // This month
-  const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
   _h+='<div style="padding:10px;background:var(--pri);border-radius:var(--rs);color:#fff">';
-  _h+='<div style="font-size:11px;opacity:0.85">'+thisMonthName+'</div>';
+  _h+='<div style="font-size:11px;opacity:0.85">'+thisMonthName+' 1-'+todayDay+'</div>';
   _h+='<div style="font-size:16px;font-weight:600">'+monthPatients+' pts</div>';
   _h+='<div style="font-size:13px">'+fc(monthNet)+'</div>';
   _h+='</div>';
