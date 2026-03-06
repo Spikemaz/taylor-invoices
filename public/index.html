@@ -6242,7 +6242,9 @@ async function saveWorkSchedule(){
     await syncPracticesToCloud();
     save(); // Only save locally after cloud succeeds
     showToast('\u2713 Saved to cloud');
+    // Refresh both Analytics and Settings displays
     if(S.scr==='analytics')refreshAnalytics();
+    buildDayMap(); // Update Day Mapping display in Settings
   }catch(e){
     console.error('[Sync Failed]',e);
     showToast('Cloud sync failed','err');
