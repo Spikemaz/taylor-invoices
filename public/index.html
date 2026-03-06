@@ -6357,44 +6357,88 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // Month-over-Month Comparison
+  // Month Tracking - Same period comparison with projection
   if(monthsToShow>=2){
+    const now=new Date();
+    const todayDay=now.getDate();
+    const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
     const lastMonthIdx=monthlyData.length-2;
     const thisMonthIdx=monthlyData.length-1;
-    const lastMonthNet=monthlyData[lastMonthIdx]||0;
-    const thisMonthNet=monthlyData[thisMonthIdx]||0;
-    const lastMonthPts=monthlyPtsData[lastMonthIdx]||0;
-    const thisMonthPts=monthlyPtsData[thisMonthIdx]||0;
-    const netChange=thisMonthNet-lastMonthNet;
-    const netChangePct=lastMonthNet>0?((netChange/lastMonthNet)*100).toFixed(1):0;
-    const ptsChange=thisMonthPts-lastMonthPts;
-    const ptsChangePct=lastMonthPts>0?((ptsChange/lastMonthPts)*100).toFixed(1):0;
+
+    // Full month totals
+    const lastMonthNetFull=monthlyData[lastMonthIdx]||0;
+    const lastMonthPtsFull=monthlyPtsData[lastMonthIdx]||0;
+    const thisMonthNetSoFar=monthlyData[thisMonthIdx]||0;
+    const thisMonthPtsSoFar=monthlyPtsData[thisMonthIdx]||0;
+
+    // Calculate last month's same period (1st to today's date)
+    const lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+    const lastMonthKey=lastMonthDate.getFullYear()+'-'+String(lastMonthDate.getMonth()+1).padStart(2,'0');
+    let lastMonthNetSamePeriod=0,lastMonthPtsSamePeriod=0;
+    (S.entries||[]).forEach(e=>{
+      if(!e.date||!e.date.startsWith(lastMonthKey))return;
+      const dayOfMonth=parseInt(e.date.split('-')[2]);
+      if(dayOfMonth<=todayDay){
+        lastMonthPtsSamePeriod+=e.pts||0;
+        const g=(e.pts||0)*(e.uPrice||0)+(e.aoAmt||0);
+        lastMonthNetSamePeriod+=e.pType==='adhoc'?g:g*(e.comm||0);
+      }
+    });
+
+    // Project this month's full total based on daily average
+    const dailyAvgNet=todayDay>0?thisMonthNetSoFar/todayDay:0;
+    const dailyAvgPts=todayDay>0?thisMonthPtsSoFar/todayDay:0;
+    const projectedMonthNet=dailyAvgNet*daysInThisMonth;
+    const projectedMonthPts=Math.round(dailyAvgPts*daysInThisMonth);
+
+    // Same period comparison
+    const samePeriodNetDiff=thisMonthNetSoFar-lastMonthNetSamePeriod;
+    const samePeriodPtsDiff=thisMonthPtsSoFar-lastMonthPtsSamePeriod;
+    const samePeriodPct=lastMonthNetSamePeriod>0?((samePeriodNetDiff/lastMonthNetSamePeriod)*100).toFixed(0):0;
+
+    // Projected vs last month full
+    const projVsLastDiff=projectedMonthNet-lastMonthNetFull;
+    const projVsLastPct=lastMonthNetFull>0?((projVsLastDiff/lastMonthNetFull)*100).toFixed(0):0;
+
+    const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
+    const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
 
     _h+='<div class="analytics-card">';
-    _h+='<h3 class="analytics-title">Month-over-Month Comparison</h3>';
-    _h+='<div style="display:flex;justify-content:space-between;gap:12px">';
-    // Last month
-    _h+='<div style="flex:1;padding:12px;background:var(--bg);border-radius:var(--rs)">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+monthLabels[lastMonthIdx]+'</div>';
-    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNet)+'</div>';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPts+' patients</div>';
+    _h+='<h3 class="analytics-title">Month Tracking</h3>';
+
+    // Same period comparison
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">SAME PERIOD (1st - '+todayDay+ordinalSuffix(todayDay)+')</div>';
+    _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' 1-'+todayDay+'</div>';
+    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNetSamePeriod)+'</div>';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPtsSamePeriod+' patients</div>';
     _h+='</div>';
-    // Arrow
-    _h+='<div style="display:flex;align-items:center;font-size:20px;color:var(--txt2)">&rarr;</div>';
-    // This month
-    _h+='<div style="flex:1;padding:12px;background:var(--bg);border-radius:var(--rs)">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+monthLabels[thisMonthIdx]+'</div>';
-    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(thisMonthNet)+'</div>';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthPts+' patients</div>';
-    _h+='</div>';
-    // Change
-    const changeColor=netChange>=0?'var(--ok)':'var(--err)';
-    _h+='<div style="flex:1;padding:12px;background:'+changeColor+';border-radius:var(--rs);color:#fff">';
-    _h+='<div style="font-size:11px;opacity:0.9">Change</div>';
-    _h+='<div style="font-size:16px;font-weight:600">'+(netChange>=0?'+':'')+fc(netChange)+'</div>';
-    _h+='<div style="font-size:11px;opacity:0.9">'+(netChange>=0?'+':'')+netChangePct+'%</div>';
+    const spColor=samePeriodNetDiff>=0?'var(--ok)':'var(--err)';
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+spColor+'">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' 1-'+todayDay+'</div>';
+    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(thisMonthNetSoFar)+'</div>';
+    _h+='<div style="font-size:11px;color:'+spColor+'">'+(samePeriodNetDiff>=0?'+':'')+fc(samePeriodNetDiff)+' ('+(samePeriodNetDiff>=0?'+':'')+samePeriodPct+'%)</div>';
     _h+='</div>';
     _h+='</div>';
+
+    // Projected full month vs last month
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">PROJECTED FULL MONTH</div>';
+    _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' (actual)</div>';
+    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNetFull)+'</div>';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPtsFull+' patients</div>';
+    _h+='</div>';
+    const projColor=projVsLastDiff>=0?'var(--ok)':'var(--err)';
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+projColor+'">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' (projected)</div>';
+    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(projectedMonthNet)+'</div>';
+    _h+='<div style="font-size:11px;color:'+projColor+'">'+(projVsLastDiff>=0?'+':'')+fc(projVsLastDiff)+' ('+(projVsLastDiff>=0?'+':'')+projVsLastPct+'%)</div>';
+    _h+='</div>';
+    _h+='</div>';
+
+    _h+='<div style="font-size:10px;color:var(--txt2);margin-top:8px;text-align:center">Projection based on current daily average of '+fc(dailyAvgNet)+'/day</div>';
     _h+='</div>';
   }
 
