@@ -877,11 +877,15 @@ async function loadAll(sheets, sheetId, res) {
       return obj;
     });
 
+  // Get headers from first row to map columns dynamically
+  const invoiceHeaders = invoicesRows[0] || INVOICE_COLUMNS;
+
   const invoices = invoicesRows
-    .filter(row => row[0] && row[0] !== 'num')
+    .filter((row, idx) => idx > 0 && row[0] && row[0] !== 'num')
     .map(row => {
       const obj = {};
-      INVOICE_COLUMNS.forEach((col, i) => {
+      invoiceHeaders.forEach((col, i) => {
+        if (!col) return; // Skip empty header columns
         let val = row[i];
         if (['amount', 'gross', 'airTotal'].includes(col)) {
           val = parseFloat(val) || 0;
@@ -889,7 +893,7 @@ async function loadAll(sheets, sheetId, res) {
         if (col === 'isAdhoc') {
           val = val === 'true' || val === true;
         }
-        if (col === 'svcs' && val) {
+        if ((col === 'svcs' || col === 'addons') && val) {
           try { val = JSON.parse(val); } catch(e) {}
         }
         obj[col] = val || '';
