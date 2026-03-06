@@ -165,8 +165,47 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ie-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 6px;border-radius:4px}
 .ie-status.unpaid{background:#fef2f2;color:#dc2626}
 .ie-status.paid{background:#f0fdf4;color:#16a34a}
+.ie-status.overdue{background:#fef3c7;color:#d97706}
 .aitem.inv-unpaid{border-left:3px solid #dc2626}
 .aitem.inv-paid{border-left:3px solid #16a34a;opacity:0.75}
+.aitem.inv-overdue{border-left:3px solid #d97706;background:linear-gradient(90deg,#fef3c7 0%,var(--card) 30%)}
+.overdue-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 6px;border-radius:4px}
+/* Analytics Screen */
+.analytics-card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
+.analytics-card h3{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.analytics-card h3 span{font-size:16px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{background:var(--bg);border-radius:var(--rs);padding:12px;text-align:center}
+.stat-box.full{grid-column:span 2}
+.stat-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:700;color:var(--txt)}
+.stat-value.green{color:#16a34a}
+.stat-value.red{color:#dc2626}
+.stat-value.amber{color:#d97706}
+.stat-sub{font-size:11px;color:var(--txt2);margin-top:2px}
+.chart-container{height:200px;position:relative;margin:12px 0}
+.chart-bar-container{display:flex;align-items:flex-end;justify-content:space-between;height:160px;padding:0 4px;border-bottom:2px solid var(--bdr)}
+.chart-bar-wrapper{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;max-width:40px}
+.chart-bar{width:100%;max-width:24px;background:linear-gradient(180deg,var(--pri),var(--pri-dk));border-radius:4px 4px 0 0;min-height:2px;transition:height 0.5s ease}
+.chart-bar.ltd{background:linear-gradient(180deg,#8b5cf6,#6d28d9)}
+.chart-label{font-size:9px;color:var(--txt3);text-align:center;margin-top:4px}
+.chart-legend{display:flex;justify-content:center;gap:16px;margin-top:8px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2)}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+.legend-dot.self{background:var(--pri)}
+.legend-dot.ltd{background:#8b5cf6}
+.progress-ring{display:flex;align-items:center;justify-content:center;gap:20px;padding:10px 0}
+.ring-container{position:relative;width:100px;height:100px}
+.ring-svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--bdr);stroke-width:8}
+.ring-progress{fill:none;stroke:var(--pri);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-percent{font-size:20px;font-weight:700;color:var(--txt)}
+.ring-label{font-size:9px;color:var(--txt3);text-transform:uppercase}
+.projection-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.projection-row:last-child{border-bottom:none}
+.proj-label{font-size:13px;color:var(--txt2)}
+.proj-value{font-size:14px;font-weight:600;color:var(--txt)}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
 .ibtn.gn.prc-bupa{background:var(--bupa)}.ibtn.gn.prc-grove{background:var(--grove)}.ibtn.gn.prc-adhoc{background:#EF4444}
 .sh{font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.3px;margin:6px 0 6px;text-align:center}.sh:first-child{margin-top:0}
@@ -306,6 +345,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-btn" id="navHome" onclick="goHome()">Home</button>
 <button class="hdr-btn" id="navArchive" onclick="showScreen('archive')">Archive</button>
 <button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')">Invoice</button>
+<button class="hdr-btn sm" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
 <button class="hdr-btn sm" id="navSettings" onclick="showScreen('settings')">&#9881;</button>
 </div>
 </div>
@@ -441,6 +481,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <div id="mInv"></div>
 <div id="ahInv"></div>
 <div id="pInv"></div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="scr" id="scr-analytics">
+<div id="analyticsContent"></div>
 </div>
 
 <!-- SETTINGS -->
@@ -3168,6 +3213,32 @@ const todayInvs=filteredInvs.filter(inv=>inv.date===todayStr);
 const recentInvs=filteredInvs.filter(inv=>inv.date!==todayStr&&inv.date>=sevenDaysAgoStr);
 const previousInvs=filteredInvs.filter(inv=>inv.date<sevenDaysAgoStr);
 
+// Helper to calculate working days between dates
+function getWorkingDaysBetween(startDate,endDate){
+  let count=0;
+  const cur=new Date(startDate);
+  while(cur<=endDate){
+    const day=cur.getDay();
+    if(day!==0&&day!==6)count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+// Helper to check if invoice is overdue
+function isInvoiceOverdue(inv){
+  if(inv.paidStatus==='paid')return{overdue:false,days:0};
+  const payTerms=parseInt(S.payTerms)||10;
+  const invDate=new Date(inv.date);
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  const workingDays=getWorkingDaysBetween(invDate,today);
+  if(workingDays>payTerms){
+    return{overdue:true,days:workingDays-payTerms};
+  }
+  return{overdue:false,days:0};
+}
+
 // Helper to render a single invoice - UNIFORM with archive entries
 function renderInv(inv){
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
@@ -3179,11 +3250,23 @@ function renderInv(inv){
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
   const idx=S.invoices.findIndex(i=>i.num===inv.num&&((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===entType));
-  // Payment status
+  // Payment status with overdue check
   const isPaid=inv.paidStatus==='paid';
-  const statusClass=isPaid?'inv-paid':'inv-unpaid';
-  const statusLabel=isPaid?'Paid':'Unpaid';
-  const statusBadgeClass=isPaid?'paid':'unpaid';
+  const overdueInfo=isInvoiceOverdue(inv);
+  let statusClass,statusLabel,statusBadgeClass;
+  if(isPaid){
+    statusClass='inv-paid';
+    statusLabel='Paid';
+    statusBadgeClass='paid';
+  }else if(overdueInfo.overdue){
+    statusClass='inv-overdue';
+    statusLabel='Overdue '+overdueInfo.days+'d';
+    statusBadgeClass='overdue';
+  }else{
+    statusClass='inv-unpaid';
+    statusLabel='Unpaid';
+    statusBadgeClass='unpaid';
+  }
   // Uniform layout matching archive entries
   return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
     '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
@@ -3314,12 +3397,17 @@ function showInvoiceOptionsModal(idx){
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
   const isPaid=inv.paidStatus==='paid';
+  const overdueInfo=isInvoiceOverdue(inv);
 
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Invoice #'+inv.num+'</h3></div>';
   _h+='<div style="margin-bottom:16px">';
   _h+='<div style="font-size:14px;font-weight:600;color:var(--txt)">'+inv.practice+'</div>';
   _h+='<div style="font-size:13px;color:var(--txt2)">'+inv.period+' · '+entLabel+'</div>';
   _h+='<div style="font-size:18px;font-weight:700;color:var(--pri);margin-top:8px">'+fc(inv.amount)+'</div>';
+  // Show overdue warning if applicable
+  if(overdueInfo.overdue){
+    _h+='<div style="margin-top:8px;padding:8px 12px;background:#fef3c7;border-radius:var(--rs);color:#d97706;font-size:13px;font-weight:600">⚠ Overdue by '+overdueInfo.days+' working day'+(overdueInfo.days!==1?'s':'')+'</div>';
+  }
   _h+='</div>';
 
   // Payment status toggle - clean full-width button style
@@ -3334,9 +3422,10 @@ function showInvoiceOptionsModal(idx){
   }
   _h+='</button>';
 
-  // Show Drive link if available
+  // Email invoice button (only if has Drive link)
   if(inv.driveLink){
-    _h+='<a href="'+inv.driveLink+'" target="_blank" class="btn btn-p" style="width:100%;margin-bottom:8px;text-decoration:none;display:block;text-align:center">View PDF in Drive</a>';
+    _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="_invEmail"><span style="font-size:16px">✉</span> Email Invoice</button>';
+    _h+='<a href="'+inv.driveLink+'" target="_blank" class="btn btn-s" style="width:100%;margin-bottom:8px;text-decoration:none;display:block;text-align:center">View PDF in Drive</a>';
   }
 
   _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEdit">Edit Invoice Entries</button>';
@@ -3348,7 +3437,18 @@ function showInvoiceOptionsModal(idx){
   showModal(_h);
 
   setTimeout(()=>{
-    document.getElementById('_invTogglePaid').onclick=()=>toggleInvoicePaidStatus(idx);
+    document.getElementById('_invTogglePaid').onclick=()=>{
+      if(isPaid){
+        // If already paid, just toggle to unpaid
+        toggleInvoicePaidStatus(idx,null);
+      }else{
+        // Show date picker to select payment date
+        showPaymentDatePicker(idx);
+      }
+    };
+    if(inv.driveLink){
+      document.getElementById('_invEmail').onclick=()=>emailInvoice(idx);
+    }
     document.getElementById('_invEdit').onclick=()=>{closeMod2();showEditInvoiceModal(idx);};
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
     document.getElementById('_invChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
@@ -3356,8 +3456,74 @@ function showInvoiceOptionsModal(idx){
   },50);
 }
 
+// ===== PAYMENT DATE PICKER =====
+function showPaymentDatePicker(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Mark Invoice Paid</h3></div>';
+  _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">When was Invoice #'+inv.num+' paid?</p>';
+  _h+='<div class="fg" style="margin-bottom:16px">';
+  _h+='<label class="fl">Payment Date</label>';
+  _h+='<input type="date" id="_payDate" class="fi" value="'+today()+'" max="'+today()+'">';
+  _h+='</div>';
+  _h+='<div class="brow">';
+  _h+='<button class="btn btn-s" id="_payCancel">Cancel</button>';
+  _h+='<button class="btn btn-p" id="_payConfirm">Confirm Paid</button>';
+  _h+='</div>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_payCancel').onclick=()=>{closeMod2();showInvoiceOptionsModal(idx);};
+    document.getElementById('_payConfirm').onclick=()=>{
+      const payDate=document.getElementById('_payDate').value||today();
+      toggleInvoicePaidStatus(idx,payDate);
+    };
+  },50);
+}
+
+// ===== EMAIL INVOICE =====
+function emailInvoice(idx){
+  const inv=S.invoices[idx];
+  if(!inv||!inv.driveLink)return;
+
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entDetails=S.ents[entType];
+
+  // Get practice email if configured
+  const practiceId=inv.pId||Object.keys(S.practices).find(k=>S.practices[k].short===inv.practice||S.practices[k].name===inv.practice);
+  const practice=practiceId?S.practices[practiceId]:null;
+  const toEmail=practice&&practice.email?practice.email:'';
+
+  // Build email subject and body
+  const subject='Invoice '+inv.num+' - '+(entDetails.name||'Taylor Muir')+' - '+inv.period;
+  let body='Hi,\n\n';
+  body+='Please find attached Invoice #'+inv.num+' for '+inv.period+'.\n\n';
+  body+='Amount Due: '+fc(inv.amount)+'\n';
+  body+='Due Date: Payment within '+(S.payTerms||'5 working days')+' of invoice date\n\n';
+  body+='View/Download PDF: '+inv.driveLink+'\n\n';
+  body+='Payment Details:\n';
+  body+='Bank: '+(entDetails.bank||'Lloyds Bank')+'\n';
+  body+='Account Name: '+(entDetails.bName||entDetails.name)+'\n';
+  body+='Account Number: '+entDetails.acc+'\n';
+  body+='Sort Code: '+entDetails.sort+'\n';
+  body+='Reference: Invoice '+inv.num+'\n\n';
+  body+='Thank you!\n\n';
+  body+=(entDetails.name||'Taylor Muir');
+
+  // Create mailto link
+  const mailtoLink='mailto:'+encodeURIComponent(toEmail)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+
+  // Open mailto link
+  window.location.href=mailtoLink;
+
+  showToast('Opening email...');
+}
+
 // ===== TOGGLE INVOICE PAID STATUS =====
-async function toggleInvoicePaidStatus(idx){
+async function toggleInvoicePaidStatus(idx,selectedDate){
   const inv=S.invoices[idx];
   if(!inv)return;
 
@@ -3370,7 +3536,7 @@ async function toggleInvoicePaidStatus(idx){
     inv.paidDate=null;
   }else{
     inv.paidStatus='paid';
-    inv.paidDate=today();
+    inv.paidDate=selectedDate||today();
   }
   inv.updatedAt=new Date().toISOString();
 
@@ -4634,6 +4800,7 @@ var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
+_h+='<div class="fg"><label class="fl">Email (for invoices)</label><input class="fi" id="ePEmail" type="email" value="'+(p.email||'')+'" placeholder="accounts@practice.com"></div>';
 // Color picker
 _h+='<div class="fg"><label class="fl">Color Theme</label><div id="ePColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">';
 _h+='<button class="color-pick'+(currentColor==='bupa'?' act':'')+'" data-color="bupa" style="background:#0057a8;width:36px;height:36px;border-radius:8px;border:3px solid '+(currentColor==='bupa'?'#0057a8':'transparent')+'"></button>';
@@ -4674,6 +4841,7 @@ _h+='<button class="ebtn" id="ePTypeA" onclick="setAddPracType(\'adhoc\')">Ad Ho
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" placeholder="e.g. Smile Dental"></div>';
 _h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="ePShort" placeholder="e.g. Smile"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="2" placeholder="Full address..."></textarea></div>';
+_h+='<div class="fg"><label class="fl">Email (for invoices)</label><input class="fi" id="ePEmail" type="email" placeholder="accounts@practice.com"></div>';
 // Color picker
 _h+='<div class="fg"><label class="fl">Color Theme</label><div id="ePColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">';
 _h+='<button class="color-pick act" data-color="bupa" style="background:#0057a8;width:36px;height:36px;border-radius:8px;border:3px solid #0057a8"></button>';
@@ -4722,6 +4890,7 @@ var short=document.getElementById('ePShort').value.trim();
 if(!name){showToast('Please enter a practice name');return;}
 if(!short)short=name;
 var addr=document.getElementById('ePAddr').value.trim().replace(/\n/g,'\\n');
+var email=document.getElementById('ePEmail')?document.getElementById('ePEmail').value.trim():'';
 var color=document.getElementById('ePColor')?document.getElementById('ePColor').value:'bupa';
 // Check if Ad Hoc type is selected (only for new practices)
 var typeABtn=document.getElementById('ePTypeA');
@@ -4730,7 +4899,7 @@ if(isAdhoc){
   // Save as Ad Hoc practice
   var rate=parseFloat(document.getElementById('ePRate').value)||25;
   var air=parseFloat(document.getElementById('ePAir').value)||0;
-  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,rate:rate,air:air,active:true,color:color});
+  S.ahPrac.push({id:'ah'+Date.now(),name:name,addr:addr,email:email,rate:rate,air:air,active:true,color:color});
   save();closeMod2();refreshSettings();
   showToast('\u2713 '+name+' added (Ad Hoc)');
   syncPracticesToCloud().then(function(r){if(r.success)console.log('[Ad Hoc Practice Synced]',name);}).catch(function(e){console.error('[Sync Failed]',e);showToast('Sync failed','err');});
@@ -4743,6 +4912,7 @@ p.id=newId;
 p.name=name;
 p.short=short;
 p.addr=addr;
+p.email=email;
 p.color=color;
 p.comm=(parseFloat(document.getElementById('ePComm').value)||35)/100;
 var daysVal=document.getElementById('ePDays').value.trim();
