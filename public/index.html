@@ -6214,17 +6214,39 @@ function refreshAnalytics(){
     return (S.scheduleExceptions||[]).filter(e=>e.date>=mStart&&e.date<=mEnd);
   }
 
-  // Calculate projections for next 12 months with exception adjustments
+  // Calculate projections from 6 months ago to 12 months ahead (18 total)
+  // Past months show ACTUAL data, future months show PROJECTED
   let projections=[];
-  for(let m=0;m<12;m++){
+  for(let m=-6;m<12;m++){
     const projDate=new Date(now.getFullYear(),now.getMonth()+m,1);
     const projYear=projDate.getFullYear();
     const projMonth=projDate.getMonth();
     const projMonthName=projDate.toLocaleString('en-GB',{month:'short',year:'numeric'});
+    const mKey=projYear+'-'+String(projMonth+1).padStart(2,'0');
+    const isPastMonth=m<0;
+    const isCurrentMonth=m===0;
+
     let projWorkDays=0;
     let projPts=0;
     let projGross=0;
     let projNet=0;
+
+    // For past months, use ACTUAL data from entries
+    if(isPastMonth){
+      const monthEntries=(S.entries||[]).filter(e=>e.date&&e.date.startsWith(mKey));
+      monthEntries.forEach(e=>{
+        projPts+=e.pts||0;
+        const gross=(e.pts||0)*(e.uPrice||0)+(e.aoAmt||0);
+        projGross+=gross;
+        const isAdhoc=e.pType==='adhoc';
+        projNet+=isAdhoc?gross:gross*(e.comm||0);
+      });
+      // Count unique work days
+      const workDates=new Set(monthEntries.map(e=>e.date));
+      projWorkDays=workDates.size;
+      projections.push({month:projMonthName,workDays:projWorkDays,pts:projPts,gross:projGross,net:projNet,isCurrentMonth:false,isPast:true,monthOffset:m});
+      continue;
+    }
 
     // Get exceptions for this month
     const monthExc=getMonthExceptions(projYear,projMonth);
@@ -6256,7 +6278,7 @@ function refreshAnalytics(){
           projPts+=daysInMonth*dayPts;
           const dayGross=dayPts*avgPrice;
           projGross+=daysInMonth*dayGross;
-          projNet+=daysInMonth*dayGross*(1-comm);
+          projNet+=daysInMonth*dayGross*comm;
         });
       }
     });
@@ -6279,31 +6301,38 @@ function refreshAnalytics(){
         projPts+=dayPts;
         const dayGross=dayPts*avgPrice;
         projGross+=dayGross;
-        projNet+=dayGross*(1-comm);
+        projNet+=dayGross*comm;
       }
     });
 
-    projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0});
+    projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0,monthOffset:m});
   }
 
   // Show projections as horizontal scrolling carousel
   _h+='<div style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px" id="projCarousel">';
   projections.forEach((proj,i)=>{
-    const bgColor=proj.isCurrentMonth?'var(--pri)':'var(--bg)';
-    const textColor=proj.isCurrentMonth?'#fff':'var(--txt)';
-    const labelColor=proj.isCurrentMonth?'rgba(255,255,255,0.8)':'var(--txt2)';
-    const grossColor=proj.isCurrentMonth?'rgba(255,255,255,0.7)':'var(--txt2)';
-    _h+='<div style="flex:0 0 auto;width:140px;padding:12px;background:'+bgColor+';border-radius:var(--rs);text-align:center;scroll-snap-align:start">';
-    _h+='<div style="font-size:11px;font-weight:600;color:'+labelColor+';margin-bottom:6px">'+proj.month+'</div>';
+    // Past months: subtle bg, Current: green, Future: white
+    let bgColor,textColor,labelColor,grossColor,borderStyle='';
+    if(proj.isCurrentMonth){
+      bgColor='var(--pri)';textColor='#fff';labelColor='rgba(255,255,255,0.8)';grossColor='rgba(255,255,255,0.7)';
+    }else if(proj.isPast){
+      bgColor='var(--bg)';textColor='var(--txt)';labelColor='var(--txt2)';grossColor='var(--txt2)';borderStyle='border:1px solid var(--bdr);';
+    }else{
+      bgColor='var(--bg)';textColor='var(--txt)';labelColor='var(--txt2)';grossColor='var(--txt2)';borderStyle='border:1px dashed var(--pri-lt);';
+    }
+    const typeLabel=proj.isPast?'(actual)':proj.isCurrentMonth?'(current)':'(projected)';
+    _h+='<div style="flex:0 0 auto;width:140px;padding:12px;background:'+bgColor+';border-radius:var(--rs);text-align:center;scroll-snap-align:start;'+borderStyle+'">';
+    _h+='<div style="font-size:11px;font-weight:600;color:'+labelColor+';margin-bottom:2px">'+proj.month+'</div>';
+    _h+='<div style="font-size:9px;color:'+labelColor+';margin-bottom:6px">'+typeLabel+'</div>';
     _h+='<div style="font-size:10px;color:'+grossColor+';margin-bottom:2px">Gross</div>';
     _h+='<div style="font-size:14px;font-weight:600;color:'+textColor+';opacity:0.85">'+fc(proj.gross)+'</div>';
     _h+='<div style="font-size:10px;color:'+grossColor+';margin-top:6px;margin-bottom:2px">Net (yours)</div>';
     _h+='<div style="font-size:16px;font-weight:700;color:'+textColor+'">'+fc(proj.net)+'</div>';
-    _h+='<div style="font-size:10px;color:'+labelColor+';margin-top:6px">'+proj.workDays+' days / ~'+proj.pts+' pts</div>';
+    _h+='<div style="font-size:10px;color:'+labelColor+';margin-top:6px">'+proj.workDays+' days / '+proj.pts+' pts</div>';
     _h+='</div>';
   });
   _h+='</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2);text-align:center;margin-top:4px">Swipe to see more months &rarr;</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);text-align:center;margin-top:4px">&larr; Past (actual) | Current | Future (projected) &rarr;</div>';
 
   // Tax year projection (with exception adjustments)
   // taxYearStart and taxYearEnd already defined above
@@ -6341,7 +6370,7 @@ function refreshAnalytics(){
           const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
           const dayPts=paidH*ptsPerHour;
           const dayGross=dayPts*avgPrice;
-          projectedTaxYearNet+=daysInMonth*dayGross*(1-comm);
+          projectedTaxYearNet+=daysInMonth*dayGross*comm;
         });
       }
     });
@@ -6360,7 +6389,7 @@ function refreshAnalytics(){
         const avgPaidH=p.paidHours?Object.values(p.paidHours).reduce((a,b)=>a+b,0)/Object.values(p.paidHours).length:7;
         const dayPts=avgPaidH*ptsPerHour;
         const dayGross=dayPts*avgPrice;
-        projectedTaxYearNet+=dayGross*(1-comm);
+        projectedTaxYearNet+=dayGross*comm;
       }
     });
 
