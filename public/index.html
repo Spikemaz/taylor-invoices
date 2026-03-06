@@ -6017,6 +6017,145 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
+  // Month-by-Month Breakdown - compare entries and invoices
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Month-by-Month Breakdown</h3>';
+
+  // Get unique months from entries (most recent first)
+  const entryMonths=new Set();
+  allEntries.forEach(e=>{
+    if(e.date){
+      const d=new Date(e.date);
+      entryMonths.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+    }
+  });
+  const sortedMonths=[...entryMonths].sort().reverse();
+
+  sortedMonths.forEach(monthKey=>{
+    const [yr,mo]=monthKey.split('-').map(Number);
+    const monthDate=new Date(yr,mo-1,1);
+    const monthName=monthDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+
+    // Get entries for this month
+    const monthEntries=allEntries.filter(e=>{
+      if(!e.date)return false;
+      const d=new Date(e.date);
+      return d.getFullYear()===yr&&(d.getMonth()+1)===mo;
+    });
+
+    // Calculate totals from entries
+    const monthPts=monthEntries.reduce((s,e)=>s+(e.pts||0),0);
+    const monthGross=monthEntries.reduce((s,e)=>s+(e.pts*e.uPrice)+(e.aoAmt||0),0);
+    const monthNet=monthEntries.reduce((s,e)=>{
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      return s+(e.pType==='adhoc'?g:g*(e.comm||0));
+    },0);
+
+    // Days worked this month
+    const daysThisMonth=new Set(monthEntries.map(e=>e.date)).size;
+
+    // Get invoices for this month (by period or date)
+    const monthInvoices=S.invoices.filter(inv=>{
+      // Check if invoice period matches (e.g., "February 2026")
+      if(inv.period){
+        const periodMatch=inv.period.toLowerCase().includes(monthName.toLowerCase().split(' ')[0]);
+        const yearMatch=inv.period.includes(String(yr));
+        if(periodMatch&&yearMatch)return true;
+      }
+      // Or check invoice date
+      if(inv.date){
+        const d=new Date(inv.date);
+        return d.getFullYear()===yr&&(d.getMonth()+1)===mo;
+      }
+      return false;
+    });
+
+    // Calculate invoice totals
+    const issuedAmount=monthInvoices.reduce((s,inv)=>s+(inv.amount||0),0);
+    const paidInvoices=monthInvoices.filter(inv=>inv.status==='paid');
+    const paidAmount=paidInvoices.reduce((s,inv)=>s+(inv.amount||0),0);
+    const unpaidMonthInvs=monthInvoices.filter(inv=>inv.status!=='paid');
+    const awaitingPayment=unpaidMonthInvs.reduce((s,inv)=>s+(inv.amount||0),0);
+
+    // Entries not yet invoiced for this month
+    const uninvoicedEntries=monthEntries.filter(e=>e.invSt!=='invoiced');
+    const uninvoicedGross=uninvoicedEntries.reduce((s,e)=>s+(e.pts*e.uPrice)+(e.aoAmt||0),0);
+    const uninvoicedNet=uninvoicedEntries.reduce((s,e)=>{
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      return s+(e.pType==='adhoc'?g:g*(e.comm||0));
+    },0);
+
+    // Practice breakdown for the month
+    const monthPractices={};
+    monthEntries.forEach(e=>{
+      const pName=e.pName||'Other';
+      if(!monthPractices[pName])monthPractices[pName]={pts:0,net:0,color:e.color||'pri'};
+      monthPractices[pName].pts+=(e.pts||0);
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      monthPractices[pName].net+=(e.pType==='adhoc'?g:g*(e.comm||0));
+    });
+
+    _h+='<div style="border:1px solid var(--bdr);border-radius:var(--rs);margin-bottom:12px;overflow:hidden">';
+    // Month header
+    _h+='<div style="background:var(--pri-dk);color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">';
+    _h+='<strong>'+monthName+'</strong>';
+    _h+='<span style="font-size:13px">'+daysThisMonth+' day'+(daysThisMonth!==1?'s':'')+' | '+monthPts+' pts</span>';
+    _h+='</div>';
+
+    // Summary row
+    _h+='<div style="padding:10px 12px;background:var(--bg);display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">';
+    _h+='<div><span style="color:var(--txt2)">Gross:</span> <strong>'+fc(monthGross)+'</strong></div>';
+    _h+='<div><span style="color:var(--txt2)">Take Home:</span> <strong style="color:var(--pri)">'+fc(monthNet)+'</strong></div>';
+    _h+='</div>';
+
+    // Practice breakdown for month
+    _h+='<div style="padding:8px 12px;border-top:1px solid var(--bdr)">';
+    Object.keys(monthPractices).forEach(pName=>{
+      const p=monthPractices[pName];
+      const pColor='var(--'+p.color+')';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0">';
+      _h+='<span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:'+pColor+'"></span>'+pName+'</span>';
+      _h+='<span>'+p.pts+' pts = <strong style="color:'+pColor+'">'+fc(p.net)+'</strong></span>';
+      _h+='</div>';
+    });
+    _h+='</div>';
+
+    // Invoice status
+    _h+='<div style="padding:8px 12px;border-top:1px solid var(--bdr);background:var(--card)">';
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px">INVOICES</div>';
+
+    if(monthInvoices.length>0){
+      monthInvoices.forEach(inv=>{
+        const invColor=inv.status==='paid'?'var(--ok)':'var(--warn)';
+        const statusLabel=inv.status==='paid'?'Paid':'Awaiting';
+        _h+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--bdr)">';
+        _h+='<span><strong>#'+inv.num+'</strong> - '+(inv.practice||'')+'</span>';
+        _h+='<span><span style="background:'+invColor+';color:#fff;padding:2px 6px;border-radius:10px;font-size:10px;margin-right:6px">'+statusLabel+'</span><strong>'+fc(inv.amount)+'</strong></span>';
+        _h+='</div>';
+      });
+    }else{
+      _h+='<div style="font-size:12px;color:var(--txt2);padding:4px 0">No invoices issued</div>';
+    }
+
+    // Uninvoiced entries summary
+    if(uninvoicedEntries.length>0){
+      _h+='<div style="margin-top:8px;padding:8px;background:rgba(245,158,11,0.1);border-radius:var(--rs);font-size:12px">';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+      _h+='<span style="color:var(--warn)"><strong>'+uninvoicedEntries.length+'</strong> entries awaiting invoice</span>';
+      _h+='<strong style="color:var(--warn)">'+fc(uninvoicedNet)+' pending</strong>';
+      _h+='</div>';
+      _h+='</div>';
+    }
+    _h+='</div>';
+
+    _h+='</div>';
+  });
+
+  if(sortedMonths.length===0){
+    _h+='<div style="text-align:center;color:var(--txt2);padding:20px">No entries recorded yet</div>';
+  }
+  _h+='</div>';
+
   // Overdue invoices list
   const overdueInvoices=unpaidInvoices.filter(inv=>isInvoiceOverdue(inv).overdue);
   if(overdueInvoices.length>0){
