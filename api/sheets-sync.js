@@ -1030,7 +1030,7 @@ async function loadPractices(sheets, sheetId, res) {
   console.log('[loadPractices] Loading from sheet:', sheetId);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Practices!A:M',
+    range: 'Practices!A:O',
   });
 
   const rows = response.data.values || [];
