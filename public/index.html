@@ -5319,6 +5319,76 @@ syncSettingsToCloud().catch(e=>{console.error('[Settings Sync Failed]',e);});
 // ===== ANALYTICS SCREEN =====
 let analyticsCharts={};
 
+// Helper: Count working days of specific day-of-week in a month
+function countDaysInMonth(year,month,dayOfWeek){
+  let count=0;
+  const d=new Date(year,month,1);
+  while(d.getMonth()===month){
+    if(d.getDay()===dayOfWeek)count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+// Helper: Count working days of specific day-of-week up to today in current month
+function countDaysToDate(year,month,dayOfWeek){
+  let count=0;
+  const today=new Date();
+  const d=new Date(year,month,1);
+  while(d.getMonth()===month&&d<=today){
+    if(d.getDay()===dayOfWeek)count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+// Calculate projections for a practice in a given month
+function calculateProjections(practiceId,year,month){
+  const p=S.practices[practiceId];
+  if(!p||!p.days||!p.days.length)return null;
+  const expectedPts=p.expectedPts||8; // Default 8 patients per day
+  const avgPrice=p.avgPrice||getAvgPriceForPractice(practiceId);
+  const comm=p.comm||0.35;
+  // Count scheduled days in month
+  let totalDays=0;
+  let daysWorkedSoFar=0;
+  const now=new Date();
+  const isCurrentMonth=year===now.getFullYear()&&month===now.getMonth();
+  p.days.forEach(dow=>{
+    totalDays+=countDaysInMonth(year,month,dow);
+    if(isCurrentMonth)daysWorkedSoFar+=countDaysToDate(year,month,dow);
+    else daysWorkedSoFar+=countDaysInMonth(year,month,dow);
+  });
+  const projectedPts=totalDays*expectedPts;
+  const projectedGross=projectedPts*avgPrice;
+  const projectedNet=projectedGross*comm;
+  // Projections up to today
+  const projectedPtsToDate=daysWorkedSoFar*expectedPts;
+  const projectedGrossToDate=projectedPtsToDate*avgPrice;
+  const projectedNetToDate=projectedGrossToDate*comm;
+  return {
+    totalDays,daysWorkedSoFar,expectedPts,avgPrice,comm,
+    projectedPts,projectedGross,projectedNet,
+    projectedPtsToDate,projectedGrossToDate,projectedNetToDate
+  };
+}
+
+// Get average price for a practice from historical data
+function getAvgPriceForPractice(practiceId){
+  const entries=S.entries.filter(e=>e.pId===practiceId&&e.pts>0);
+  if(entries.length===0){
+    const p=S.practices[practiceId];
+    if(p&&p.svcs){
+      const prices=Object.values(p.svcs).map(s=>s.p||0);
+      return prices.length?prices.reduce((a,b)=>a+b,0)/prices.length:70;
+    }
+    return 70;
+  }
+  let totalGross=0,totalPts=0;
+  entries.forEach(e=>{totalGross+=e.pts*e.uPrice;totalPts+=e.pts;});
+  return totalPts>0?totalGross/totalPts:70;
+}
+
 function refreshAnalytics(){
   const container=document.getElementById('analyticsContent');
   if(!container)return;
@@ -5345,6 +5415,10 @@ function refreshAnalytics(){
     return d>=taxYearStart&&d<=taxYearEnd;
   });
 
+  // Current month entries
+  const currentMonthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const currentMonthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(currentMonthKey));
+
   // Total earnings by entity
   let selfEarnings=0,ltdEarnings=0;
   taxYearEntries.forEach(e=>{
@@ -5355,45 +5429,101 @@ function refreshAnalytics(){
     else selfEarnings+=net;
   });
 
+  // Patient metrics
+  let totalPatients=0,totalGross=0,totalNet=0;
+  taxYearEntries.forEach(e=>{
+    totalPatients+=e.pts||0;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    totalGross+=gross;
+    totalNet+=e.pType==='adhoc'?gross:gross*(e.comm||0);
+  });
+  const avgPerPatient=totalPatients>0?totalNet/totalPatients:0;
+
+  // Current month patient metrics
+  let monthPatients=0,monthGross=0,monthNet=0;
+  currentMonthEntries.forEach(e=>{
+    monthPatients+=e.pts||0;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    monthGross+=gross;
+    monthNet+=e.pType==='adhoc'?gross:gross*(e.comm||0);
+  });
+
   // Unpaid invoices
   const unpaidInvoices=allInvoices.filter(inv=>inv.paidStatus!=='paid');
   let unpaidTotal=0;
   unpaidInvoices.forEach(inv=>unpaidTotal+=(inv.amount||0));
 
-  // Monthly data for chart (last 12 months)
+  // Monthly data for chart (last 12 months) - with patient counts
   const monthlyData=[];
+  const monthlyPtsData=[];
   const monthLabels=[];
   for(let i=11;i>=0;i--){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const mKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     const monthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(mKey));
-    let monthTotal=0;
+    let monthTotal=0,monthPts=0;
     monthEntries.forEach(e=>{
+      monthPts+=e.pts||0;
       const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
       const isAdhoc=e.pType==='adhoc';
       monthTotal+=isAdhoc?gross:gross*(e.comm||0);
     });
     monthlyData.push(monthTotal);
+    monthlyPtsData.push(monthPts);
     monthLabels.push(d.toLocaleString('en-GB',{month:'short'}));
   }
 
   // Practice breakdown for current tax year
   const practiceData={};
+  const practicePatients={};
   taxYearEntries.forEach(e=>{
     const pName=e.pName||'Unknown';
     const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
     const isAdhoc=e.pType==='adhoc';
     const net=isAdhoc?gross:gross*(e.comm||0);
     practiceData[pName]=(practiceData[pName]||0)+net;
+    practicePatients[pName]=(practicePatients[pName]||0)+(e.pts||0);
   });
   const practiceLabels=Object.keys(practiceData);
   const practiceValues=practiceLabels.map(k=>practiceData[k]);
   const practiceColors=['#2d6a4f','#0057a8','#7c3aed','#f59e0b','#14b8a6','#ef4444'];
 
+  // Calculate projections vs actuals for current month by practice
+  const projectionsByPractice=[];
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(!p||!p.days||!p.days.length)return;
+    const proj=calculateProjections(pId,now.getFullYear(),now.getMonth());
+    if(!proj)return;
+    // Get actuals
+    const pracEntries=currentMonthEntries.filter(e=>e.pId===pId);
+    let actualPts=0,actualGross=0,actualNet=0;
+    pracEntries.forEach(e=>{
+      actualPts+=e.pts||0;
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      actualGross+=g;
+      actualNet+=g*(e.comm||0);
+    });
+    const ptsVariance=actualPts-proj.projectedPtsToDate;
+    const netVariance=actualNet-proj.projectedNetToDate;
+    projectionsByPractice.push({
+      id:pId,name:p.short||p.name,
+      projectedPts:proj.projectedPts,
+      projectedPtsToDate:proj.projectedPtsToDate,
+      projectedNet:proj.projectedNet,
+      projectedNetToDate:proj.projectedNetToDate,
+      actualPts,actualNet,
+      ptsVariance,netVariance,
+      daysWorked:proj.daysWorkedSoFar,
+      totalDays:proj.totalDays,
+      expectedPtsPerDay:proj.expectedPts
+    });
+  });
+
   // Build HTML
   let _h='<div style="padding:16px">';
 
-  // Summary cards
+  // Summary cards - Row 1
   _h+='<div class="stat-grid">';
   _h+='<div class="stat-card"><div class="stat-label">Tax Year '+taxYearLabel+'</div><div class="stat-value" style="color:var(--pri)">'+fc(selfEarnings+ltdEarnings)+'</div><div class="stat-sub">Total Net Earnings</div></div>';
   _h+='<div class="stat-card"><div class="stat-label">Self-Employed</div><div class="stat-value">'+fc(selfEarnings)+'</div></div>';
@@ -5401,10 +5531,94 @@ function refreshAnalytics(){
   _h+='<div class="stat-card"><div class="stat-label">Unpaid Invoices</div><div class="stat-value" style="color:'+(unpaidTotal>0?'var(--err)':'var(--ok)')+'">'+fc(unpaidTotal)+'</div><div class="stat-sub">'+unpaidInvoices.length+' invoice'+(unpaidInvoices.length!==1?'s':'')+'</div></div>';
   _h+='</div>';
 
+  // Patient Metrics Section
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Patient Metrics ('+taxYearLabel+')</h3>';
+  _h+='<div class="stat-grid" style="margin-top:12px">';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Total Patients</div><div class="stat-value">'+totalPatients.toLocaleString()+'</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg £ Per Patient</div><div class="stat-value">'+fc(avgPerPatient)+'</div><div class="stat-sub">Net earnings</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">This Month</div><div class="stat-value">'+monthPatients+'</div><div class="stat-sub">patients</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Month Earnings</div><div class="stat-value" style="color:var(--pri)">'+fc(monthNet)+'</div></div>';
+  _h+='</div></div>';
+
+  // Projections vs Actuals Section
+  if(projectionsByPractice.length>0){
+    const monthName=now.toLocaleString('en-GB',{month:'long',year:'numeric'});
+    let totalProjNet=0,totalActualNet=0,totalProjPts=0,totalActualPts=0;
+    projectionsByPractice.forEach(p=>{
+      totalProjNet+=p.projectedNetToDate;
+      totalActualNet+=p.actualNet;
+      totalProjPts+=p.projectedPtsToDate;
+      totalActualPts+=p.actualPts;
+    });
+    const totalNetVariance=totalActualNet-totalProjNet;
+    const totalPtsVariance=totalActualPts-totalProjPts;
+
+    _h+='<div class="analytics-card">';
+    _h+='<h3 class="analytics-title">Projections vs Actuals - '+monthName+'</h3>';
+    _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Based on expected patients per day at each practice</div>';
+
+    // Summary bar
+    const varColor=totalNetVariance>=0?'var(--ok)':'var(--err)';
+    const varSign=totalNetVariance>=0?'+':'';
+    _h+='<div style="display:flex;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:16px">';
+    _h+='<div><div style="font-size:12px;color:var(--txt2)">Expected (to date)</div><div style="font-size:18px;font-weight:600">'+fc(totalProjNet)+'</div><div style="font-size:12px;color:var(--txt2)">'+totalProjPts+' patients</div></div>';
+    _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Actual</div><div style="font-size:18px;font-weight:600;color:var(--pri)">'+fc(totalActualNet)+'</div><div style="font-size:12px;color:var(--txt2)">'+totalActualPts+' patients</div></div>';
+    _h+='<div style="text-align:right"><div style="font-size:12px;color:var(--txt2)">Variance</div><div style="font-size:18px;font-weight:600;color:'+varColor+'">'+varSign+fc(totalNetVariance)+'</div><div style="font-size:12px;color:'+varColor+'">'+(totalPtsVariance>=0?'+':'')+totalPtsVariance+' pts</div></div>';
+    _h+='</div>';
+
+    // Per-practice breakdown
+    _h+='<div style="font-size:13px;font-weight:600;margin-bottom:8px">By Practice</div>';
+    projectionsByPractice.forEach(p=>{
+      const pVarColor=p.netVariance>=0?'var(--ok)':'var(--err)';
+      const pVarSign=p.netVariance>=0?'+':'';
+      const ptsVarSign=p.ptsVariance>=0?'+':'';
+      _h+='<div style="padding:10px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+      _h+='<span style="font-weight:500">'+p.name+'</span>';
+      _h+='<span style="color:'+pVarColor+';font-weight:500">'+pVarSign+fc(p.netVariance)+'</span>';
+      _h+='</div>';
+      _h+='<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--txt2)">';
+      _h+='<span>'+p.daysWorked+'/'+p.totalDays+' days | Expected: '+p.projectedPtsToDate+' pts</span>';
+      _h+='<span>Actual: '+p.actualPts+' pts ('+ptsVarSign+p.ptsVariance+')</span>';
+      _h+='</div>';
+      _h+='</div>';
+    });
+
+    // Edit projections link
+    _h+='<button class="btn btn-s" style="width:100%;margin-top:12px" onclick="editPracticeProjections()">Edit Expected Patients</button>';
+    _h+='</div>';
+
+    // Performance Issues - highlight practices significantly under projection
+    const underPerformers=projectionsByPractice.filter(p=>p.ptsVariance<-2);
+    if(underPerformers.length>0){
+      _h+='<div class="analytics-card" style="border-left:3px solid var(--warn)">';
+      _h+='<h3 class="analytics-title" style="color:var(--warn)">Cancellations/No-Shows Impact</h3>';
+      _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Practices where actual patients are below expected</div>';
+      underPerformers.sort((a,b)=>a.ptsVariance-b.ptsVariance).forEach(p=>{
+        const lostEarnings=Math.abs(p.netVariance);
+        _h+='<div style="padding:10px 0;border-bottom:1px solid var(--bdr)">';
+        _h+='<div style="display:flex;justify-content:space-between">';
+        _h+='<span style="font-weight:500">'+p.name+'</span>';
+        _h+='<span style="color:var(--err);font-weight:600">'+p.ptsVariance+' patients</span>';
+        _h+='</div>';
+        _h+='<div style="font-size:12px;color:var(--err)">Potential lost earnings: '+fc(lostEarnings)+'</div>';
+        _h+='</div>';
+      });
+      _h+='</div>';
+    }
+  }
+
   // Monthly earnings chart
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Monthly Earnings (Last 12 Months)</h3>';
   _h+='<div class="chart-container"><canvas id="monthlyChart"></canvas></div>';
+  _h+='</div>';
+
+  // Monthly patients chart
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Monthly Patients (Last 12 Months)</h3>';
+  _h+='<div class="chart-container"><canvas id="patientsChart"></canvas></div>';
   _h+='</div>';
 
   // Practice breakdown chart
@@ -5412,7 +5626,18 @@ function refreshAnalytics(){
     _h+='<div class="analytics-card">';
     _h+='<h3 class="analytics-title">Earnings by Practice ('+taxYearLabel+')</h3>';
     _h+='<div class="chart-container" style="height:250px"><canvas id="practiceChart"></canvas></div>';
-    _h+='</div>';
+    // Practice patient breakdown
+    _h+='<div style="margin-top:16px;font-size:13px">';
+    practiceLabels.forEach((name,i)=>{
+      const pts=practicePatients[name]||0;
+      const earnings=practiceData[name]||0;
+      const avgPP=pts>0?earnings/pts:0;
+      _h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<span>'+name+'</span>';
+      _h+='<span style="color:var(--txt2)">'+pts+' pts @ '+fc(avgPP)+'/pt = <strong style="color:var(--pri)">'+fc(earnings)+'</strong></span>';
+      _h+='</div>';
+    });
+    _h+='</div></div>';
   }
 
   // Overdue invoices list
@@ -5435,9 +5660,10 @@ function refreshAnalytics(){
 
   // Destroy existing charts
   if(analyticsCharts.monthly)analyticsCharts.monthly.destroy();
+  if(analyticsCharts.patients)analyticsCharts.patients.destroy();
   if(analyticsCharts.practice)analyticsCharts.practice.destroy();
 
-  // Create monthly earnings chart
+  // Create charts
   setTimeout(()=>{
     const monthlyCtx=document.getElementById('monthlyChart');
     if(monthlyCtx&&typeof Chart!=='undefined'){
@@ -5470,6 +5696,47 @@ function refreshAnalytics(){
               beginAtZero:true,
               ticks:{
                 callback:function(v){return '£'+v.toLocaleString();}
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Create patients chart
+    const patientsCtx=document.getElementById('patientsChart');
+    if(patientsCtx&&typeof Chart!=='undefined'){
+      analyticsCharts.patients=new Chart(patientsCtx,{
+        type:'line',
+        data:{
+          labels:monthLabels,
+          datasets:[{
+            label:'Patients',
+            data:monthlyPtsData,
+            borderColor:'#0057a8',
+            backgroundColor:'rgba(0,87,168,0.1)',
+            fill:true,
+            tension:0.3,
+            pointRadius:4,
+            pointBackgroundColor:'#0057a8'
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{
+              callbacks:{
+                label:function(ctx){return ctx.raw+' patients';}
+              }
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              ticks:{
+                callback:function(v){return v+' pts';}
               }
             }
           }
@@ -5516,6 +5783,54 @@ function refreshAnalytics(){
       });
     }
   },100);
+}
+
+// Edit expected patients per day for each practice
+function editPracticeProjections(){
+  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Expected Patients Per Day</h3></div>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Set how many patients you typically see per day at each practice. This helps track projections vs actuals.</p>';
+
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(!p||!p.days||!p.days.length)return;
+    const currentVal=p.expectedPts||8;
+    _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bdr)">';
+    _h+='<span style="font-weight:500">'+(p.short||p.name)+'</span>';
+    _h+='<div style="display:flex;align-items:center;gap:8px">';
+    _h+='<button class="adj-btn" onclick="adjExpPts(\''+pId+'\',-1)">-</button>';
+    _h+='<input type="number" id="_exp_'+pId+'" value="'+currentVal+'" style="width:50px;text-align:center;padding:6px;border:1px solid var(--bdr);border-radius:var(--rs)" min="1" max="30"/>';
+    _h+='<button class="adj-btn" onclick="adjExpPts(\''+pId+'\',1)">+</button>';
+    _h+='<span style="font-size:12px;color:var(--txt2)">pts/day</span>';
+    _h+='</div></div>';
+  });
+
+  _h+='<div class="brow" style="margin-top:16px">';
+  _h+='<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  _h+='<button class="btn btn-p" onclick="saveExpectedPatients()">Save</button>';
+  _h+='</div>';
+  showModal(_h);
+}
+
+function adjExpPts(pId,delta){
+  const inp=document.getElementById('_exp_'+pId);
+  if(!inp)return;
+  let val=parseInt(inp.value)||8;
+  val=Math.max(1,Math.min(30,val+delta));
+  inp.value=val;
+}
+
+function saveExpectedPatients(){
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const inp=document.getElementById('_exp_'+pId);
+    if(inp){
+      S.practices[pId].expectedPts=parseInt(inp.value)||8;
+    }
+  });
+  save();
+  closeMod2();
+  showToast('Projections updated');
+  refreshAnalytics();
 }
 
 function refreshSettings(){
