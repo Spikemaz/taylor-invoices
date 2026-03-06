@@ -880,6 +880,12 @@ async function loadAll(sheets, sheetId, res) {
   // Get headers from first row to map columns dynamically
   const invoiceHeaders = invoicesRows[0] || INVOICE_COLUMNS;
 
+  // Debug: Log header info for paidStatus
+  const paidStatusIdx = invoiceHeaders.indexOf('paidStatus');
+  const paidDateIdx = invoiceHeaders.indexOf('paidDate');
+  console.log('[loadAll] Invoice headers count:', invoiceHeaders.length);
+  console.log('[loadAll] paidStatus at index:', paidStatusIdx, 'paidDate at index:', paidDateIdx);
+
   const invoices = invoicesRows
     .filter((row, idx) => idx > 0 && row[0] && row[0] !== 'num')
     .map(row => {
@@ -898,6 +904,10 @@ async function loadAll(sheets, sheetId, res) {
         }
         obj[col] = val || '';
       });
+      // Debug: Log paidStatus for each invoice
+      if (obj.paidStatus) {
+        console.log('[loadAll] Invoice', obj.num, 'paidStatus:', obj.paidStatus, 'paidDate:', obj.paidDate);
+      }
       return obj;
     });
 
