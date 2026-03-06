@@ -891,6 +891,173 @@ function showLoadError(msg) {
   }
 }
 
+// ===== SPLIT DAY SCHEDULE HELPERS =====
+// New format: S.workSchedule[dateStr] = [{pId:'bupa', hours:4}, {pId:'grove', hours:3}]
+// Old format: S.workSchedule[dateStr] = 'bupa' (single practice ID string)
+// These helpers handle both formats for backward compatibility
+
+// Get all practices assigned to a date as array of {pId, hours}
+function getScheduleForDate(dateStr) {
+  if (!S.workSchedule) S.workSchedule = {};
+  const data = S.workSchedule[dateStr];
+  if (!data) return null; // No override, use default day mapping
+
+  // Handle new array format
+  if (Array.isArray(data)) {
+    return data.filter(d => d.pId && d.pId !== 'home');
+  }
+
+  // Handle old string format (single practice)
+  if (typeof data === 'string') {
+    if (data === 'home') return [];
+    const hours = S.scheduleHours && S.scheduleHours[dateStr];
+    return [{ pId: data, hours: hours || 7 }];
+  }
+
+  // Handle object format (legacy single practice with pId property)
+  if (typeof data === 'object' && data.pId) {
+    if (data.pId === 'home') return [];
+    return [{ pId: data.pId, hours: data.hours || 7 }];
+  }
+
+  return null;
+}
+
+// Get default schedule for a day of week (from dayMap and practice.days)
+function getDefaultScheduleForDow(dow) {
+  const result = [];
+  const defaultPId = S.dayMap && S.dayMap[dow];
+
+  if (defaultPId && defaultPId !== 'home') {
+    const p = S.practices[defaultPId];
+    const hours = (p && p.paidHours && (p.paidHours[dow] || p.paidHours[String(dow)])) || 7;
+    result.push({ pId: defaultPId, hours });
+  }
+
+  return result;
+}
+
+// Get all practices for a date (handles override or falls back to day-of-week default)
+function getPracticesForDate(dateStr) {
+  const d = new Date(dateStr);
+  const dow = d.getDay();
+
+  // Check for date-specific override
+  const override = getScheduleForDate(dateStr);
+  if (override !== null) return override;
+
+  // Fall back to day-of-week default
+  return getDefaultScheduleForDow(dow);
+}
+
+// Check if a specific practice is scheduled on a date
+function isPracticeScheduledOnDate(dateStr, practiceId) {
+  const practices = getPracticesForDate(dateStr);
+  return practices.some(p => p.pId === practiceId);
+}
+
+// Get hours for a specific practice on a date
+function getHoursForPracticeOnDate(dateStr, practiceId) {
+  const practices = getPracticesForDate(dateStr);
+  const found = practices.find(p => p.pId === practiceId);
+  if (found) return found.hours || 7;
+
+  // Fall back to practice default for this day of week
+  const dow = new Date(dateStr).getDay();
+  const p = S.practices[practiceId];
+  if (p && p.paidHours) {
+    return p.paidHours[dow] || p.paidHours[String(dow)] || 7;
+  }
+  return 7;
+}
+
+// Set schedule for a date (new format - array of practices)
+function setScheduleForDate(dateStr, practices) {
+  if (!S.workSchedule) S.workSchedule = {};
+
+  // Normalize input
+  if (!practices || practices.length === 0) {
+    // Day off
+    S.workSchedule[dateStr] = [];
+  } else {
+    // Filter out invalid entries and ensure proper format
+    S.workSchedule[dateStr] = practices.filter(p => p && p.pId).map(p => ({
+      pId: p.pId,
+      hours: p.hours || 7
+    }));
+  }
+
+  // Clean up old scheduleHours entry (now stored in the array)
+  if (S.scheduleHours && S.scheduleHours[dateStr] !== undefined) {
+    delete S.scheduleHours[dateStr];
+  }
+}
+
+// Add a practice to a date (for split days)
+function addPracticeToDate(dateStr, practiceId, hours) {
+  const current = getPracticesForDate(dateStr);
+  // Check if already scheduled
+  if (current.some(p => p.pId === practiceId)) return false;
+  current.push({ pId: practiceId, hours: hours || 4 });
+  setScheduleForDate(dateStr, current);
+  return true;
+}
+
+// Remove a practice from a date
+function removePracticeFromDate(dateStr, practiceId) {
+  const current = getPracticesForDate(dateStr);
+  const filtered = current.filter(p => p.pId !== practiceId);
+  setScheduleForDate(dateStr, filtered);
+}
+
+// Update hours for a practice on a date
+function updatePracticeHoursOnDate(dateStr, practiceId, hours) {
+  const current = getPracticesForDate(dateStr);
+  const found = current.find(p => p.pId === practiceId);
+  if (found) {
+    found.hours = hours;
+    setScheduleForDate(dateStr, current);
+  }
+}
+
+// Auto-update schedule from entry (when logging work)
+function syncScheduleFromEntry(entry) {
+  if (!entry || !entry.date || !entry.pId) return;
+
+  const dateStr = entry.date;
+  const practiceId = entry.pId;
+
+  // Get hours from entry if available, otherwise estimate from patients
+  let hours = 7; // default
+  const p = entry.pType === 'adhoc' ? S.ahPrac.find(x => x.id === practiceId) : S.practices[practiceId];
+  if (p) {
+    const dow = new Date(dateStr).getDay();
+    const ptsPerHour = p.ptsPerHour || 2;
+    // Estimate hours from patients if we have that data
+    if (entry.pts && ptsPerHour > 0) {
+      hours = Math.max(1, Math.round((entry.pts / ptsPerHour) * 2) / 2); // Round to nearest 0.5
+    } else if (p.paidHours) {
+      hours = p.paidHours[dow] || p.paidHours[String(dow)] || 7;
+    }
+  }
+
+  // Check if practice already scheduled
+  const current = getPracticesForDate(dateStr);
+  const existing = current.find(x => x.pId === practiceId);
+
+  if (existing) {
+    // Update hours if entry suggests more
+    if (hours > existing.hours) {
+      existing.hours = hours;
+      setScheduleForDate(dateStr, current);
+    }
+  } else {
+    // Add this practice to the schedule
+    current.push({ pId: practiceId, hours });
+    setScheduleForDate(dateStr, current);
+  }
+}
+
 // ===== CLOUD API =====
 const API_BASE = '';  // Empty for same-origin, or set to your Vercel URL
 let isOnline = true;
@@ -1795,18 +1962,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     // Run data migrations after cloud load
     await runDataMigrations();
 
-    // Smart auto-open based on day (check specific date overrides first)
+    // Smart auto-open based on day (supports split days)
     const now = new Date();
     const day = now.getDay();
     const todayStr = now.toISOString().split('T')[0];
-    // Check date-specific override first, then day-of-week mapping
-    let t = (S.workSchedule && S.workSchedule[todayStr] !== undefined) ? S.workSchedule[todayStr] : S.dayMap[day];
-    // Check for exceptions
-    const isDayOff = (S.scheduleExceptions || []).find(e => e.date === todayStr && e.type === 'off');
-    const isExtraDay = (S.scheduleExceptions || []).find(e => e.date === todayStr && e.type === 'extra');
-    if (isDayOff) t = 'home';
-    if (isExtraDay && isExtraDay.pId) t = isExtraDay.pId;
-    console.log('Auto-open check: day=', day, 'date=', todayStr, 't=', t);
+    // Use new split-day helper to get practices for today
+    const todayPractices = getPracticesForDate(todayStr);
+    // Get first practice (for split days, opens the first scheduled one)
+    const t = todayPractices.length > 0 ? todayPractices[0].pId : 'home';
+    console.log('Auto-open check: day=', day, 'date=', todayStr, 'practices=', todayPractices, 't=', t);
 
     if (t && t !== 'home' && S.practices && S.practices[t]) {
       // Auto-opening practice - set entity based on which has more invoices
@@ -1852,16 +2016,11 @@ function handlePWAShortcut(){
       showScreen(screen);
     }
   }else if(action==='log'){
-    // Open today's practice based on schedule
-    const now=new Date();
-    const day=now.getDay();
-    const todayStr=now.toISOString().split('T')[0];
-    let t=(S.workSchedule&&S.workSchedule[todayStr]!==undefined)?S.workSchedule[todayStr]:S.dayMap[day];
-    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='off');
-    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='extra');
-    if(isDayOff)t='home';
-    if(isExtraDay&&isExtraDay.pId)t=isExtraDay.pId;
-    if(t&&t!=='home'&&S.practices&&S.practices[t]){
+    // Open today's practice based on schedule (supports split days)
+    const todayStr=new Date().toISOString().split('T')[0];
+    const todayPractices = getPracticesForDate(todayStr);
+    const t = todayPractices.length > 0 ? todayPractices[0].pId : null;
+    if(t&&S.practices&&S.practices[t]){
       openPractice(t);
     }
   }
@@ -1975,13 +2134,10 @@ let ms=midnight.getTime()-now.getTime();
 if(ms<0)ms+=86400000;
 setTimeout(()=>{
 const newDay=new Date();
-const day=newDay.getDay();
 const todayStr=newDay.toISOString().split('T')[0];
-let t=(S.workSchedule&&S.workSchedule[todayStr]!==undefined)?S.workSchedule[todayStr]:S.dayMap[day];
-const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='off');
-const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='extra');
-if(isDayOff)t='home';
-if(isExtraDay&&isExtraDay.pId)t=isExtraDay.pId;
+// Use split-day helper for midnight reset
+const todayPractices = getPracticesForDate(todayStr);
+const t = todayPractices.length > 0 ? todayPractices[0].pId : 'home';
 document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
 S.hist=[];
 if(t&&t!=='home'&&S.practices[t]){
@@ -2354,7 +2510,10 @@ if(dup){showDupMod(dup,pts,ao);return;}
 const aoTypeName=ao>0?(S.aoType==='custom'?(document.getElementById('aoName').value||'Add-on'):S.aoType):null;
 const entry={id:'L'+Date.now(),date:dt,pId:S.prac,pName:p.short,pType:'contract',svc:S.svc,pts,uPrice:pr,aoType:aoTypeName,aoAmt:ao,aoPatients:aoPts,gross:gr,comm:pComm,commAmt:gr*pComm,entity:entType,invSt:'pending',invNo:null,color:p.color||null,createdAt:new Date().toISOString()};
 console.log('[Entry Created] Contract:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
-S.entries.push(entry);save();showUndo(entry);
+S.entries.push(entry);
+// Auto-sync schedule from entry
+syncScheduleFromEntry(entry);
+save();showUndo(entry);
 await syncEntryToCloud(entry);
 upPracMSum(S.prac,pComm,true);
 upHome(true);
@@ -2566,7 +2725,10 @@ const aoTypeName=airPts>0?(ahAoType==='custom'?(document.getElementById('ahAoNam
 const aoTotal=airPts*air;
 const entry={id:'L'+Date.now(),date:dt,pId:pId,pName:p.name,pType:'adhoc',svc:ahSvc,pts,uPrice:rate,aoType:aoTypeName,aoAmt:aoTotal,aoPatients:airPts,gross:gr,comm:0,commAmt:0,invSt:'pending',invNo:null,adhocAddr:p.addr,entity:entType,color:p.color||'adhoc',createdAt:new Date().toISOString()};
 console.log('[Entry Created] Ad Hoc:', entry.pName, entry.svc, entry.pts+'pts', '£'+entry.gross.toFixed(2), 'entity='+entry.entity);
-S.entries.push(entry);save();showUndo(entry);
+S.entries.push(entry);
+// Auto-sync schedule from entry
+syncScheduleFromEntry(entry);
+save();showUndo(entry);
 await syncEntryToCloud(entry);upHome(true);
 document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
@@ -5319,7 +5481,7 @@ function countDaysToDate(year,month,dayOfWeek){
 }
 
 // Calculate projections for a practice in a given month
-// Uses paidHours * ptsPerHour for each day (same as Diary)
+// Uses paidHours * ptsPerHour for each day - supports split days
 function calculateProjections(practiceId,year,month){
   const p=S.practices[practiceId];
   if(!p||!p.days||!p.days.length)return null;
@@ -5335,6 +5497,8 @@ function calculateProjections(practiceId,year,month){
   let daysWorkedSoFar=0;
   let projectedPts=0;
   let projectedPtsToDate=0;
+  let totalHours=0;
+  let hoursToDate=0;
 
   // Iterate through each day of the month
   const daysInMonth=new Date(year,month+1,0).getDate();
@@ -5342,44 +5506,56 @@ function calculateProjections(practiceId,year,month){
     const dateStr=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(year,month,day).getDay();
 
-    // Check for date-specific override first
-    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-    let assignment=dateOverride!==undefined?dateOverride:null;
+    // Use new split-day aware helper to get practices for this date
+    const dayPractices = getPracticesForDate(dateStr);
 
-    // If no override, check if this day-of-week is scheduled for this practice
-    if(assignment===null&&p.days.includes(dow)){
-      assignment=practiceId;
-    }
+    // Find if this practice is scheduled on this day
+    const pracEntry = dayPractices.find(x => x.pId === practiceId);
 
-    // If assigned to this practice, count it
-    if(assignment===practiceId){
-      // Get paid hours for this day (date-specific or day-of-week default)
-      let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
-      if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
-      const dayPts=paidH*ptsPerHour;
+    if(pracEntry){
+      // Practice is scheduled on this day (possibly split)
+      const paidH = pracEntry.hours || 7;
+      const dayPts = paidH * ptsPerHour;
 
       totalDays++;
-      projectedPts+=dayPts;
+      totalHours += paidH;
+      projectedPts += dayPts;
 
       // Count if this day is in the past or today (for current month)
-      if(!isCurrentMonth||(isCurrentMonth&&day<=todayDate)){
+      if(!isCurrentMonth || (isCurrentMonth && day <= todayDate)){
         daysWorkedSoFar++;
-        projectedPtsToDate+=dayPts;
+        hoursToDate += paidH;
+        projectedPtsToDate += dayPts;
+      }
+    } else if(dayPractices.length === 0 && p.days.includes(dow)){
+      // No override but this DOW is in practice's default days
+      const paidH = (p.paidHours && (p.paidHours[dow] || p.paidHours[String(dow)])) || 7;
+      const dayPts = paidH * ptsPerHour;
+
+      totalDays++;
+      totalHours += paidH;
+      projectedPts += dayPts;
+
+      if(!isCurrentMonth || (isCurrentMonth && day <= todayDate)){
+        daysWorkedSoFar++;
+        hoursToDate += paidH;
+        projectedPtsToDate += dayPts;
       }
     }
   }
 
   // Calculate average expected pts per day for display
-  const expectedPts=totalDays>0?Math.round(projectedPts/totalDays):0;
+  const expectedPts = totalDays > 0 ? Math.round(projectedPts / totalDays) : 0;
 
-  const projectedGross=projectedPts*avgPrice;
-  const projectedNet=projectedGross*comm;
-  const projectedGrossToDate=projectedPtsToDate*avgPrice;
-  const projectedNetToDate=projectedGrossToDate*comm;
+  const projectedGross = projectedPts * avgPrice;
+  const projectedNet = projectedGross * comm;
+  const projectedGrossToDate = projectedPtsToDate * avgPrice;
+  const projectedNetToDate = projectedGrossToDate * comm;
   return {
-    totalDays,daysWorkedSoFar,expectedPts,avgPrice,comm,
-    projectedPts,projectedGross,projectedNet,
-    projectedPtsToDate,projectedGrossToDate,projectedNetToDate
+    totalDays, daysWorkedSoFar, expectedPts, avgPrice, comm,
+    projectedPts, projectedGross, projectedNet,
+    projectedPtsToDate, projectedGrossToDate, projectedNetToDate,
+    totalHours, hoursToDate
   };
 }
 
@@ -5518,32 +5694,26 @@ function refreshAnalytics(){
     const daysInMonth=new Date(projYear,projMonth+1,0).getDate();
     let projNet=0,projPts=0;
 
-    // Calculate from schedule
+    // Calculate from schedule (supports split days)
     for(let day=1;day<=daysInMonth;day++){
       const dateStr=projYear+'-'+String(projMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
       const dow=new Date(projYear,projMonth,day).getDay();
-      const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-      const dowMapping=S.dayMap[dow];
-      let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
-      const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
-      const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
-      if(isDayOff)assignment='home';
-      if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
 
-      if(assignment!=='home'){
-        const p=S.practices[assignment];
+      // Use split-day helper
+      const dayPractices = getPracticesForDate(dateStr);
+
+      // Process each practice scheduled for this day
+      dayPractices.forEach(prac => {
+        const p=S.practices[prac.pId];
         if(p){
-          let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
-          if(paidH===undefined){
-            paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
-          }
+          const paidH = prac.hours || 7;
           const ptsPerHour=p.ptsPerHour||2;
           const estPts=paidH*ptsPerHour;
           projPts+=estPts;
           const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
           projNet+=estPts*avgPrice*p.comm;
         }
-      }
+      });
     }
     monthlyProjectedNet.push(projNet);
     monthlyProjectedPts.push(projPts);
@@ -5787,28 +5957,27 @@ function refreshAnalytics(){
   const lastMonthAvgPP=lastMonthPtsSameRange>0?lastMonthNetSameRange/lastMonthPtsSameRange:0;
   const thisMonthAvgPP=monthPatients>0?monthNet/monthPatients:0;
 
-  // This month projected (from schedule)
+  // This month projected (from schedule - supports split days)
   const todayStr=now.toISOString().split('T')[0];
   const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   let projectedMonthPts=0,projectedMonthNet=0;
   for(let day=1;day<=daysInThisMonth;day++){
     const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(now.getFullYear(),now.getMonth(),day).getDay();
-    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-    const dowMapping=S.dayMap[dow];
-    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
-    if(assignment!=='home'){
-      const p=S.practices[assignment];
+
+    // Use split-day helper
+    const dayPractices = getPracticesForDate(dateStr);
+    dayPractices.forEach(prac => {
+      const p=S.practices[prac.pId];
       if(p){
-        let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
-        if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+        const paidH = prac.hours || 7;
         const ptsPerHour=p.ptsPerHour||2;
         const estPts=paidH*ptsPerHour;
         projectedMonthPts+=estPts;
         const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
         projectedMonthNet+=estPts*avgPrice*p.comm;
       }
-    }
+    });
   }
 
   const ptsProgress=projectedMonthPts>0?Math.round((monthPatients/projectedMonthPts)*100):0;
@@ -6018,7 +6187,7 @@ function refreshAnalytics(){
     _h+='<div style="aspect-ratio:1;background:var(--bg);border-radius:4px;opacity:0.3"></div>';
   }
 
-  // Calendar days - show actual entries vs scheduled
+  // Calendar days - show actual entries vs scheduled (supports split days)
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(calYear,calMonth,day).getDay();
@@ -6026,68 +6195,73 @@ function refreshAnalytics(){
     const isPast=dateStr<todayStr;
     const isFuture=dateStr>todayStr;
 
-    // Check for scheduled work: first check specific date overrides, then day-of-week mapping
-    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-    const dowMapping=S.dayMap[dow];
-    let scheduledAssignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
-
-    // Check for day off exceptions
-    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
-    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
-    if(isDayOff)scheduledAssignment='home';
-    if(isExtraDay&&isExtraDay.pId)scheduledAssignment=isExtraDay.pId;
+    // Get scheduled practices using new split-day helper
+    const scheduledPractices = getPracticesForDate(dateStr);
+    const isSplitDay = scheduledPractices.length > 1;
 
     // Get actual entries for this date
     const dayEntries=allEntries.filter(e=>e.date===dateStr);
     const hasEntry=dayEntries.length>0;
+    const actualPts=dayEntries.reduce((s,e)=>s+(e.pts||0),0);
 
-    // For past/today dates with entries, show actual work; for future, show scheduled
-    let displayAssignment=scheduledAssignment;
-    let actualPrac=null;
-    let actualPts=0;
-    if(hasEntry){
-      // Use the first entry's practice for color (most common case is single practice per day)
-      const mainEntry=dayEntries[0];
-      displayAssignment=mainEntry.pId;
-      actualPrac=S.practices[mainEntry.pId]||S.ahPrac.find(p=>p.id===mainEntry.pId)||null;
-      actualPts=dayEntries.reduce((s,e)=>s+(e.pts||0),0);
-    }
+    // Get unique practices from entries
+    const entryPractices = [...new Set(dayEntries.map(e=>e.pId))];
+    const hasMultipleEntryPractices = entryPractices.length > 1;
 
-    // Get practice info
-    const isWorkDay=displayAssignment!=='home';
-    const prac=hasEntry?actualPrac:(isWorkDay?(S.practices[displayAssignment]||S.ahPrac.find(p=>p.id===displayAssignment)||null):null);
-    const pracColor=prac?(prac.color?'var(--'+prac.color+')':'var(--pri)'):'transparent';
-    const isAdhoc=prac&&(prac.type==='adhoc'||S.ahPrac.some(ap=>ap.id===displayAssignment));
+    // Determine display - use entries if available, otherwise schedule
+    const displayPractices = hasEntry ? entryPractices.map(pId => ({pId})) : scheduledPractices;
+    const isWorkDay = displayPractices.length > 0;
+    const isSplitDisplay = displayPractices.length > 1;
 
-    // Day cell styling - different for past with entries vs scheduled future
-    let bgColor=isWorkDay||hasEntry?pracColor:'var(--bg)';
-    let txtColor=isWorkDay||hasEntry?'#fff':'var(--txt2)';
+    // Get colors for display
+    const getColor = (pId) => {
+      const p = S.practices[pId] || (S.ahPrac||[]).find(x=>x.id===pId);
+      return p && p.color ? 'var(--'+p.color+')' : 'var(--pri)';
+    };
+
     let border=isToday?'2px solid var(--pri-dk)':'1px solid var(--bdr)';
-
-    // For future scheduled days, show slightly transparent
     let opacity=isFuture&&!hasEntry?'0.7':'1';
 
-    _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;background:'+bgColor+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px;opacity:'+opacity+'">';
-    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px">'+day+'</div>';
+    // Build background - split gradient for multi-practice days
+    let bgStyle = '';
+    if(isSplitDisplay){
+      const colors = displayPractices.map(p => getColor(p.pId));
+      bgStyle = 'background:linear-gradient(135deg,'+colors[0]+' 50%,'+colors[1]+' 50%)';
+    } else if(isWorkDay){
+      bgStyle = 'background:'+getColor(displayPractices[0].pId);
+    } else {
+      bgStyle = 'background:var(--bg)';
+    }
 
-    // Show practice name or patient count
+    _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;'+bgStyle+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px;opacity:'+opacity+'">';
+    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px;color:'+(isWorkDay?'#fff':'var(--txt2)')+'">'+day+'</div>';
+
+    // Show practice name(s) or patient count
     if(hasEntry){
-      // Show actual patient count for days with entries
-      _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9">'+actualPts+'pts</div>';
-    }else if(isWorkDay&&prac){
-      _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9">'+(prac.short||prac.name||'').substring(0,4)+'</div>';
+      _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9;color:#fff">'+actualPts+'pts</div>';
+    }else if(isWorkDay){
+      if(isSplitDisplay){
+        // Show combined short names for split days
+        const names = displayPractices.map(p => {
+          const prac = S.practices[p.pId] || (S.ahPrac||[]).find(x=>x.id===p.pId);
+          return prac ? (prac.short||prac.name||'').substring(0,2) : '';
+        }).join('/');
+        _h+='<div style="font-size:7px;margin-top:1px;opacity:0.9;color:#fff">'+names+'</div>';
+      } else {
+        const prac = S.practices[displayPractices[0].pId] || (S.ahPrac||[]).find(x=>x.id===displayPractices[0].pId);
+        _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9;color:#fff">'+(prac?(prac.short||prac.name||'').substring(0,4):'')+'</div>';
+      }
     }
 
     // Indicators
     if(hasEntry){
-      // Checkmark for logged work
       _h+='<div style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:var(--ok);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">✓</div>';
     }else if(isPast&&isWorkDay){
-      // Warning for missed scheduled day
       _h+='<div style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:var(--warn);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">!</div>';
     }
-    if(isAdhoc&&(isWorkDay||hasEntry)){
-      _h+='<div style="position:absolute;top:1px;right:1px;width:6px;height:6px;background:var(--err);border-radius:50%"></div>';
+    // Show split indicator
+    if(isSplitDisplay){
+      _h+='<div style="position:absolute;top:1px;left:1px;width:8px;height:8px;background:rgba(255,255,255,0.8);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:6px;color:var(--txt);font-weight:700">2</div>';
     }
     _h+='</div>';
   }
@@ -6124,18 +6298,16 @@ function refreshAnalytics(){
   let totalWeeklyHours=0;
 
   // Count from calendar view month - split into actual (past) and projected (future)
+  // Now supports split days with multiple practices per day
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(calYear,calMonth,day).getDay();
     const isPast=dateStr<todayStr;
     const isToday=dateStr===todayStr;
-    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-    const dowMapping=S.dayMap[dow];
-    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
-    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
-    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
-    if(isDayOff)assignment='home';
-    if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
+
+    // Get scheduled practices using new split-day helper
+    const dayPractices = getPracticesForDate(dateStr);
+    const isWorkDay = dayPractices.length > 0;
 
     // Get actual entries for this date
     const dayEntries=allEntries.filter(e=>e.date===dateStr);
@@ -6151,24 +6323,23 @@ function refreshAnalytics(){
         return s+(e.pType==='adhoc'?g:g*(e.comm||0));
       },0);
       actualNet+=dayNet;
-    }else if(assignment!=='home'){
-      // Use projected data for scheduled future days
+    }else if(isWorkDay){
+      // Use projected data for scheduled future days (supports split days)
       scheduledDays++;
-      const p=S.practices[assignment];
-      if(p){
-        // Check for date-specific hours override first, then practice default
-        let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
-        if(paidH===undefined){
-          paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+      // Sum hours and projected earnings across all practices on this day
+      dayPractices.forEach(prac => {
+        const p=S.practices[prac.pId];
+        if(p){
+          const paidH = prac.hours || 7;
+          const ptsPerHour=p.ptsPerHour||2;
+          const estPts=paidH*ptsPerHour;
+          projectedPts+=estPts;
+          // Estimate net based on average service prices and commission
+          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          projectedNet+=estPts*avgPrice*p.comm;
+          if(day<=7)totalWeeklyHours+=paidH;
         }
-        const ptsPerHour=p.ptsPerHour||2;
-        const estPts=paidH*ptsPerHour;
-        projectedPts+=estPts;
-        // Estimate net based on average service prices and commission
-        const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
-        projectedNet+=estPts*avgPrice*p.comm;
-        if(day<=7)totalWeeklyHours+=paidH;
-      }
+      });
     }
   }
 
@@ -6361,27 +6532,26 @@ function refreshAnalytics(){
   let projectedTaxYearNet=totalNet;
   let remainingDaysLabel='';
 
-  // Add projection for REST of current month (today+1 to end of month)
+  // Add projection for REST of current month (today+1 to end of month) - supports split days
   const daysLeftInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-now.getDate();
   if(daysLeftInMonth>0){
     // Project remaining days in current month based on schedule
     for(let day=now.getDate()+1;day<=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();day++){
       const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
       const dow=new Date(now.getFullYear(),now.getMonth(),day).getDay();
-      const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
-      const dowMapping=S.dayMap[dow];
-      let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
-      if(assignment!=='home'){
-        const p=S.practices[assignment];
+
+      // Use split-day helper
+      const dayPractices = getPracticesForDate(dateStr);
+      dayPractices.forEach(prac => {
+        const p=S.practices[prac.pId];
         if(p){
-          let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
-          if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+          const paidH = prac.hours || 7;
           const ptsPerHour=p.ptsPerHour||2;
           const estPts=paidH*ptsPerHour;
           const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
           projectedTaxYearNet+=estPts*avgPrice*(p.comm||0);
         }
-      }
+      });
     }
   }
 
@@ -7236,90 +7406,176 @@ function navScheduleCal(direction){
   refreshAnalytics();
 }
 
-// Edit a specific day on the schedule calendar
+// Edit a specific day on the schedule calendar - supports split days
 function editScheduleDay(dateStr){
   const d=new Date(dateStr);
   const dow=d.getDay();
   const dayName=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  // Get current assignment
-  if(!S.workSchedule)S.workSchedule={};
-  if(!S.scheduleHours)S.scheduleHours={};
-  const scheduleData=S.workSchedule[dateStr];
-  const dateAssignment=typeof scheduleData==='object'?scheduleData.pId:scheduleData;
-  const dowMapping=S.dayMap[dow];
-  let currentAssignment=dateAssignment!==undefined?dateAssignment:(dowMapping||'home');
+  // Get current practices for this date using new helper
+  const currentPractices = getPracticesForDate(dateStr);
+  const hasOverride = getScheduleForDate(dateStr) !== null;
 
-  // Get current hours for this date
-  let currentHours=S.scheduleHours[dateStr];
-  if(currentHours===undefined&&currentAssignment!=='home'){
-    // Default to practice's hours for this day of week, or 7
-    const p=S.practices[currentAssignment];
-    if(p&&p.paidHours){
-      currentHours=p.paidHours[dow]||p.paidHours[String(dow)]||7;
-    }else{
-      currentHours=7;
-    }
-  }
-
-  // Check exceptions
-  const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
-  const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
-  if(isDayOff)currentAssignment='home';
-  if(isExtraDay&&isExtraDay.pId)currentAssignment=isExtraDay.pId;
-
-  // Check if entry exists
-  const hasEntry=S.entries.some(e=>e.date===dateStr);
+  // Check if entries exist
+  const dayEntries = S.entries.filter(e => e.date === dateStr);
+  const hasEntry = dayEntries.length > 0;
 
   let _h='<div class="mod-hdr"><h3>'+dayName+'</h3></div>';
 
   if(hasEntry){
-    const dayEntries=S.entries.filter(e=>e.date===dateStr);
     _h+='<div style="padding:8px 12px;background:var(--ok-bg);border-radius:var(--rs);margin-bottom:12px;font-size:13px">';
     _h+='<span style="color:var(--ok);font-weight:600">Work logged:</span> ';
     _h+=dayEntries.map(e=>(e.pName||'Unknown')+' ('+e.pts+' pts)').join(', ');
     _h+='</div>';
   }
 
-  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Select work assignment:</div>';
+  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Scheduled practices:</div>';
 
-  // Practice selector dropdown
-  _h+='<select id="_schedPrac" class="fi" style="margin-bottom:12px" onchange="updateScheduleHoursVisibility(\''+dateStr+'\')">';
-  _h+='<option value="home"'+(currentAssignment==='home'?' selected':'')+'>Day Off</option>';
+  // Container for scheduled practices
+  _h+='<div id="_schedList" style="margin-bottom:12px">';
+
+  if(currentPractices.length === 0){
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);text-align:center;color:var(--txt2);font-size:13px">Day Off</div>';
+  } else {
+    currentPractices.forEach((prac, idx) => {
+      const p = S.practices[prac.pId] || (S.ahPrac||[]).find(x=>x.id===prac.pId);
+      const pName = p ? (p.short || p.name) : prac.pId;
+      const pColor = p && p.color ? 'var(--'+p.color+')' : 'var(--pri)';
+      _h+='<div class="sched-prac-row" data-pid="'+prac.pId+'" style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:6px;border-left:4px solid '+pColor+'">';
+      _h+='<div style="flex:1;font-weight:500">'+pName+'</div>';
+      _h+='<div style="display:flex;align-items:center;gap:6px">';
+      _h+='<button type="button" class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjSchedPracHours(\''+dateStr+'\',\''+prac.pId+'\',-0.5)">-</button>';
+      _h+='<input type="number" id="_ph_'+prac.pId+'" value="'+(prac.hours||7)+'" min="1" max="8" step="0.5" style="width:50px;text-align:center;padding:4px;border:1px solid var(--bdr);border-radius:4px;font-size:13px">';
+      _h+='<button type="button" class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjSchedPracHours(\''+dateStr+'\',\''+prac.pId+'\',0.5)">+</button>';
+      _h+='<span style="font-size:12px;color:var(--txt2)">hrs</span>';
+      _h+='<button type="button" onclick="removeSchedPrac(\''+dateStr+'\',\''+prac.pId+'\')" style="width:28px;height:28px;background:var(--err-bg);color:var(--err);border:none;border-radius:4px;cursor:pointer;font-size:14px">×</button>';
+      _h+='</div></div>';
+    });
+  }
+  _h+='</div>';
+
+  // Add practice selector
+  _h+='<div style="display:flex;gap:8px;margin-bottom:12px">';
+  _h+='<select id="_addSchedPrac" class="fi" style="flex:1">';
+  _h+='<option value="">+ Add practice...</option>';
   Object.keys(S.practices||{}).forEach(pId=>{
     const p=S.practices[pId];
-    if(p)_h+='<option value="'+pId+'"'+(currentAssignment===pId?' selected':'')+'>'+(p.name||p.short)+' (Contract)</option>';
+    const alreadyAdded = currentPractices.some(x=>x.pId===pId);
+    if(p && !alreadyAdded) _h+='<option value="'+pId+'">'+(p.name||p.short)+' (Contract)</option>';
   });
   (S.ahPrac||[]).forEach(p=>{
-    if(p&&p.active)_h+='<option value="'+p.id+'"'+(currentAssignment===p.id?' selected':'')+'>'+p.name+' (Ad Hoc)</option>';
+    const alreadyAdded = currentPractices.some(x=>x.pId===p.id);
+    if(p && p.active && !alreadyAdded) _h+='<option value="'+p.id+'">'+p.name+' (Ad Hoc)</option>';
   });
   _h+='</select>';
-
-  // Paid hours section (hidden if day off)
-  const showHours=currentAssignment!=='home';
-  _h+='<div id="_schedHoursDiv" style="display:'+(showHours?'block':'none')+';margin-bottom:12px">';
-  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Paid hours (excluding lunch):</div>';
-  _h+='<div style="display:flex;align-items:center;gap:10px">';
-  _h+='<button type="button" class="adj-btn" style="width:40px;height:40px;font-size:20px" onclick="adjSchedHours(-0.5)">-</button>';
-  _h+='<input type="number" id="_schedHours" class="fi" value="'+(currentHours||7)+'" min="1" max="12" step="0.5" style="width:70px;text-align:center;font-size:16px;font-weight:600">';
-  _h+='<button type="button" class="adj-btn" style="width:40px;height:40px;font-size:20px" onclick="adjSchedHours(0.5)">+</button>';
-  _h+='<span style="font-size:14px;color:var(--txt2)">hours</span>';
+  _h+='<button class="btn btn-s" onclick="addSchedPrac(\''+dateStr+'\')">Add</button>';
   _h+='</div>';
+
+  // Quick actions
+  _h+='<div style="display:flex;gap:8px;margin-bottom:12px">';
+  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="setSchedDayOff(\''+dateStr+'\')">Set Day Off</button>';
+  if(hasOverride){
+    _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="clearScheduleOverride(\''+dateStr+'\')">Reset to Default</button>';
+  }
   _h+='</div>';
 
   // Show if this differs from the weekly pattern
-  if(dateAssignment!==undefined&&dateAssignment!==dowMapping){
-    _h+='<div style="margin-top:8px;padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn)">';
+  if(hasOverride){
+    _h+='<div style="padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn);margin-bottom:12px">';
     _h+='This day has been customized from your weekly pattern.';
-    _h+='<button onclick="clearScheduleOverride(\''+dateStr+'\')" style="display:block;margin-top:6px;font-size:11px;color:var(--warn);text-decoration:underline;border:none;background:none;padding:0;cursor:pointer">Reset to weekly pattern</button>';
     _h+='</div>';
   }
 
-  _h+='<div class="brow" style="margin-top:16px">';
+  _h+='<div class="brow">';
   _h+='<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
-  _h+='<button class="btn btn-p" onclick="saveScheduleDay(\''+dateStr+'\')">Save</button>';
+  _h+='<button class="btn btn-p" onclick="saveScheduleDaySplit(\''+dateStr+'\')">Save</button>';
   _h+='</div>';
   showModal(_h);
+}
+
+// Adjust hours for a specific practice in schedule modal
+function adjSchedPracHours(dateStr, pId, delta){
+  const inp = document.getElementById('_ph_'+pId);
+  if(!inp) return;
+  let val = parseFloat(inp.value) || 4;
+  val = Math.max(0.5, Math.min(8, val + delta));
+  inp.value = val;
+}
+
+// Add a practice to the current schedule modal
+function addSchedPrac(dateStr){
+  const sel = document.getElementById('_addSchedPrac');
+  if(!sel || !sel.value) return;
+  const pId = sel.value;
+
+  // Get current practices from modal inputs
+  const current = collectScheduleFromModal(dateStr);
+
+  // Get default hours for this practice
+  const dow = new Date(dateStr).getDay();
+  const p = S.practices[pId] || (S.ahPrac||[]).find(x=>x.id===pId);
+  let hours = 4; // Default to 4 for split days
+  if(p && p.paidHours){
+    const fullDayHours = p.paidHours[dow] || p.paidHours[String(dow)] || 7;
+    hours = Math.min(4, fullDayHours); // Half day default when adding to existing
+  }
+
+  current.push({ pId, hours });
+
+  // Update schedule and refresh modal
+  setScheduleForDate(dateStr, current);
+  save();
+  closeMod2();
+  editScheduleDay(dateStr);
+}
+
+// Remove a practice from schedule modal
+function removeSchedPrac(dateStr, pId){
+  const current = collectScheduleFromModal(dateStr);
+  const filtered = current.filter(x => x.pId !== pId);
+  setScheduleForDate(dateStr, filtered);
+  save();
+  closeMod2();
+  editScheduleDay(dateStr);
+}
+
+// Set day as off
+function setSchedDayOff(dateStr){
+  setScheduleForDate(dateStr, []);
+  save();
+  closeMod2();
+  refreshAnalytics();
+  showToast('Day set as off');
+}
+
+// Collect current schedule from modal inputs
+function collectScheduleFromModal(dateStr){
+  const result = [];
+  const rows = document.querySelectorAll('.sched-prac-row');
+  rows.forEach(row => {
+    const pId = row.getAttribute('data-pid');
+    const inp = document.getElementById('_ph_'+pId);
+    const hours = inp ? parseFloat(inp.value) || 4 : 4;
+    result.push({ pId, hours });
+  });
+  return result;
+}
+
+// Save schedule day with split practices
+async function saveScheduleDaySplit(dateStr){
+  const practices = collectScheduleFromModal(dateStr);
+  setScheduleForDate(dateStr, practices);
+
+  // Remove any old exceptions for this date
+  if(S.scheduleExceptions){
+    S.scheduleExceptions = S.scheduleExceptions.filter(e => e.date !== dateStr);
+  }
+
+  closeMod2();
+  showToast('Saving...');
+  save();
+  refreshAnalytics();
+  showToast('Schedule updated');
 }
 
 // Adjust schedule hours input
@@ -7353,7 +7609,7 @@ function updateScheduleHoursVisibility(dateStr){
   }
 }
 
-// Save schedule day with practice and hours
+// Legacy: Save schedule day with single practice (redirects to new format)
 async function saveScheduleDay(dateStr){
   const sel=document.getElementById('_schedPrac');
   const inp=document.getElementById('_schedHours');
@@ -7362,17 +7618,11 @@ async function saveScheduleDay(dateStr){
   const pId=sel.value;
   const hours=inp?parseFloat(inp.value)||7:7;
 
-  if(!S.workSchedule)S.workSchedule={};
-  if(!S.scheduleHours)S.scheduleHours={};
-
-  // Store practice assignment
-  S.workSchedule[dateStr]=pId;
-
-  // Store hours if working
-  if(pId!=='home'){
-    S.scheduleHours[dateStr]=hours;
+  // Use new split-day format
+  if(pId==='home'){
+    setScheduleForDate(dateStr, []);
   }else{
-    delete S.scheduleHours[dateStr];
+    setScheduleForDate(dateStr, [{pId, hours}]);
   }
 
   // Remove any exceptions for this date
@@ -7387,10 +7637,13 @@ async function saveScheduleDay(dateStr){
   showToast('Schedule updated');
 }
 
-// Legacy function for backwards compatibility
+// Legacy function for backwards compatibility (redirects to new format)
 async function setScheduleDay(dateStr,pId){
-  if(!S.workSchedule)S.workSchedule={};
-  S.workSchedule[dateStr]=pId;
+  if(pId==='home'){
+    setScheduleForDate(dateStr, []);
+  }else{
+    setScheduleForDate(dateStr, [{pId, hours: 7}]);
+  }
 
   // Remove any exceptions for this date
   if(S.scheduleExceptions){
