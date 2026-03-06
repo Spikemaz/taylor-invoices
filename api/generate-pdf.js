@@ -348,12 +348,16 @@ module.exports = async (req, res) => {
     // Get PDF as base64
     const pdfBase64 = doc.output('datauristring').split(',')[1];
 
+    // Determine filename prefix based on entity
+    const entityPrefix = inv.logoType === 'ltd' ? 'HTCS' : 'TAYLOR';
+    const fileName = entityPrefix + ' Invoice-' + inv.num + '.pdf';
+
     // Return PDF data for client-side download and Drive upload
     return res.status(200).json({
       success: true,
       invoiceNumber: inv.num,
       pdfBase64: pdfBase64,
-      fileName: 'Invoice-' + inv.num + '.pdf'
+      fileName: fileName
     });
 
   } catch (error) {
