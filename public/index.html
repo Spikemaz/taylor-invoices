@@ -236,6 +236,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .mod.prc-bupa{border-top-color:var(--bupa)}.mod.prc-grove{border-top-color:var(--grove)}.mod.prc-adhoc{border-top-color:#EF4444}
 .mov.show .mod{transform:translateY(0)}
 .mh{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 16px}
+.mod-hdr{background:var(--pri-dk);color:#fff;padding:16px 20px;margin:-24px -20px 20px;border-radius:16px 16px 0 0}
+.mod-hdr h3{font-size:17px;font-weight:700;margin:0}.mod-hdr p{font-size:12px;opacity:.8;margin:4px 0 0}
+.mod.prc-bupa .mod-hdr{background:var(--bupa)}.mod.prc-grove .mod-hdr{background:var(--grove)}.mod.prc-adhoc .mod-hdr{background:#dc2626}
 .fg{margin-bottom:14px}.fl{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:block}
 .fi{width:100%;height:48px;padding:0 12px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:16px;font-family:var(--f);color:var(--txt);background:var(--bg);box-sizing:border-box;-webkit-appearance:none;appearance:none}.fi:focus{outline:0;border-color:var(--pri)}
 input[type="date"].fi{min-width:100%;display:block}
@@ -2314,7 +2317,7 @@ upHome(true);
 document.getElementById('ptIn').value='0';document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';document.getElementById('aoName').value='';selAddon('none');upAmt();
 }
 function showDupMod(ex,pts,ao){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
+var _h='<div class="mod-hdr"><h3>Duplicate Entry</h3></div>';
 _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">You already logged <b>'+ex.svc+'</b> at <b>'+ex.pName+'</b> for <b>'+fdd(ex.date)+'</b> ('+ex.pts+' patients at '+fc(ex.uPrice)+').</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_dupCancel">Cancel</button><button class="btn btn-p" id="_dupAdd">Add '+pts+' more patients</button></div>';
 _h+='<button class="btn btn-d" style="width:100%;margin-top:8px" id="_dupReplace">Replace entry</button>';
@@ -2524,7 +2527,7 @@ await syncEntryToCloud(entry);upHome(true);
 document.getElementById('apIn').value='0';document.getElementById('aapIn').value='0';document.getElementById('ahAoName').value='';selAhAddon('none');upAhAmt();}
 
 function showAhDupMod(ex,pts,air,airPts){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Duplicate Entry</h3>';
+var _h='<div class="mod-hdr"><h3>Duplicate Entry</h3></div>';
 _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">You already logged <b>'+ex.svc+'</b> at <b>'+ex.pName+'</b> for <b>'+fdd(ex.date)+'</b> ('+ex.pts+' patients at '+fc(ex.uPrice)+').</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_ahDupCancel">Cancel</button><button class="btn btn-p" id="_ahDupAdd">Add '+pts+' more patients</button></div>';
 _h+='<button class="btn btn-d" style="width:100%;margin-top:8px" id="_ahDupReplace">Replace entry</button>';
@@ -2567,7 +2570,7 @@ await deleteEntryFromCloud(id,entity);
 }
 
 function showAddAhPractice(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>';
+var _h='<div class="mod-hdr"><h3>Add Ad Hoc Practice</h3></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="nAhName" placeholder="e.g. Haddenham Dental"></div>';
 _h+='<div class="fg"><label class="fl">Short Name (for display)</label><input class="fi" id="nAhShort" placeholder="e.g. Haddenham"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="nAhAddr" rows="3" placeholder="Full address"></textarea></div>';
@@ -2620,7 +2623,7 @@ syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Synce
 }
 
 function showAddPractice(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add New Practice</h3>';
+var _h='<div class="mod-hdr"><h3>Add New Practice</h3></div>';
 // Practice type selector
 _h+='<div class="fg"><label class="fl">Practice Type</label><div class="esw" style="margin-top:4px">';
 _h+='<button class="ebtn act" id="npTypeC" onclick="setPracticeType(\'contract\')">Contracted</button>';
@@ -2841,7 +2844,7 @@ function refArc(){
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
 var prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
+var _h='<div class="mod-hdr"><h3>Edit Entry</h3></div>';
 // Show warning if entry is already invoiced
 if(e.invSt==='invoiced'&&e.invNo){_h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';}
 _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
@@ -3026,8 +3029,7 @@ function showInvoiceEntityChangeFromEntry(invIdx,oldEntity,newEntity,editedEntry
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
   const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
+  let _h='<div class="mod-hdr"><h3>Change Invoice Entity</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">This entry is part of Invoice #'+inv.num+'</p>';
   _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Moving to <strong>'+newLabel+'</strong> will:</p>';
   _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
@@ -3355,7 +3357,7 @@ function showInvoiceOptionsModal(idx){
   const isPaid=inv.paidStatus==='paid';
   const overdueInfo=isInvoiceOverdue(inv);
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Invoice #'+inv.num+'</h3></div>';
+  let _h='<div class="mod-hdr"><h3>Invoice #'+inv.num+'</h3></div>';
   _h+='<div style="margin-bottom:16px">';
   _h+='<div style="font-size:14px;font-weight:600;color:var(--txt)">'+inv.practice+'</div>';
   _h+='<div style="font-size:13px;color:var(--txt2)">'+inv.period+' · '+entLabel+'</div>';
@@ -3417,8 +3419,7 @@ function showPaymentDatePicker(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Mark Invoice Paid</h3></div>';
+  let _h='<div class="mod-hdr"><h3>Mark Invoice Paid</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">When was Invoice #'+inv.num+' paid?</p>';
   _h+='<div class="fg" style="margin-bottom:16px">';
   _h+='<label class="fl">Payment Date</label>';
@@ -3544,9 +3545,7 @@ function showEditInvoiceModal(idx){
   const commRate=parseFloat(inv.commRate)||0;
   const calcAmount=inv.isAdhoc?calcGross:calcGross*(commRate/100);
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Edit Invoice</h3>';
-  _h+='<div style="font-size:12px;opacity:0.8;margin-top:4px">'+inv.practice+' · '+inv.period+'</div></div>';
+  let _h='<div class="mod-hdr"><h3>Edit Invoice</h3><p>'+inv.practice+' · '+inv.period+'</p></div>';
 
   // Invoice number and date fields
   _h+='<div style="display:flex;gap:10px;margin-bottom:12px">';
@@ -3629,10 +3628,10 @@ function editEntryFromInvoice(entryId,invoiceIdx){
   if(!e)return;
 
   const prcClass=e.pType==='adhoc'?'prc-adhoc':(e.pId==='bupa'?'prc-bupa':(e.pId==='grove'?'prc-grove':''));
-  let _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit Entry</h3>';
+  let _h='<div class="mod-hdr"><h3>Edit Entry</h3></div>';
 
   // Show invoice context warning
-  _h+='<div style="background:#EFF6FF;border:1px solid #3B82F6;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#1E40AF">Editing entry for <strong>Invoice #'+e.invNo+'</strong></div>';
+  _h+='<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#92400E"><strong>Invoice #'+e.invNo+'</strong> — Changes will regenerate the PDF</div>';
 
   _h+='<div class="fg"><label class="fl">Date</label><input class="fi" id="edDt" type="date" value="'+e.date+'"></div>';
 
@@ -3741,12 +3740,12 @@ async function deleteEntryFromInvoice(entryId,invoiceIdx){
 
   // Warning if this is the last entry
   if(entries.length<=1){
-    showModal('<h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Cannot Delete</h3><p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This is the only entry in the invoice. Delete the invoice instead.</p><button class="btn btn-s" style="width:100%" onclick="closeMod2();showEditInvoiceModal('+invoiceIdx+')">OK</button>');
+    showModal('<div class="mod-hdr"><h3>Cannot Delete</h3></div><p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This is the only entry in the invoice. Delete the invoice instead.</p><button class="btn btn-s" style="width:100%" onclick="closeMod2();showEditInvoiceModal('+invoiceIdx+')">OK</button>');
     return;
   }
 
   // Confirm deletion
-  let _h='<h3 style="font-size:16px;font-weight:600;margin-bottom:12px">Delete Entry?</h3>';
+  let _h='<div class="mod-hdr" style="background:#dc2626"><h3>Delete Entry?</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:8px">'+fdn(e.date)+' · '+e.svc+' · '+fc(e.gross)+'</p>';
   _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">This will remove the entry from Invoice #'+inv.num+' and update the PDF.</p>';
   _h+='<div class="brow"><button class="btn btn-s" id="_delEntryCancel">Cancel</button><button class="btn btn-d" id="_delEntryConfirm">Delete</button></div>';
@@ -3981,7 +3980,7 @@ function showDeleteInvoiceConfirmModal(idx){
   if(!inv)return;
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Delete Invoice #'+inv.num+'?</h3></div>';
+  let _h='<div class="mod-hdr" style="background:#dc2626"><h3>Delete Invoice #'+inv.num+'?</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete:</p>';
   _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
   _h+='<li>Invoice record from Google Sheets</li>';
@@ -4050,8 +4049,7 @@ function changeInvoiceEntityConfirm(idx){
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
   const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
 
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
+  let _h='<div class="mod-hdr"><h3>Change Invoice Entity</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt);margin-bottom:16px">Move Invoice #'+inv.num+' to <strong>'+newLabel+'</strong>?</p>';
   _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">This will:</p>';
   _h+='<ul style="font-size:13px;color:var(--txt);margin-bottom:16px;padding-left:20px">';
@@ -4189,7 +4187,7 @@ const pComm=p.comm||0.35;
 const prcClass=pid==='bupa'?'prc-bupa':(pid==='grove'?'prc-grove':'');
 
 // Build modal with entries list and live preview
-let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px">'+p.short+' Invoice</h3>';
+let html='<div class="mod-hdr"><h3>'+p.short+' Invoice</h3></div>';
 html+='<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-s" style="flex:1;font-size:12px" onclick="cpSelectAll()">Select All</button><button class="btn btn-s" style="flex:1;font-size:12px" onclick="cpSelectNone()">Select None</button></div>';
 html+='<div id="cpEntryList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px">';
 pe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
@@ -4471,7 +4469,7 @@ if(!ahe.length){showToast('No pending entries');return;}
 const pName=ahe[0].pName;
 
 // Build modal with entries list and live preview
-let html='<h3 style="font-size:18px;font-weight:700;margin-bottom:12px">'+pName+' Invoice</h3>';
+let html='<div class="mod-hdr"><h3>'+pName+' Invoice</h3></div>';
 html+='<div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn btn-s" style="flex:1;font-size:12px" onclick="ahSelectAll()">Select All</button><button class="btn btn-s" style="flex:1;font-size:12px" onclick="ahSelectNone()">Select None</button></div>';
 html+='<div id="ahEntryList" style="max-height:200px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px">';
 ahe.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
@@ -4752,7 +4750,7 @@ var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var daysStr=(p.days||[]).map(function(d){return d}).join(',');
 var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', '):'';
 var currentColor=p.color||'bupa';
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short||id)+' Settings</h3>';
+var _h='<div class="mod-hdr"><h3>'+(p.short||id)+' Settings</h3></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ePShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ePAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
@@ -4788,7 +4786,7 @@ document.querySelectorAll('.color-pick').forEach(function(btn){
 },50);
 }
 function addPrac(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add New Practice</h3>';
+var _h='<div class="mod-hdr"><h3>Add New Practice</h3></div>';
 // Practice type selector
 _h+='<div class="fg"><label class="fl">Practice Type</label><div class="esw" style="margin-top:4px">';
 _h+='<button class="ebtn act" id="ePTypeC" onclick="setAddPracType(\'contract\')">Contracted</button>';
@@ -4901,7 +4899,7 @@ function editEnt(){setEntity(S.ent==='self'?'ltd':'self');document.getElementByI
 function editField(entType,field){
 var ent=S.ents[entType];var labels={name:'Name',addr:'Address',phone:'Phone',email:'Email'};
 var val=ent[field]||'';var isTA=field==='addr';
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Edit '+(entType==='self'?'Self-Employed':'Ltd')+' '+labels[field]+'</h3>';
+var _h='<div class="mod-hdr"><h3>Edit '+(entType==='self'?'Self-Employed':'Ltd')+' '+labels[field]+'</h3></div>';
 if(isTA)_h+='<div class="fg"><label class="fl">'+labels[field]+'</label><textarea class="fi" id="_efVal" rows="4">'+val.replace(/\\n/g,'\n')+'</textarea></div>';
 else _h+='<div class="fg"><label class="fl">'+labels[field]+'</label><input class="fi" id="_efVal" value="'+val+'"></div>';
 _h+='<div class="brow"><button class="btn btn-s" id="_efC">Cancel</button><button class="btn btn-p" id="_efS">Save</button></div>';
@@ -4916,7 +4914,7 @@ S.ents[entType][field]=v;save();closeMod2();refreshSettings();syncSettingsToClou
 }
 function editBankField(entType){
 var ent=S.ents[entType];
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(entType==='self'?'Self-Employed':'Ltd')+' Bank Details</h3>';
+var _h='<div class="mod-hdr"><h3>'+(entType==='self'?'Self-Employed':'Ltd')+' Bank Details</h3></div>';
 _h+='<div class="fg"><label class="fl">Bank Name</label><input class="fi" id="_ebBank" value="'+(ent.bank||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Account Name</label><input class="fi" id="_ebName" value="'+(ent.bName||'')+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Account Number</label><input class="fi" id="_ebAcc" value="'+(ent.acc||'')+'"></div>';
@@ -4935,7 +4933,7 @@ save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){con
 }
 function editCompanyNo(){
 var val=S.ents.ltd.companyNo||'';
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Ltd Company Number</h3>';
+var _h='<div class="mod-hdr"><h3>Ltd Company Number</h3></div>';
 _h+='<div class="fg"><label class="fl">Company Registration Number</label><input class="fi" id="_ecVal" value="'+val+'" placeholder="e.g. 12345678"></div>';
 _h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">This appears at the bottom of Ltd invoices</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_ecC">Cancel</button><button class="btn btn-p" id="_ecS">Save</button></div>';
@@ -4952,7 +4950,7 @@ var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 var current=S.dayMap[dayNum]||'home';
 var opts='<option value="home"'+(current==='home'?' selected':'')+'>Home (no auto-open)</option>';
 Object.keys(S.practices).forEach(function(k){var p=S.practices[k];opts+='<option value="'+k+'"'+(current===k?' selected':'')+'>'+p.short+'</option>';});
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+dayNames[dayNum]+'</h3>';
+var _h='<div class="mod-hdr"><h3>'+dayNames[dayNum]+'</h3></div>';
 _h+='<div class="fg"><label class="fl">Auto-open to:</label><select class="asel" id="_dmVal">'+opts+'</select></div>';
 _h+='<div class="brow"><button class="btn btn-s" id="_dmC">Cancel</button><button class="btn btn-p" id="_dmS">Save</button></div>';
 showModal(_h);
@@ -4964,8 +4962,7 @@ save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(f
 },50);
 }
 function editInvNum(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Invoice Numbering</h3>';
-_h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Each entity has its own invoice sequence.</p>';
+var _h='<div class="mod-hdr"><h3>Invoice Numbering</h3><p>Each entity has its own sequence</p></div>';
 _h+='<div class="fg"><label class="fl">Self-Employed Next #</label><input class="fi" id="_inValSelf" type="number" value="'+S.nextInvSelf+'" min="1"></div>';
 _h+='<div class="fg"><label class="fl">Ltd Company Next #</label><input class="fi" id="_inValLtd" type="number" value="'+S.nextInvLtd+'" min="1"></div>';
 _h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:16px">Self: '+pad(S.nextInvSelf)+' | Ltd: '+pad(S.nextInvLtd)+'</p>';
@@ -4980,7 +4977,7 @@ save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){con
 },50);
 }
 function editPayTerms(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Payment Terms</h3>';
+var _h='<div class="mod-hdr"><h3>Payment Terms</h3></div>';
 _h+='<div class="fg"><label class="fl">Terms (shown on invoices)</label><input class="fi" id="_ptVal" value="'+S.payTerms+'"></div>';
 _h+='<div class="brow"><button class="btn btn-s" id="_ptC">Cancel</button><button class="btn btn-p" id="_ptS">Save</button></div>';
 showModal(_h);
@@ -4993,7 +4990,7 @@ save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){con
 }
 function viewLogo(ent){
 var logoData=window.LOGOS&&window.LOGOS[ent];
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(ent==='self'?'Self-Employed':'Ltd Company')+' Logo</h3>';
+var _h='<div class="mod-hdr"><h3>'+(ent==='self'?'Self-Employed':'Ltd Company')+' Logo</h3></div>';
 if(logoData){
 _h+='<div style="text-align:center;margin:16px 0;background:#f5f5f5;padding:20px;border-radius:8px"><img src="'+logoData+'" style="max-width:150px;max-height:150px"></div>';
 }else{
@@ -5005,7 +5002,7 @@ showModal(_h);
 setTimeout(function(){document.getElementById('_vlC').onclick=function(){closeMod2()};},50);
 }
 function editInvoiceFooter(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Invoice Footer Message</h3>';
+var _h='<div class="mod-hdr"><h3>Invoice Footer Message</h3></div>';
 _h+='<div class="fg"><label class="fl">Footer Text</label><textarea class="fi" id="_ifVal" rows="3">'+(S.invoiceFooter||'Thank you for your continued support.')+'</textarea></div>';
 _h+='<p style="font-size:12px;color:var(--txt3);margin:8px 0">This message appears at the bottom of invoices</p>';
 _h+='<div class="brow"><button class="btn btn-s" id="_ifC">Cancel</button><button class="btn btn-p" id="_ifS">Save</button></div>';
@@ -5018,7 +5015,7 @@ save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){con
 },50);
 }
 function clearAllData(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:var(--err)">Clear All Data</h3>';
+var _h='<div class="mod-hdr" style="background:#dc2626"><h3>Clear All Data</h3></div>';
 _h+='<p style="margin:12px 0">This will permanently delete:</p>';
 _h+='<ul style="margin:8px 0 16px 20px;font-size:14px"><li>All entries</li><li>All invoices</li><li>All settings</li></ul>';
 _h+='<p style="font-size:12px;color:var(--err);margin-bottom:16px">This action cannot be undone!</p>';
@@ -5040,7 +5037,7 @@ setTimeout(function(){location.reload();},1500);
 },50);
 }
 function addAhPracSettings(){
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Add Ad Hoc Practice</h3>';
+var _h='<div class="mod-hdr"><h3>Add Ad Hoc Practice</h3></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" placeholder="e.g. Smile Dental"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3" placeholder="Full invoice address..."></textarea></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Rate per Patient (£)</label><input class="fi" id="ahsRate" type="number" value="25" step="0.01"></div>';
@@ -5064,7 +5061,7 @@ if(p.svcs){
   svcsStr='Standard:'+p.rate;
   if(p.air)svcsStr+=', Airflow:'+p.air;
 }
-var _h='<h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'+(p.short||p.name)+' Settings</h3>';
+var _h='<div class="mod-hdr"><h3>'+(p.short||p.name)+' Settings</h3></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ahsName" value="'+p.name+'"></div>';
 _h+='<div class="fg"><label class="fl">Short Name</label><input class="fi" id="ahsShort" value="'+(p.short||'')+'"></div>';
 _h+='<div class="fg"><label class="fl">Address</label><textarea class="fi" id="ahsAddr" rows="3">'+(p.addr||'').replace(/\\n/g,'\n')+'</textarea></div>';
@@ -5619,8 +5616,7 @@ function refreshAnalytics(){
 
 // Edit expected patients per day for each practice
 function editPracticeProjections(){
-  let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-  _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Expected Patients Per Day</h3></div>';
+  let _h='<div class="mod-hdr"><h3>Expected Patients Per Day</h3></div>';
   _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Set how many patients you typically see per day at each practice. This helps track projections vs actuals.</p>';
 
   Object.keys(S.practices||{}).forEach(pId=>{
