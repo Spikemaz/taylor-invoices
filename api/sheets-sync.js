@@ -52,7 +52,7 @@ function getSheetId(entity) {
 // The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'color', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'paidStatus', 'paidDate', 'createdAt'];
-const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'createdAt'];
+const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 const TRASH_COLUMNS = ['deletedAt', 'dataType', 'originalData'];
@@ -1043,9 +1043,9 @@ async function loadPractices(sheets, sheetId, res) {
       const obj = {};
       PRACTICE_COLUMNS.forEach((col, i) => {
         let val = row[i];
-        if (['comm', 'rate', 'air'].includes(col)) val = parseFloat(val) || 0;
+        if (['comm', 'rate', 'air', 'ptsPerHour'].includes(col)) val = parseFloat(val) || 0;
         if (col === 'active') val = val === '' ? true : (val === 'true' || val === true);
-        if ((col === 'services' || col === 'days') && val) {
+        if ((col === 'services' || col === 'days' || col === 'paidHours') && val) {
           try { val = JSON.parse(val); } catch(e) {}
         }
         obj[col] = val !== undefined ? val : '';
@@ -1370,7 +1370,7 @@ async function setupAllTabs(sheets, res) {
   const TABS = [
     { name: 'Entries', columns: ENTRY_COLUMNS, range: 'A:T' },
     { name: 'Invoices', columns: INVOICE_COLUMNS, range: 'A:AA' },
-    { name: 'Practices', columns: PRACTICE_COLUMNS, range: 'A:M' },
+    { name: 'Practices', columns: PRACTICE_COLUMNS, range: 'A:O' },
     { name: 'Settings', columns: SETTINGS_COLUMNS, range: 'A:C' },
     { name: 'Log', columns: LOG_COLUMNS, range: 'A:G' },
     { name: 'Trash', columns: TRASH_COLUMNS, range: 'A:C' }

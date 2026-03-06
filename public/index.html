@@ -1100,7 +1100,9 @@ async function syncPracticesToCloud() {
     rate: 0,  // Contract practices don't use rate
     air: 0,   // Contract practices don't use air
     active: p.active !== false,  // Default to true
-    color: p.color || 'grove'  // Practice color for styling
+    color: p.color || 'grove',  // Practice color for styling
+    paidHours: p.paidHours || {},  // Paid hours per day of week
+    ptsPerHour: p.ptsPerHour || 2  // Patients per hour for projections
   }));
   // Ad Hoc practices - convert rate/air to services format if needed
   const adhocPractices = (S.ahPrac || []).map(p => {
@@ -1202,12 +1204,18 @@ async function loadPracticesFromCloud() {
       }
       // Get existing local practice data
       const existing = S.practices[p.id];
-      // Merge: cloud data takes priority, but keep local svcs/days if cloud is empty
+      // Merge: cloud data takes priority, but keep local values if cloud is empty
       p.days = Array.isArray(p.days) && p.days.length > 0 ? p.days : (existing?.days || []);
       p.svcs = (p.svcs && Object.keys(p.svcs).length > 0) ? p.svcs : (existing?.svcs || { Hygiene: { p: 70, d: 'per patient' } });
       p.comm = p.comm || existing?.comm || 0.35;
       p.short = p.short || existing?.short || p.name || p.id;
-      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days);
+      // Parse paidHours if it's a string
+      if (typeof p.paidHours === 'string') {
+        try { p.paidHours = JSON.parse(p.paidHours); } catch(e) { p.paidHours = {}; }
+      }
+      p.paidHours = (p.paidHours && Object.keys(p.paidHours).length > 0) ? p.paidHours : (existing?.paidHours || {});
+      p.ptsPerHour = p.ptsPerHour || existing?.ptsPerHour || 2;
+      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days, 'paidHours=', p.paidHours);
       S.practices[p.id] = p;
     });
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
