@@ -5886,7 +5886,7 @@ function refreshAnalytics(){
   // Calendar days grid
   const firstDow=new Date(calYear,calMonth,1).getDay();
   const daysInCalMonth=new Date(calYear,calMonth+1,0).getDate();
-  const todayStr=now.toISOString().split('T')[0];
+  // todayStr already declared above
 
   _h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
 
