@@ -1957,7 +1957,7 @@ scheduleMidnightReset();
 },ms);
 }
 function initDt(){const t=today();const e=document.getElementById('logDt');const a=document.getElementById('ahDt');if(e)e.value=t;if(a)a.value=t;}
-function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];c.innerHTML=days.map(function(d,i){var target=S.dayMap[i];var label=target==='home'?'Home':(S.practices[target]?S.practices[target].short:'Home');return '<div class="srow" onclick="editDayMapping('+i+')"><span class="la">'+d+'</span><span class="va">'+label+' &#9656;</span></div>'}).join('');}
+function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];c.innerHTML=days.map(function(d,i){var target=S.dayMap[i];var prac=S.practices[target];var label='Home';if(target!=='home'&&prac){var hrs=(prac.paidHours&&prac.paidHours[i])||7;label=prac.short+' ('+hrs+'h)';}return '<div class="srow" onclick="editDayMapping('+i+')"><span class="la">'+d+'</span><span class="va">'+label+' &#9656;</span></div>'}).join('');}
 
 // ===== NAVIGATION =====
 function updateNavHighlight(n){
@@ -5001,10 +5001,22 @@ save();closeMod2();refreshSettings();syncSettingsToCloud().catch(function(e){con
 function editDayMapping(dayNum){
 var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var current=S.dayMap[dayNum]||'home';
+var currentHours=7;
+if(current!=='home'&&S.practices[current]&&S.practices[current].paidHours&&S.practices[current].paidHours[dayNum]){
+  currentHours=S.practices[current].paidHours[dayNum];
+}
 var opts='<option value="home"'+(current==='home'?' selected':'')+'>Home (no auto-open)</option>';
 Object.keys(S.practices).forEach(function(k){var p=S.practices[k];opts+='<option value="'+k+'"'+(current===k?' selected':'')+'>'+p.short+'</option>';});
 var _h='<div class="mod-hdr"><h3>'+dayNames[dayNum]+'</h3></div>';
-_h+='<div class="fg"><label class="fl">Auto-open to:</label><select class="asel" id="_dmVal">'+opts+'</select></div>';
+_h+='<div class="fg"><label class="fl">Auto-open to:</label><select class="asel" id="_dmVal" onchange="toggleDmHours()">'+opts+'</select></div>';
+_h+='<div id="_dmHoursRow" class="fg" style="display:'+(current!=='home'?'block':'none')+'">';
+_h+='<label class="fl">Paid hours (excl. lunch)</label>';
+_h+='<div style="display:flex;align-items:center;gap:8px">';
+_h+='<button type="button" class="adj-btn" style="width:36px;height:36px;font-size:18px" onclick="adjDmHours(-0.5)">-</button>';
+_h+='<input type="number" id="_dmHours" class="fi" value="'+currentHours+'" min="1" max="12" step="0.5" style="width:70px;text-align:center">';
+_h+='<button type="button" class="adj-btn" style="width:36px;height:36px;font-size:18px" onclick="adjDmHours(0.5)">+</button>';
+_h+='<span style="font-size:13px;color:var(--txt2)">hours</span>';
+_h+='</div></div>';
 _h+='<div class="brow"><button class="btn btn-s" id="_dmC">Cancel</button><button class="btn btn-p" id="_dmS">Save</button></div>';
 showModal(_h);
 setTimeout(function(){
@@ -5012,6 +5024,7 @@ document.getElementById('_dmC').onclick=function(){closeMod2()};
 document.getElementById('_dmS').onclick=function(){
 var oldPrac=S.dayMap[dayNum];
 var newPrac=document.getElementById('_dmVal').value;
+var newHours=parseFloat(document.getElementById('_dmHours').value)||7;
 S.dayMap[dayNum]=newPrac;
 // Sync practice.days arrays with dayMap changes
 if(oldPrac&&oldPrac!=='home'&&S.practices[oldPrac]){
@@ -5025,12 +5038,26 @@ if(newPrac&&newPrac!=='home'&&S.practices[newPrac]){
     S.practices[newPrac].days.push(dayNum);
     S.practices[newPrac].days.sort();
   }
-  // Add default paidHours for this day
+  // Set paidHours for this day from input
   if(!S.practices[newPrac].paidHours)S.practices[newPrac].paidHours={};
-  if(!S.practices[newPrac].paidHours[dayNum])S.practices[newPrac].paidHours[dayNum]=7;
+  S.practices[newPrac].paidHours[dayNum]=newHours;
 }
 save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});syncPracticesToCloud().catch(function(e){console.error('[Practice Sync Failed]',e);});showToast('\u2713 Updated');};
 },50);
+}
+function toggleDmHours(){
+var sel=document.getElementById('_dmVal');
+var row=document.getElementById('_dmHoursRow');
+if(sel&&row){
+  row.style.display=sel.value!=='home'?'block':'none';
+}
+}
+function adjDmHours(delta){
+var inp=document.getElementById('_dmHours');
+if(!inp)return;
+var val=parseFloat(inp.value)||7;
+val=Math.max(1,Math.min(12,val+delta));
+inp.value=val;
 }
 function editInvNum(){
 var _h='<div class="mod-hdr"><h3>Invoice Numbering</h3><p>Each entity has its own sequence</p></div>';
