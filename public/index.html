@@ -24,11 +24,15 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .hdr-brand{display:flex;flex-direction:column;line-height:1.15;justify-content:center;flex-shrink:1;flex:1;min-width:0}
 .hdr-t{font-size:14px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tm{font-size:8px;font-weight:400;opacity:.7;vertical-align:top;position:relative;top:-1px;margin-left:1px}
 .hdr-e{font-size:9px;opacity:.7;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hdr-nav{display:flex;gap:4px;align-items:center;margin-left:auto;flex-shrink:0}
-.hdr-btn{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--f);height:36px;display:flex;align-items:center;justify-content:center}
+.hdr-nav{display:flex;gap:3px;align-items:center;margin-left:auto;flex-shrink:0}
+.hdr-btn{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);color:#fff;padding:6px 8px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--f);height:36px;width:36px;min-width:36px;display:flex;align-items:center;justify-content:center}
 .hdr-btn:active{background:rgba(255,255,255,.25)}
 .hdr-btn.act{background:rgba(255,255,255,.35);box-shadow:0 0 0 2px rgba(255,255,255,.3)}
 .hdr-btn.sm{padding:6px 8px;font-size:14px;height:36px;width:36px;min-width:36px}
+.hdr-ent{display:flex;gap:2px;align-items:center;margin-left:8px}
+.hdr-ent-btn{background:transparent;border:1px solid rgba(255,255,255,.4);color:rgba(255,255,255,.8);padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--f);height:28px}
+.hdr-ent-btn:active{background:rgba(255,255,255,.1)}
+.hdr-ent-btn.act{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.6);color:#fff}
 .screens{flex:1;overflow:hidden;position:relative}
 .scr{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;display:none;opacity:0;transform:translateX(20px);transition:opacity .25s,transform .25s}
 .scr.act{display:block;opacity:1;transform:translateX(0)}
@@ -358,15 +362,19 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-back home" id="backBtn">£</button>
 <div class="hdr-brand">
 <span class="hdr-t" id="hdrT">Books IQ<span class="tm">™</span></span>
-<span class="hdr-e" id="hdrE">Self-Employed</span>
 </div>
+</div>
+<div class="hdr-ent">
+<button class="hdr-ent-btn" onclick="setEntity('all')" id="hdrEA">All</button>
+<button class="hdr-ent-btn act" onclick="setEntity('self')" id="hdrES">Self</button>
+<button class="hdr-ent-btn" onclick="setEntity('ltd')" id="hdrEL">Ltd</button>
 </div>
 <div class="hdr-nav">
-<button class="hdr-btn" id="navHome" onclick="goHome()">Home</button>
-<button class="hdr-btn" id="navArchive" onclick="showScreen('archive')">Archive</button>
-<button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')">Invoice</button>
-<button class="hdr-btn sm" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
-<button class="hdr-btn sm" id="navSettings" onclick="showScreen('settings')">&#9881;</button>
+<button class="hdr-btn" id="navHome" onclick="goHome()" title="Home">&#127968;</button>
+<button class="hdr-btn" id="navArchive" onclick="showScreen('archive')" title="Archive">&#128196;</button>
+<button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')" title="Invoices">&#128179;</button>
+<button class="hdr-btn" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
+<button class="hdr-btn" id="navSettings" onclick="showScreen('settings')" title="Settings">&#9881;</button>
 </div>
 </div>
 
@@ -1991,7 +1999,7 @@ if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters 
 if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics'){try{refreshAnalytics();}catch(err){console.error('[showScreen] Error in analytics:',err);}}
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
-function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';S.viewEnt='all';S.viewMonth=null;document.getElementById('eA').classList.add('act');document.getElementById('eS').classList.remove('act');document.getElementById('eL').classList.remove('act');document.getElementById('hdrE').textContent='All';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
+function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';S.viewEnt='all';S.viewMonth=null;var eA=document.getElementById('eA'),eS=document.getElementById('eS'),eL=document.getElementById('eL');if(eA)eA.classList.add('act');if(eS)eS.classList.remove('act');if(eL)eL.classList.remove('act');document.getElementById('hdrEA').classList.add('act');document.getElementById('hdrES').classList.remove('act');document.getElementById('hdrEL').classList.remove('act');upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',analytics:'Analytics',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
@@ -2153,8 +2161,11 @@ function switchEntity(t){
   if(ahES)ahES.className='ebtn'+(S.ent==='self'?' act':'');
   if(ahEL)ahEL.className='ebtn'+(S.ent==='ltd'?' act':'');
 
-  // Update header entity display
-  document.getElementById('hdrE').textContent=t==='all'?'All':t==='self'?'Self-Employed':'Ltd Company';
+  // Update header entity buttons
+  const hdrEA=document.getElementById('hdrEA'),hdrES=document.getElementById('hdrES'),hdrEL=document.getElementById('hdrEL');
+  if(hdrEA)hdrEA.className='hdr-ent-btn'+(t==='all'?' act':'');
+  if(hdrES)hdrES.className='hdr-ent-btn'+(t==='self'?' act':'');
+  if(hdrEL)hdrEL.className='hdr-ent-btn'+(t==='ltd'?' act':'');
 
   // Update practice screen monthly summary if we're on it (with animation)
   if(S.prac&&S.practices[S.prac]){
