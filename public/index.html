@@ -5319,27 +5319,61 @@ function countDaysToDate(year,month,dayOfWeek){
 }
 
 // Calculate projections for a practice in a given month
+// Uses paidHours * ptsPerHour for each day (same as Diary)
 function calculateProjections(practiceId,year,month){
   const p=S.practices[practiceId];
   if(!p||!p.days||!p.days.length)return null;
-  const expectedPts=p.expectedPts||8; // Default 8 patients per day
+  const ptsPerHour=p.ptsPerHour||2;
   const avgPrice=p.avgPrice||getAvgPriceForPractice(practiceId);
   const comm=p.comm||0.35;
-  // Count scheduled days in month
-  let totalDays=0;
-  let daysWorkedSoFar=0;
   const now=new Date();
   const isCurrentMonth=year===now.getFullYear()&&month===now.getMonth();
-  p.days.forEach(dow=>{
-    totalDays+=countDaysInMonth(year,month,dow);
-    if(isCurrentMonth)daysWorkedSoFar+=countDaysToDate(year,month,dow);
-    else daysWorkedSoFar+=countDaysInMonth(year,month,dow);
-  });
-  const projectedPts=totalDays*expectedPts;
+  const todayDate=now.getDate();
+
+  // Calculate by iterating through each day of the month
+  let totalDays=0;
+  let daysWorkedSoFar=0;
+  let projectedPts=0;
+  let projectedPtsToDate=0;
+
+  // Iterate through each day of the month
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  for(let day=1;day<=daysInMonth;day++){
+    const dateStr=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dow=new Date(year,month,day).getDay();
+
+    // Check for date-specific override first
+    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+    let assignment=dateOverride!==undefined?dateOverride:null;
+
+    // If no override, check if this day-of-week is scheduled for this practice
+    if(assignment===null&&p.days.includes(dow)){
+      assignment=practiceId;
+    }
+
+    // If assigned to this practice, count it
+    if(assignment===practiceId){
+      // Get paid hours for this day (date-specific or day-of-week default)
+      let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
+      if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+      const dayPts=paidH*ptsPerHour;
+
+      totalDays++;
+      projectedPts+=dayPts;
+
+      // Count if this day is in the past or today (for current month)
+      if(!isCurrentMonth||(isCurrentMonth&&day<=todayDate)){
+        daysWorkedSoFar++;
+        projectedPtsToDate+=dayPts;
+      }
+    }
+  }
+
+  // Calculate average expected pts per day for display
+  const expectedPts=totalDays>0?Math.round(projectedPts/totalDays):0;
+
   const projectedGross=projectedPts*avgPrice;
   const projectedNet=projectedGross*comm;
-  // Projections up to today
-  const projectedPtsToDate=daysWorkedSoFar*expectedPts;
   const projectedGrossToDate=projectedPtsToDate*avgPrice;
   const projectedNetToDate=projectedGrossToDate*comm;
   return {
