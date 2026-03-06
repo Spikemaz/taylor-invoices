@@ -1915,11 +1915,12 @@ function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var 
 
 // ===== NAVIGATION =====
 function updateNavHighlight(n){
-document.getElementById('navHome').classList.toggle('act',n==='home');
-document.getElementById('navArchive').classList.toggle('act',n==='archive');
-document.getElementById('navInvoice').classList.toggle('act',n==='invoices');
-document.getElementById('navAnalytics').classList.toggle('act',n==='analytics');
-document.getElementById('navSettings').classList.toggle('act',n==='settings');
+var el;
+el=document.getElementById('navHome');if(el)el.classList.toggle('act',n==='home');
+el=document.getElementById('navArchive');if(el)el.classList.toggle('act',n==='archive');
+el=document.getElementById('navInvoice');if(el)el.classList.toggle('act',n==='invoices');
+el=document.getElementById('navAnalytics');if(el)el.classList.toggle('act',n==='analytics');
+el=document.getElementById('navSettings');if(el)el.classList.toggle('act',n==='settings');
 }
 // Reset home values to zero then animate - for smooth transitions every time
 function animateHomeFromZero(){
