@@ -5640,48 +5640,76 @@ function refreshAnalytics(){
     _h+='<div style="aspect-ratio:1;background:var(--bg);border-radius:4px;opacity:0.3"></div>';
   }
 
-  // Calendar days
+  // Calendar days - show actual entries vs scheduled
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(calYear,calMonth,day).getDay();
     const isToday=dateStr===todayStr;
+    const isPast=dateStr<todayStr;
+    const isFuture=dateStr>todayStr;
 
     // Check for scheduled work: first check specific date overrides, then day-of-week mapping
     const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
     const dowMapping=S.dayMap[dow];
-    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+    let scheduledAssignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
 
     // Check for day off exceptions
     const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
     const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
-    if(isDayOff)assignment='home';
-    if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
+    if(isDayOff)scheduledAssignment='home';
+    if(isExtraDay&&isExtraDay.pId)scheduledAssignment=isExtraDay.pId;
 
-    // Check if entry exists for this date (actual work logged)
-    const hasEntry=allEntries.some(e=>e.date===dateStr);
+    // Get actual entries for this date
+    const dayEntries=allEntries.filter(e=>e.date===dateStr);
+    const hasEntry=dayEntries.length>0;
+
+    // For past/today dates with entries, show actual work; for future, show scheduled
+    let displayAssignment=scheduledAssignment;
+    let actualPrac=null;
+    let actualPts=0;
+    if(hasEntry){
+      // Use the first entry's practice for color (most common case is single practice per day)
+      const mainEntry=dayEntries[0];
+      displayAssignment=mainEntry.pId;
+      actualPrac=S.practices[mainEntry.pId]||S.ahPrac.find(p=>p.id===mainEntry.pId)||null;
+      actualPts=dayEntries.reduce((s,e)=>s+(e.pts||0),0);
+    }
 
     // Get practice info
-    const isWorkDay=assignment!=='home';
-    const prac=isWorkDay?(S.practices[assignment]||S.ahPrac.find(p=>p.id===assignment)||null):null;
+    const isWorkDay=displayAssignment!=='home';
+    const prac=hasEntry?actualPrac:(isWorkDay?(S.practices[displayAssignment]||S.ahPrac.find(p=>p.id===displayAssignment)||null):null);
     const pracColor=prac?(prac.color?'var(--'+prac.color+')':'var(--pri)'):'transparent';
-    const isAdhoc=prac&&(prac.type==='adhoc'||S.ahPrac.some(ap=>ap.id===assignment));
+    const isAdhoc=prac&&(prac.type==='adhoc'||S.ahPrac.some(ap=>ap.id===displayAssignment));
 
-    // Day cell styling
-    let bgColor=isWorkDay?pracColor:'var(--bg)';
-    let txtColor=isWorkDay?'#fff':'var(--txt2)';
+    // Day cell styling - different for past with entries vs scheduled future
+    let bgColor=isWorkDay||hasEntry?pracColor:'var(--bg)';
+    let txtColor=isWorkDay||hasEntry?'#fff':'var(--txt2)';
     let border=isToday?'2px solid var(--pri-dk)':'1px solid var(--bdr)';
 
-    _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;background:'+bgColor+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px">';
+    // For future scheduled days, show slightly transparent
+    let opacity=isFuture&&!hasEntry?'0.7':'1';
+
+    _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;background:'+bgColor+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px;opacity:'+opacity+'">';
     _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px">'+day+'</div>';
-    if(isWorkDay&&prac){
+
+    // Show practice name or patient count
+    if(hasEntry){
+      // Show actual patient count for days with entries
+      _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9">'+actualPts+'pts</div>';
+    }else if(isWorkDay&&prac){
       _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9">'+(prac.short||prac.name||'').substring(0,4)+'</div>';
     }
+
     // Indicators
     if(hasEntry){
-      _h+='<div style="position:absolute;bottom:2px;right:2px;width:5px;height:5px;background:var(--ok);border-radius:50%"></div>';
+      // Checkmark for logged work
+      _h+='<div style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:var(--ok);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">✓</div>';
+    }else if(isPast&&isWorkDay){
+      // Warning for missed scheduled day
+      _h+='<div style="position:absolute;bottom:1px;right:1px;width:10px;height:10px;background:var(--warn);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">!</div>';
     }
-    if(isAdhoc&&isWorkDay){
-      _h+='<div style="position:absolute;top:2px;right:2px;width:5px;height:5px;background:var(--err);border-radius:50%"></div>';
+    if(isAdhoc&&(isWorkDay||hasEntry)){
+      _h+='<div style="position:absolute;top:1px;right:1px;width:6px;height:6px;background:var(--err);border-radius:50%"></div>';
     }
     _h+='</div>';
   }
@@ -5703,20 +5731,26 @@ function refreshAnalytics(){
       _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--'+(p.color||'pri')+')"></span>'+(p.short||p.name)+'</div>';
     }
   });
-  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--err)"></span>Ad Hoc</div>';
-  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></span>Logged</div>';
+  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--ok);font-size:7px;color:#fff;display:flex;align-items:center;justify-content:center">✓</span>Logged</div>';
+  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:var(--warn);font-size:7px;color:#fff;display:flex;align-items:center;justify-content:center">!</span>Missed</div>';
   _h+='</div>';
 
-  // Monthly summary
+  // Monthly summary - actual vs projected
   const currentMonthName=now.toLocaleString('en-GB',{month:'long',year:'numeric'});
-  let workDaysThisMonth=0;
-  let expectedMonthlyPts=0;
+  let scheduledDays=0;
+  let actualDaysWorked=0;
+  let actualPts=0;
+  let actualNet=0;
+  let projectedPts=0;
+  let projectedNet=0;
   let totalWeeklyHours=0;
 
-  // Count from calendar view month
+  // Count from calendar view month - split into actual (past) and projected (future)
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     const dow=new Date(calYear,calMonth,day).getDay();
+    const isPast=dateStr<todayStr;
+    const isToday=dateStr===todayStr;
     const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
     const dowMapping=S.dayMap[dow];
     let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
@@ -5725,24 +5759,74 @@ function refreshAnalytics(){
     if(isDayOff)assignment='home';
     if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
 
-    if(assignment!=='home'){
-      workDaysThisMonth++;
+    // Get actual entries for this date
+    const dayEntries=allEntries.filter(e=>e.date===dateStr);
+    const hasEntry=dayEntries.length>0;
+
+    if(hasEntry){
+      // Use actual data
+      actualDaysWorked++;
+      const dayPts=dayEntries.reduce((s,e)=>s+(e.pts||0),0);
+      actualPts+=dayPts;
+      const dayNet=dayEntries.reduce((s,e)=>{
+        const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+        return s+(e.pType==='adhoc'?g:g*(e.comm||0));
+      },0);
+      actualNet+=dayNet;
+    }else if(assignment!=='home'){
+      // Use projected data for scheduled future days
+      scheduledDays++;
       const p=S.practices[assignment];
       if(p){
         const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
         const ptsPerHour=p.ptsPerHour||2;
-        expectedMonthlyPts+=paidH*ptsPerHour;
-        if(day<=7)totalWeeklyHours+=paidH; // Just first week for weekly hours
+        const estPts=paidH*ptsPerHour;
+        projectedPts+=estPts;
+        // Estimate net based on average service prices and commission
+        const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+        projectedNet+=estPts*avgPrice*p.comm;
+        if(day<=7)totalWeeklyHours+=paidH;
       }
     }
   }
 
+  const totalDays=actualDaysWorked+scheduledDays;
+  const totalPts=actualPts+projectedPts;
+  const totalNet=actualNet+projectedNet;
+
   _h+='<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--rs)">';
-  _h+='<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-  _h+='<div><div style="font-size:12px;color:var(--txt2)">Work Days</div><div style="font-size:18px;font-weight:600">'+workDaysThisMonth+' days</div></div>';
-  _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Weekly Hours</div><div style="font-size:18px;font-weight:600">'+Math.round(totalWeeklyHours)+'h</div></div>';
-  _h+='<div style="text-align:right"><div style="font-size:12px;color:var(--txt2)">Est. Patients</div><div style="font-size:18px;font-weight:600">~'+Math.round(expectedMonthlyPts)+'</div></div>';
+
+  // Show actual progress vs projected
+  _h+='<div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:8px;text-transform:uppercase">'+calDate.toLocaleString('en-GB',{month:'long'})+' Summary</div>';
+
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
+
+  // Days worked
+  _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Days Worked</div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualDaysWorked+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / '+totalDays+' scheduled</span></div>';
   _h+='</div>';
+
+  // Patients
+  _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Patients</div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualPts+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / ~'+Math.round(totalPts)+' projected</span></div>';
+  _h+='</div>';
+
+  // Take home - actual
+  _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Take Home (Actual)</div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--ok)">'+fc(actualNet)+'</div>';
+  _h+='</div>';
+
+  // Take home - projected total
+  _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Month Projection</div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--txt)">~'+fc(totalNet)+'</div>';
+  _h+='</div>';
+
+  _h+='</div>';
+
   _h+='<div style="display:flex;gap:8px">';
   _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editPracticeProjections()">Hours/Rates</button>';
   _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editRecurringSchedule()">Set Weekly Pattern</button>';
