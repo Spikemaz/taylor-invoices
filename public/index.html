@@ -3478,10 +3478,18 @@ function emailInvoice(idx){
   body+=(entDetails.name||'Taylor Muir');
 
   // Create mailto link
-  const mailtoLink='mailto:'+encodeURIComponent(toEmail)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  const mailtoLink='mailto:'+toEmail+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
 
-  // Open mailto link
-  window.location.href=mailtoLink;
+  // Close modal first
+  closeMod2();
+
+  // Open mailto link - use a link click for better iOS compatibility
+  const a=document.createElement('a');
+  a.href=mailtoLink;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 
   showToast('Opening email...');
 }
