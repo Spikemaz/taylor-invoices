@@ -51,7 +51,7 @@ function getSheetId(entity) {
 // because the service account doesn't own the files - Taylor does.
 // The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'color', 'createdAt'];
-const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'createdAt'];
+const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'paidStatus', 'paidDate', 'createdAt'];
 const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
@@ -232,6 +232,7 @@ module.exports = async (req, res) => {
       case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res);
       case 'load_all': return await loadAll(sheets, sheetId, res);
       case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res);
+      case 'update_invoice_status': return await updateInvoiceStatus(sheets, sheetId, data, res);
       case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res);
       case 'sync_entries': return await syncEntries(sheets, sheetId, data, res);
       case 'sync_invoices': return await syncInvoices(sheets, sheetId, data, res);
@@ -671,6 +672,73 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
   });
 
   return res.status(200).json({ success: true, message: 'Invoice updated', num });
+}
+
+// Update invoice payment status (paid/unpaid)
+async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate }, res) {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'Invoices!A:AC',
+  });
+
+  const rows = response.data.values || [];
+  const headers = rows[0] || INVOICE_COLUMNS;
+  const rowIndex = rows.findIndex((row, i) => i > 0 && (row[0] === num || row[0] === String(num)));
+
+  if (rowIndex === -1) {
+    return res.status(404).json({ error: 'Invoice not found', num });
+  }
+
+  // Find column indices for paidStatus and paidDate
+  const paidStatusIdx = headers.indexOf('paidStatus');
+  const paidDateIdx = headers.indexOf('paidDate');
+
+  // If columns don't exist in header, add them
+  if (paidStatusIdx === -1 || paidDateIdx === -1) {
+    // Update header row to include new columns
+    const newHeaders = [...headers];
+    if (paidStatusIdx === -1) newHeaders.push('paidStatus');
+    if (paidDateIdx === -1) newHeaders.push('paidDate');
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: 'Invoices!A1:AC1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [newHeaders] }
+    });
+  }
+
+  // Update the row with payment status
+  const currentRow = rows[rowIndex];
+  const psIdx = paidStatusIdx >= 0 ? paidStatusIdx : headers.length;
+  const pdIdx = paidDateIdx >= 0 ? paidDateIdx : headers.length + (paidStatusIdx === -1 ? 1 : 0);
+
+  // Ensure row has enough columns
+  while (currentRow.length <= Math.max(psIdx, pdIdx)) {
+    currentRow.push('');
+  }
+
+  currentRow[psIdx] = paidStatus || '';
+  currentRow[pdIdx] = paidDate || '';
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `Invoices!A${rowIndex + 1}:AC${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [currentRow] }
+  });
+
+  // Log the status change
+  await writeLog(sheets, sheetId, {
+    action: 'UPDATE',
+    dataType: 'invoice',
+    recordId: num,
+    changes: `Payment status: ${paidStatus}${paidDate ? ' on ' + paidDate : ''}`,
+    previousData: {},
+    newData: { paidStatus, paidDate }
+  });
+
+  return res.status(200).json({ success: true, message: 'Invoice status updated', num, paidStatus });
 }
 
 // Trigger PDF regeneration by clearing driveLink and setting needsRegeneration flag

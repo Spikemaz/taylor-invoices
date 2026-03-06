@@ -160,8 +160,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ie-mid{flex:1;min-width:0;overflow:hidden;padding-right:8px}
 .ie-prc{font-size:14px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ie-per{font-size:11px;color:var(--txt3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ie-amt{display:flex;align-items:center;gap:3px;background:var(--pri-dk);padding:5px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.ie-amt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;background:var(--pri-dk);padding:5px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
 .ie-bal{font-size:13px;font-weight:700;color:#86efac}
+.ie-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 6px;border-radius:4px}
+.ie-status.unpaid{background:#fef2f2;color:#dc2626}
+.ie-status.paid{background:#f0fdf4;color:#16a34a}
+.aitem.inv-unpaid{border-left:3px solid #dc2626}
+.aitem.inv-paid{border-left:3px solid #16a34a;opacity:0.75}
 .ibtn{flex:1;padding:10px;border-radius:var(--rs);border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--f)}.ibtn:active{transform:scale(.97)}.ibtn.pv{background:#f3f4f6;color:var(--txt)}.ibtn.gn{background:var(--pri);color:#fff}
 .ibtn.gn.prc-bupa{background:var(--bupa)}.ibtn.gn.prc-grove{background:var(--grove)}.ibtn.gn.prc-adhoc{background:#EF4444}
 .sh{font-size:11px;font-weight:500;color:var(--txt3);letter-spacing:.3px;margin:6px 0 6px;text-align:center}.sh:first-child{margin-top:0}
@@ -719,7 +724,8 @@ async function retryPending() {
 
     // Validate delete_invoice - if invoice doesn't exist locally, we already deleted it
     if (d.action === 'delete_invoice' && invoiceNum) {
-      const localInv = S.invoices.find(i => i.num === invoiceNum);
+      const invEnt = d.entity || 'self';
+      const localInv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===invEnt));
       if (!localInv) {
         console.log('Removing pending delete - invoice already deleted locally:', invoiceNum);
         removed++;
@@ -1274,16 +1280,16 @@ async function generateAndUploadPDF(invData) {
 async function regenerateInvoicePDF(invoiceNum, entity) {
   console.log('[Regenerate Invoice]', invoiceNum, entity);
   try {
-    // Find the invoice
-    const inv = S.invoices.find(i => i.num === invoiceNum);
+    // Find the invoice (matching entity)
+    const inv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===(entity||'self')));
     if (!inv) {
-      console.error('Invoice not found:', invoiceNum);
+      console.error('Invoice not found:', invoiceNum, entity);
       showToast('Invoice not found', 'err');
       return { success: false, error: 'Invoice not found' };
     }
 
-    // Find all entries for this invoice
-    const entries = S.entries.filter(e => e.invNo === invoiceNum);
+    // Find all entries for this invoice (matching entity)
+    const entries = S.entries.filter(e => e.invNo === invoiceNum && (e.entity||'self')===(entity||'self'));
     if (!entries.length) {
       console.error('No entries found for invoice:', invoiceNum);
       showToast('No entries found', 'err');
@@ -1544,7 +1550,9 @@ function mergeInvoices(cloudInvoices, entity) {
   cloudInvoices.forEach(ci => {
     if (ci.entity && ci.entity !== entity) return;
     const normalized = normalizeInvoice(ci);
-    const localIdx = S.invoices.findIndex(i => i.num === ci.num);
+    // Match by both num AND entity
+    const ciEntity = ci.logoType==='ltd'||ci.entity==='Ltd Company'?'ltd':'self';
+    const localIdx = S.invoices.findIndex(i => i.num === ci.num && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===ciEntity));
     if (localIdx === -1) {
       // New from cloud
       S.invoices.push(normalized);
@@ -2896,7 +2904,7 @@ async function saveEntry(id){
   if(entityChanged){
     // If entry has an invoice, move entire invoice with all its entries
     if(hadInvoice){
-      const invIdx=S.invoices.findIndex(inv=>inv.num===invoiceNum);
+      const invIdx=S.invoices.findIndex(inv=>inv.num===invoiceNum&&((inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self')===oldEntity));
       if(invIdx>=0){
         closeMod2();
         // Store entry changes to apply after invoice move
@@ -2948,7 +2956,7 @@ async function changeEntryEntity(id,oldEntity,newEntity,entryData){
 function showInvoiceEntityChangeFromEntry(invIdx,oldEntity,newEntity,editedEntry,editedEntryId){
   const inv=S.invoices[invIdx];
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
-  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
 
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
   _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
@@ -3170,12 +3178,17 @@ function renderInv(inv){
   if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
-  const idx=S.invoices.findIndex(i=>i.num===inv.num);
+  const idx=S.invoices.findIndex(i=>i.num===inv.num&&((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===entType));
+  // Payment status
+  const isPaid=inv.paidStatus==='paid';
+  const statusClass=isPaid?'inv-paid':'inv-unpaid';
+  const statusLabel=isPaid?'Paid':'Unpaid';
+  const statusBadgeClass=isPaid?'paid':'unpaid';
   // Uniform layout matching archive entries
-  return '<div class="aitem '+prcClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
+  return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
     '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
     '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+'</div></div>'+
-    '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span></div>'+
+    '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span><span class="ie-status '+statusBadgeClass+'">'+statusLabel+'</span></div>'+
     '</div>';
 }
 
@@ -3300,12 +3313,21 @@ function showInvoiceOptionsModal(idx){
   if(!inv)return;
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
+  const isPaid=inv.paidStatus==='paid';
 
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0"><h3 style="font-size:16px;font-weight:600;margin:0">Invoice #'+inv.num+'</h3></div>';
   _h+='<div style="margin-bottom:16px">';
   _h+='<div style="font-size:14px;font-weight:600;color:var(--txt)">'+inv.practice+'</div>';
   _h+='<div style="font-size:13px;color:var(--txt2)">'+inv.period+' · '+entLabel+'</div>';
   _h+='<div style="font-size:18px;font-weight:700;color:var(--pri);margin-top:8px">'+fc(inv.amount)+'</div>';
+  _h+='</div>';
+
+  // Payment status toggle - prominent at top
+  _h+='<div style="background:'+(isPaid?'#f0fdf4':'#fef2f2')+';border:2px solid '+(isPaid?'#16a34a':'#dc2626')+';border-radius:var(--r);padding:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">';
+  _h+='<div><div style="font-size:13px;font-weight:600;color:'+(isPaid?'#16a34a':'#dc2626')+'">'+(isPaid?'PAID':'UNPAID')+'</div>';
+  if(isPaid&&inv.paidDate){_h+='<div style="font-size:11px;color:var(--txt2)">Paid on '+fdd(inv.paidDate)+'</div>';}
+  _h+='</div>';
+  _h+='<button id="_invTogglePaid" class="btn" style="background:'+(isPaid?'#dc2626':'#16a34a')+';color:#fff;padding:8px 16px;font-size:13px">Mark as '+(isPaid?'Unpaid':'Paid')+'</button>';
   _h+='</div>';
 
   // Show Drive link if available
@@ -3322,11 +3344,60 @@ function showInvoiceOptionsModal(idx){
   showModal(_h);
 
   setTimeout(()=>{
+    document.getElementById('_invTogglePaid').onclick=()=>toggleInvoicePaidStatus(idx);
     document.getElementById('_invEdit').onclick=()=>{closeMod2();showEditInvoiceModal(idx);};
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
     document.getElementById('_invChangeEntity').onclick=()=>{closeMod2();changeInvoiceEntityConfirm(idx);};
     document.getElementById('_invDelete').onclick=()=>showDeleteInvoiceConfirmModal(idx);
   },50);
+}
+
+// ===== TOGGLE INVOICE PAID STATUS =====
+async function toggleInvoicePaidStatus(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const wasPaid=inv.paidStatus==='paid';
+
+  // Toggle status
+  if(wasPaid){
+    inv.paidStatus='unpaid';
+    inv.paidDate=null;
+  }else{
+    inv.paidStatus='paid';
+    inv.paidDate=today();
+  }
+  inv.updatedAt=new Date().toISOString();
+
+  // Save locally
+  save();
+
+  // Refresh modal to show updated status
+  closeMod2();
+  showInvoiceOptionsModal(idx);
+
+  // Refresh invoice list
+  refInv();
+
+  // Sync to cloud
+  const statusLabel=inv.paidStatus==='paid'?'Paid':'Unpaid';
+  showToast('Marked as '+statusLabel);
+
+  try{
+    const result=await apiCall('sheets-sync',{
+      action:'update_invoice_status',
+      data:{num:inv.num,paidStatus:inv.paidStatus,paidDate:inv.paidDate},
+      entity:entity
+    });
+    if(result.success){
+      console.log('[Invoice Status Updated]',inv.num,inv.paidStatus);
+    }
+  }catch(err){
+    console.error('[Invoice Status Sync Failed]',err);
+    // Queue for retry
+    queueOp({action:'update_invoice_status',data:{num:inv.num,paidStatus:inv.paidStatus,paidDate:inv.paidDate},entity:entity});
+  }
 }
 
 // ===== EDIT INVOICE ENTRIES MODAL =====
@@ -3336,8 +3407,8 @@ function showEditInvoiceModal(idx){
   const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
 
-  // Get all entries for this invoice
-  const entries=S.entries.filter(e=>e.invNo===inv.num);
+  // Get all entries for this invoice (matching entity)
+  const entries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===entType);
 
   // Calculate totals from entries (not from invoice object - entries may have been edited)
   let calcGross=0;
@@ -3540,7 +3611,7 @@ async function deleteEntryFromInvoice(entryId,invoiceIdx){
 
   const inv=S.invoices[invoiceIdx];
   const entity=e.entity||S.ent;
-  const entries=S.entries.filter(x=>x.invNo===inv.num);
+  const entries=S.entries.filter(x=>x.invNo===inv.num&&(x.entity||'self')===entity);
 
   // Warning if this is the last entry
   if(entries.length<=1){
@@ -3585,7 +3656,7 @@ async function regenerateInvoiceAfterEdit(invoiceIdx,newNum,newDate){
 
   const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const oldNum=inv.num;
-  const entries=S.entries.filter(e=>e.invNo===oldNum);
+  const entries=S.entries.filter(e=>e.invNo===oldNum&&(e.entity||'self')===entity);
 
   // Check if there are any entries left
   if(entries.length===0){
@@ -3739,7 +3810,7 @@ async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
 
   const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const oldNum=inv.num;
-  const entries=S.entries.filter(e=>e.invNo===oldNum);
+  const entries=S.entries.filter(e=>e.invNo===oldNum&&(e.entity||'self')===entity);
 
   closeMod2();
   showToast('Saving changes...');
@@ -3816,8 +3887,8 @@ async function deleteInvoiceWithDrive(idx){
   closeMod2();
   showToast('Deleting invoice...');
 
-  // Unmark entries first (batch update to avoid API quota issues)
-  const entriesToReset=S.entries.filter(e=>e.invNo===inv.num);
+  // Unmark entries first (batch update to avoid API quota issues) - match entity too
+  const entriesToReset=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===entity);
   if(entriesToReset.length>0){
     // Update local state
     for(const e of entriesToReset){
@@ -3851,7 +3922,7 @@ function changeInvoiceEntityConfirm(idx){
   const oldEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
   const newEntity=oldEntity==='ltd'?'self':'ltd';
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
-  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
 
   let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
   _h+='<h3 style="font-size:16px;font-weight:600;margin:0">Change Invoice Entity</h3></div>';
@@ -3878,7 +3949,7 @@ async function changeInvoiceEntity(idx,oldEntity,newEntity){
   showToast('Changing entity...');
 
   const inv=S.invoices[idx];
-  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num);
+  const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
   const oldDriveLink=inv.driveLink; // Save for trash
 
@@ -5219,9 +5290,9 @@ showToast('\u2713 Invoice #'+inv.num+' re-downloaded');
 
 async function deleteInvoice(idx){
 var inv=S.invoices[idx];if(!inv)return;
-var entity=inv.logoType||S.iEnt;
-// Unmark entries and collect for cloud update
-var entriesToUpdate=S.entries.filter(function(e){return e.invNo===inv.num;});
+var entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+// Unmark entries and collect for cloud update (match entity too)
+var entriesToUpdate=S.entries.filter(function(e){return e.invNo===inv.num&&(e.entity||'self')===entity;});
 entriesToUpdate.forEach(function(e){e.invSt='pending';e.invNo=null;});
 S.invoices.splice(idx,1);
 save();refInv();showToast('Deleting...');
