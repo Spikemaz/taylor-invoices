@@ -4,8 +4,18 @@
 const { google } = require('googleapis');
 const { Readable } = require('stream');
 
+// Validate required environment variables
+function validateEnvVars() {
+  const required = ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_DRIVE_FOLDER_ID'];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}. Please configure these in your Vercel project settings.`);
+  }
+}
+
 // Initialize Google Drive client
 async function getDrive() {
+  validateEnvVars();
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -148,8 +158,9 @@ module.exports = async (req, res) => {
 
 // Helper function to get or create a folder
 async function getOrCreateFolder(drive, folderName, parentId) {
-  // Search for existing folder
-  const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
+  // Search for existing folder - escape single quotes in folder name
+  const escapedName = folderName.replace(/'/g, "\\'");
+  const query = `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
 
   const response = await drive.files.list({
     q: query,

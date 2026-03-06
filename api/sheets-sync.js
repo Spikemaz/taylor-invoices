@@ -4,8 +4,18 @@
 
 const { google } = require('googleapis');
 
+// Validate required environment variables
+function validateEnvVars() {
+  const required = ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID'];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}. Please configure these in your Vercel project settings.`);
+  }
+}
+
 // Initialize Google Sheets client
 async function getSheets() {
+  validateEnvVars();
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -1415,10 +1425,20 @@ async function setupAllTabs(sheets, res) {
         const headersMatch = expectedHeaders.every((col, i) => currentHeaders[i] === col);
 
         if (!headersMatch || currentHeaders.length !== expectedHeaders.length) {
-          // Update headers
+          // Update headers - handle columns beyond Z (AA, AB, etc.)
+          const colCount = expectedHeaders.length;
+          let endCol;
+          if (colCount <= 26) {
+            endCol = String.fromCharCode(64 + colCount);
+          } else {
+            // For columns beyond Z: AA=27, AB=28, etc.
+            const firstLetter = String.fromCharCode(64 + Math.floor((colCount - 1) / 26));
+            const secondLetter = String.fromCharCode(64 + ((colCount - 1) % 26) + 1);
+            endCol = firstLetter + secondLetter;
+          }
           await sheets.spreadsheets.values.update({
             spreadsheetId: sheetId,
-            range: `${tab.name}!A1:${String.fromCharCode(64 + expectedHeaders.length)}1`,
+            range: `${tab.name}!A1:${endCol}1`,
             valueInputOption: 'RAW',
             requestBody: { values: [expectedHeaders] }
           });

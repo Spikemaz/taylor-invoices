@@ -1392,17 +1392,21 @@ async function regenerateInvoicePDF(invoiceNum, entity) {
     entries.forEach(e => {
       const key = e.svc + '@' + e.uPrice;
       if (!svcs[key]) {
-        svcs[key] = { name: e.svc, pts: 0, price: e.uPrice, total: 0 };
+        svcs[key] = { date: e.date, name: e.svc, pts: 0, price: e.uPrice, total: 0 };
       }
       svcs[key].pts += e.pts;
       svcs[key].total += e.pts * e.uPrice;
+      // Update date to earliest entry date for this service
+      if (e.date && (!svcs[key].date || e.date < svcs[key].date)) {
+        svcs[key].date = e.date;
+      }
       gross += e.pts * e.uPrice;
 
       // Handle add-ons
       if (e.aoType && e.aoAmt > 0) {
-        const aoKey = e.aoType;
+        const aoKey = e.date + '_' + e.aoType; // Include date in key for unique addon entries
         if (!addons[aoKey]) {
-          addons[aoKey] = { pts: 0, price: 0, total: 0 };
+          addons[aoKey] = { date: e.date, type: e.aoType, pts: 0, price: 0, total: 0 };
         }
         addons[aoKey].pts += e.aoPatients || 1;
         addons[aoKey].total += e.aoAmt;
@@ -6163,21 +6167,21 @@ function refreshAnalytics(){
   }
 
   // Key Performance Indicators - focused on Taylor's take-home
-  const daysWorked=new Set(allEntries.map(e=>e.date)).size;
-  const avgPerDay=daysWorked>0?totalNet/daysWorked:0;
-  const avgPerPatient=totalPatients>0?totalNet/totalPatients:0;
-  const totalGrossEarnings=taxYearEntries.reduce((sum,e)=>{
+  const kpiDaysWorked=new Set(allEntries.map(e=>e.date)).size;
+  const kpiAvgPerDay=kpiDaysWorked>0?totalNet/kpiDaysWorked:0;
+  const kpiAvgPerPatient=totalPatients>0?totalNet/totalPatients:0;
+  const kpiTotalGross=taxYearEntries.reduce((sum,e)=>{
     return sum+(e.pts*e.uPrice)+(e.aoAmt||0);
   },0);
-  const takeHomePercent=totalGrossEarnings>0?((totalNet/totalGrossEarnings)*100).toFixed(0):'0';
+  const kpiTakeHomePercent=kpiTotalGross>0?((totalNet/kpiTotalGross)*100).toFixed(0):'0';
 
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Your Earnings Summary</h3>';
   _h+='<div class="stat-grid" style="margin-top:8px">';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Days Worked</div><div class="stat-value">'+daysWorked+'</div><div class="stat-sub">'+taxYearLabel+'</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Day</div><div class="stat-value" style="color:var(--pri)">'+fc(avgPerDay)+'</div><div class="stat-sub">Take home</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Patient</div><div class="stat-value" style="color:var(--pri)">'+fc(avgPerPatient)+'</div><div class="stat-sub">Take home</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Take Home Rate</div><div class="stat-value" style="color:var(--pri)">'+takeHomePercent+'%</div><div class="stat-sub">of '+fc(totalGrossEarnings)+' gross</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Days Worked</div><div class="stat-value">'+kpiDaysWorked+'</div><div class="stat-sub">'+taxYearLabel+'</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Day</div><div class="stat-value" style="color:var(--pri)">'+fc(kpiAvgPerDay)+'</div><div class="stat-sub">Take home</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Patient</div><div class="stat-value" style="color:var(--pri)">'+fc(kpiAvgPerPatient)+'</div><div class="stat-sub">Take home</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Take Home Rate</div><div class="stat-value" style="color:var(--pri)">'+kpiTakeHomePercent+'%</div><div class="stat-sub">of '+fc(kpiTotalGross)+' gross</div></div>';
   _h+='</div>';
   _h+='</div>';
 
