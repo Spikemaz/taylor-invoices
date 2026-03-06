@@ -5998,21 +5998,22 @@ function refreshAnalytics(){
     }
   }
 
-  // Key Performance Indicators
+  // Key Performance Indicators - focused on Taylor's take-home
   const daysWorked=new Set(allEntries.map(e=>e.date)).size;
   const avgPerDay=daysWorked>0?totalNet/daysWorked:0;
+  const avgPerPatient=totalPatients>0?totalNet/totalPatients:0;
   const totalGrossEarnings=taxYearEntries.reduce((sum,e)=>{
     return sum+(e.pts*e.uPrice)+(e.aoAmt||0);
   },0);
-  const commissionPaid=totalGrossEarnings-totalNet;
+  const takeHomePercent=totalGrossEarnings>0?((totalNet/totalGrossEarnings)*100).toFixed(0):'0';
 
   _h+='<div class="analytics-card">';
-  _h+='<h3 class="analytics-title">Key Performance Indicators</h3>';
+  _h+='<h3 class="analytics-title">Your Earnings Summary</h3>';
   _h+='<div class="stat-grid" style="margin-top:8px">';
   _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Days Worked</div><div class="stat-value">'+daysWorked+'</div><div class="stat-sub">'+taxYearLabel+'</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Day</div><div class="stat-value">'+fc(avgPerDay)+'</div><div class="stat-sub">Net earnings</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Gross Revenue</div><div class="stat-value">'+fc(totalGrossEarnings)+'</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Commission Paid</div><div class="stat-value" style="color:var(--err)">'+fc(commissionPaid)+'</div><div class="stat-sub">'+(totalGrossEarnings>0?((commissionPaid/totalGrossEarnings)*100).toFixed(0):'0')+'% of gross</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Day</div><div class="stat-value" style="color:var(--pri)">'+fc(avgPerDay)+'</div><div class="stat-sub">Take home</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Patient</div><div class="stat-value" style="color:var(--pri)">'+fc(avgPerPatient)+'</div><div class="stat-sub">Take home</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Take Home Rate</div><div class="stat-value" style="color:var(--pri)">'+takeHomePercent+'%</div><div class="stat-sub">of '+fc(totalGrossEarnings)+' gross</div></div>';
   _h+='</div>';
   _h+='</div>';
 
