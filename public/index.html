@@ -718,6 +718,10 @@ function loadSettings(){
         }
       });
     }
+    // Load work schedule data
+    if (d.workSchedule) S.workSchedule = d.workSchedule;
+    if (d.scheduleHours) S.scheduleHours = d.scheduleHours;
+    if (d.scheduleExceptions) S.scheduleExceptions = d.scheduleExceptions;
     // Load pending operations
     const pending = JSON.parse(localStorage.getItem('tm_inv_pending') || '[]');
     if (pending.length) pendingOps = pending;
@@ -735,7 +739,7 @@ function save() {
       pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract', paidHours: p.paidHours || {}, ptsPerHour: p.ptsPerHour || 2 };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
-      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, workSchedule: S.workSchedule || {}, scheduleHours: S.scheduleHours || {}, scheduleExceptions: S.scheduleExceptions || []
     }));
     localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
   } catch(e) { console.error('Save error:', e); }
@@ -5443,11 +5447,19 @@ function refreshAnalytics(){
   // Monthly data for chart (from earliest entry to now)
   const monthlyData=[];
   const monthlyPtsData=[];
+  const monthlyProjectedNet=[];
+  const monthlyProjectedPts=[];
   const monthLabels=[];
+  const monthKeys=[]; // Store mKey for drill-down
+  const monthEntriesMap={}; // Store entries per month for detail view
+
   for(let i=monthsToShow-1;i>=0;i--){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const mKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     const monthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(mKey));
+    monthEntriesMap[mKey]=monthEntries; // Store for drill-down
+    monthKeys.push(mKey);
+
     let monthTotal=0,monthPts=0;
     monthEntries.forEach(e=>{
       monthPts+=e.pts||0;
@@ -5457,8 +5469,48 @@ function refreshAnalytics(){
     });
     monthlyData.push(monthTotal);
     monthlyPtsData.push(monthPts);
+
+    // Calculate projected data for this month
+    const projYear=d.getFullYear();
+    const projMonth=d.getMonth();
+    const daysInMonth=new Date(projYear,projMonth+1,0).getDate();
+    let projNet=0,projPts=0;
+
+    // Calculate from schedule
+    for(let day=1;day<=daysInMonth;day++){
+      const dateStr=projYear+'-'+String(projMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const dow=new Date(projYear,projMonth,day).getDay();
+      const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+      const dowMapping=S.dayMap[dow];
+      let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+      const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
+      const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
+      if(isDayOff)assignment='home';
+      if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
+
+      if(assignment!=='home'){
+        const p=S.practices[assignment];
+        if(p){
+          let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
+          if(paidH===undefined){
+            paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+          }
+          const ptsPerHour=p.ptsPerHour||2;
+          const estPts=paidH*ptsPerHour;
+          projPts+=estPts;
+          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          projNet+=estPts*avgPrice*p.comm;
+        }
+      }
+    }
+    monthlyProjectedNet.push(projNet);
+    monthlyProjectedPts.push(projPts);
+
     monthLabels.push(d.toLocaleString('en-GB',{month:'short',year:monthsToShow>6?'2-digit':undefined}));
   }
+
+  // Store for drill-down functionality
+  window._analyticsMonthData={monthKeys,monthEntriesMap,monthlyData,monthlyPtsData,monthlyProjectedNet,monthlyProjectedPts,monthLabels};
 
   // Practice breakdown for current tax year
   const practiceData={};
@@ -5782,7 +5834,11 @@ function refreshAnalytics(){
       scheduledDays++;
       const p=S.practices[assignment];
       if(p){
-        const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+        // Check for date-specific hours override first, then practice default
+        let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
+        if(paidH===undefined){
+          paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+        }
         const ptsPerHour=p.ptsPerHour||2;
         const estPts=paidH*ptsPerHour;
         projectedPts+=estPts;
@@ -6053,18 +6109,28 @@ function refreshAnalytics(){
     _h+='</div>';
   }
 
-  // Monthly earnings chart
+  // Monthly earnings chart - with actual vs projected
   const chartTitle=monthsToShow<=6?'Monthly Earnings':'Monthly Earnings ('+monthLabels[0]+' - '+monthLabels[monthLabels.length-1]+')';
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">'+chartTitle+'</h3>';
+  _h+='<div style="display:flex;gap:12px;margin-bottom:8px;font-size:11px">';
+  _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(45,106,79,0.85);border-radius:2px"></span>Actual</span>';
+  _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(45,106,79,0.25);border:1px dashed rgba(45,106,79,0.6);border-radius:2px"></span>Projected</span>';
+  _h+='</div>';
   _h+='<div class="chart-container"><canvas id="monthlyChart"></canvas></div>';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any bar to see entry breakdown</div>';
   _h+='</div>';
 
-  // Monthly patients chart
+  // Monthly patients chart - with actual vs projected
   const ptsChartTitle=monthsToShow<=6?'Monthly Patients':'Monthly Patients ('+monthLabels[0]+' - '+monthLabels[monthLabels.length-1]+')';
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">'+ptsChartTitle+'</h3>';
+  _h+='<div style="display:flex;gap:12px;margin-bottom:8px;font-size:11px">';
+  _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:#0057a8;border-radius:50%"></span>Actual</span>';
+  _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#0057a8;border-radius:2px;opacity:0.4"></span>Projected</span>';
+  _h+='</div>';
   _h+='<div class="chart-container"><canvas id="patientsChart"></canvas></div>';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any point to see entry breakdown</div>';
   _h+='</div>';
 
   // Practice breakdown chart
@@ -6356,22 +6422,53 @@ function refreshAnalytics(){
         data:{
           labels:monthLabels,
           datasets:[{
-            label:'Net Earnings',
+            label:'Projected',
+            data:monthlyProjectedNet,
+            backgroundColor:'rgba(45,106,79,0.2)',
+            borderColor:'rgba(45,106,79,0.5)',
+            borderWidth:1,
+            borderDash:[3,3],
+            borderRadius:4,
+            order:2
+          },{
+            label:'Actual',
             data:monthlyData,
-            backgroundColor:'rgba(45,106,79,0.7)',
+            backgroundColor:'rgba(45,106,79,0.85)',
             borderColor:'#2d6a4f',
             borderWidth:1,
-            borderRadius:4
+            borderRadius:4,
+            order:1
           }]
         },
         options:{
           responsive:true,
           maintainAspectRatio:false,
+          onClick:function(evt,elements){
+            if(elements&&elements.length>0){
+              const idx=elements[0].index;
+              const mKey=window._analyticsMonthData.monthKeys[idx];
+              showMonthDetailModal(mKey,'earnings');
+            }
+          },
           plugins:{
             legend:{display:false},
             tooltip:{
               callbacks:{
-                label:function(ctx){return fc(ctx.raw);}
+                title:function(ctx){return ctx[0].label;},
+                label:function(ctx){
+                  const idx=ctx.dataIndex;
+                  const actual=monthlyData[idx]||0;
+                  const projected=monthlyProjectedNet[idx]||0;
+                  const pct=projected>0?Math.round((actual/projected)*100):0;
+                  if(ctx.datasetIndex===1){
+                    return 'Actual: '+fc(actual)+' ('+pct+'% of target)';
+                  }else{
+                    return 'Target: '+fc(projected);
+                  }
+                },
+                afterBody:function(ctx){
+                  return ['','Tap for entry details'];
+                }
               }
             }
           },
@@ -6387,7 +6484,7 @@ function refreshAnalytics(){
       });
     }
 
-    // Create patients chart
+    // Create patients chart with actual vs projected
     const patientsCtx=document.getElementById('patientsChart');
     if(patientsCtx&&typeof Chart!=='undefined'){
       analyticsCharts.patients=new Chart(patientsCtx,{
@@ -6395,24 +6492,57 @@ function refreshAnalytics(){
         data:{
           labels:monthLabels,
           datasets:[{
-            label:'Patients',
+            label:'Projected',
+            data:monthlyProjectedPts,
+            borderColor:'rgba(0,87,168,0.35)',
+            backgroundColor:'transparent',
+            borderDash:[5,5],
+            fill:false,
+            tension:0.3,
+            pointRadius:3,
+            pointBackgroundColor:'rgba(0,87,168,0.35)',
+            order:2
+          },{
+            label:'Actual',
             data:monthlyPtsData,
             borderColor:'#0057a8',
             backgroundColor:'rgba(0,87,168,0.1)',
             fill:true,
             tension:0.3,
-            pointRadius:4,
-            pointBackgroundColor:'#0057a8'
+            pointRadius:5,
+            pointBackgroundColor:'#0057a8',
+            order:1
           }]
         },
         options:{
           responsive:true,
           maintainAspectRatio:false,
+          onClick:function(evt,elements){
+            if(elements&&elements.length>0){
+              const idx=elements[0].index;
+              const mKey=window._analyticsMonthData.monthKeys[idx];
+              showMonthDetailModal(mKey,'patients');
+            }
+          },
           plugins:{
             legend:{display:false},
             tooltip:{
               callbacks:{
-                label:function(ctx){return ctx.raw+' patients';}
+                title:function(ctx){return ctx[0].label;},
+                label:function(ctx){
+                  const idx=ctx.dataIndex;
+                  const actual=monthlyPtsData[idx]||0;
+                  const projected=monthlyProjectedPts[idx]||0;
+                  const pct=projected>0?Math.round((actual/projected)*100):0;
+                  if(ctx.datasetIndex===1){
+                    return 'Actual: '+actual+' pts ('+pct+'% of target)';
+                  }else{
+                    return 'Target: '+Math.round(projected)+' pts';
+                  }
+                },
+                afterBody:function(ctx){
+                  return ['','Tap for entry details'];
+                }
               }
             }
           },
@@ -6467,6 +6597,164 @@ function refreshAnalytics(){
       });
     }
   },100);
+}
+
+// Show detailed breakdown modal when tapping a month on charts
+function showMonthDetailModal(mKey,type){
+  const data=window._analyticsMonthData;
+  if(!data||!data.monthEntriesMap)return;
+
+  const entries=data.monthEntriesMap[mKey]||[];
+  const idx=data.monthKeys.indexOf(mKey);
+  const monthLabel=data.monthLabels[idx]||mKey;
+  const actualNet=data.monthlyData[idx]||0;
+  const projectedNet=data.monthlyProjectedNet[idx]||0;
+  const actualPts=data.monthlyPtsData[idx]||0;
+  const projectedPts=data.monthlyProjectedPts[idx]||0;
+  const pctEarnings=projectedNet>0?Math.round((actualNet/projectedNet)*100):0;
+  const pctPatients=projectedPts>0?Math.round((actualPts/projectedPts)*100):0;
+
+  let _h='<div class="mod-hdr"><h3>'+monthLabel+' Details</h3></div>';
+
+  // Summary cards
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
+
+  // Earnings card
+  const earnColor=pctEarnings>=100?'var(--ok)':pctEarnings>=80?'var(--warn)':'var(--err)';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+earnColor+'">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Take Home</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:var(--pri)">'+fc(actualNet)+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">of '+fc(projectedNet)+' target</div>';
+  _h+='<div style="margin-top:4px;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(pctEarnings,100)+'%;background:'+earnColor+'"></div>';
+  _h+='</div>';
+  _h+='<div style="font-size:10px;color:'+earnColor+';margin-top:2px">'+pctEarnings+'%</div>';
+  _h+='</div>';
+
+  // Patients card
+  const ptsColor=pctPatients>=100?'var(--ok)':pctPatients>=80?'var(--warn)':'var(--err)';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+ptsColor+'">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Patients</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:#0057a8">'+actualPts+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">of ~'+Math.round(projectedPts)+' target</div>';
+  _h+='<div style="margin-top:4px;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(pctPatients,100)+'%;background:'+ptsColor+'"></div>';
+  _h+='</div>';
+  _h+='<div style="font-size:10px;color:'+ptsColor+';margin-top:2px">'+pctPatients+'%</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  if(entries.length===0){
+    _h+='<div style="text-align:center;padding:20px;color:var(--txt2)">No entries logged for this month</div>';
+  }else{
+    // Group entries by date
+    const byDate={};
+    entries.forEach(e=>{
+      if(!byDate[e.date])byDate[e.date]={entries:[],pts:0,net:0};
+      byDate[e.date].entries.push(e);
+      byDate[e.date].pts+=e.pts||0;
+      const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+      const isAdhoc=e.pType==='adhoc';
+      byDate[e.date].net+=isAdhoc?gross:gross*(e.comm||0);
+    });
+    const sortedDates=Object.keys(byDate).sort();
+
+    // Practice breakdown
+    const byPractice={};
+    entries.forEach(e=>{
+      const pName=e.pName||'Unknown';
+      if(!byPractice[pName]){byPractice[pName]={pts:0,net:0,color:e.color||'pri'};}
+      byPractice[pName].pts+=e.pts||0;
+      const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+      const isAdhoc=e.pType==='adhoc';
+      byPractice[pName].net+=isAdhoc?gross:gross*(e.comm||0);
+    });
+
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">BY PRACTICE</div>';
+    _h+='<div style="margin-bottom:16px">';
+    Object.keys(byPractice).forEach(pName=>{
+      const p=byPractice[pName];
+      const pColor='var(--'+p.color+')';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+pColor+'">';
+      _h+='<span style="font-weight:500">'+pName+'</span>';
+      _h+='<span style="font-size:13px"><strong>'+p.pts+'</strong> pts = <strong style="color:'+pColor+'">'+fc(p.net)+'</strong></span>';
+      _h+='</div>';
+    });
+    _h+='</div>';
+
+    // Daily breakdown (scrollable)
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">DAILY BREAKDOWN ('+sortedDates.length+' days)</div>';
+    _h+='<div style="max-height:200px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--rs)">';
+    sortedDates.forEach(date=>{
+      const day=byDate[date];
+      const d=new Date(date);
+      const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
+      const firstColor=day.entries[0]&&day.entries[0].color?'var(--'+day.entries[0].color+')':'var(--pri)';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--bdr)" onclick="showDayEntriesDetail(\''+date+'\')">';
+      _h+='<div>';
+      _h+='<div style="font-weight:500;font-size:13px">'+dateLabel+'</div>';
+      _h+='<div style="font-size:11px;color:var(--txt2)">'+practices+'</div>';
+      _h+='</div>';
+      _h+='<div style="text-align:right">';
+      _h+='<div style="font-weight:600;color:'+firstColor+'">'+fc(day.net)+'</div>';
+      _h+='<div style="font-size:11px;color:var(--txt2)">'+day.pts+' pts</div>';
+      _h+='</div>';
+      _h+='</div>';
+    });
+    _h+='</div>';
+  }
+
+  _h+='<button class="btn btn-s" style="width:100%;margin-top:16px" onclick="closeMod2()">Close</button>';
+  showModal(_h);
+}
+
+// Show detailed entries for a specific day
+function showDayEntriesDetail(dateStr){
+  const entries=S.entries.filter(e=>e.date===dateStr);
+  if(entries.length===0)return;
+
+  const d=new Date(dateStr);
+  const dateLabel=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  let totalPts=0,totalNet=0;
+  entries.forEach(e=>{
+    totalPts+=e.pts||0;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    totalNet+=isAdhoc?gross:gross*(e.comm||0);
+  });
+
+  let _h='<div class="mod-hdr"><h3>'+dateLabel+'</h3></div>';
+
+  _h+='<div style="display:flex;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:12px">';
+  _h+='<div><span style="font-size:11px;color:var(--txt2)">Total Patients</span><br><strong style="font-size:18px">'+totalPts+'</strong></div>';
+  _h+='<div style="text-align:right"><span style="font-size:11px;color:var(--txt2)">Take Home</span><br><strong style="font-size:18px;color:var(--pri)">'+fc(totalNet)+'</strong></div>';
+  _h+='</div>';
+
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">ENTRIES</div>';
+
+  entries.forEach(e=>{
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    const net=isAdhoc?gross:gross*(e.comm||0);
+    const pColor=e.color?'var(--'+e.color+')':'var(--pri)';
+
+    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:8px;border-left:3px solid '+pColor+'">';
+    _h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+    _h+='<span style="font-weight:600">'+(e.pName||'Unknown')+'</span>';
+    _h+='<span style="font-weight:600;color:'+pColor+'">'+fc(net)+'</span>';
+    _h+='</div>';
+    _h+='<div style="font-size:12px;color:var(--txt2)">';
+    _h+=e.svc+' - '+e.pts+' pts @ '+fc(e.uPrice)+'/pt';
+    if(e.aoAmt>0)_h+=' + '+fc(e.aoAmt)+' airflow';
+    if(!isAdhoc)_h+='<br>Gross: '+fc(gross)+' x '+(e.comm*100)+'% = '+fc(net);
+    _h+='</div>';
+    _h+='</div>';
+  });
+
+  _h+='<button class="btn btn-s" style="width:100%;margin-top:12px" onclick="closeMod2()">Close</button>';
+  showModal(_h);
 }
 
 // Edit expected patients per day for each practice
@@ -6602,9 +6890,23 @@ function editScheduleDay(dateStr){
 
   // Get current assignment
   if(!S.workSchedule)S.workSchedule={};
-  const dateOverride=S.workSchedule[dateStr];
+  if(!S.scheduleHours)S.scheduleHours={};
+  const scheduleData=S.workSchedule[dateStr];
+  const dateAssignment=typeof scheduleData==='object'?scheduleData.pId:scheduleData;
   const dowMapping=S.dayMap[dow];
-  let currentAssignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+  let currentAssignment=dateAssignment!==undefined?dateAssignment:(dowMapping||'home');
+
+  // Get current hours for this date
+  let currentHours=S.scheduleHours[dateStr];
+  if(currentHours===undefined&&currentAssignment!=='home'){
+    // Default to practice's hours for this day of week, or 7
+    const p=S.practices[currentAssignment];
+    if(p&&p.paidHours){
+      currentHours=p.paidHours[dow]||p.paidHours[String(dow)]||7;
+    }else{
+      currentHours=7;
+    }
+  }
 
   // Check exceptions
   const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
@@ -6625,60 +6927,113 @@ function editScheduleDay(dateStr){
     _h+='</div>';
   }
 
-  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Select work assignment for this day:</div>';
+  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Select work assignment:</div>';
 
-  // Build practice options
-  _h+='<div style="display:flex;flex-direction:column;gap:8px">';
-
-  // Day off option
-  const isOff=currentAssignment==='home';
-  _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\'home\')" style="padding:12px;border:2px solid '+(isOff?'var(--pri)':'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isOff?'var(--pri-bg)':'var(--card)')+'">';
-  _h+='<div style="width:24px;height:24px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px">🏠</div>';
-  _h+='<div><div style="font-weight:500">Day Off</div><div style="font-size:11px;color:var(--txt2)">Not working</div></div>';
-  if(isOff)_h+='<div style="margin-left:auto;color:var(--pri)">✓</div>';
-  _h+='</div>';
-
-  // Contract practices
+  // Practice selector dropdown
+  _h+='<select id="_schedPrac" class="fi" style="margin-bottom:12px" onchange="updateScheduleHoursVisibility(\''+dateStr+'\')">';
+  _h+='<option value="home"'+(currentAssignment==='home'?' selected':'')+'>Day Off</option>';
   Object.keys(S.practices||{}).forEach(pId=>{
     const p=S.practices[pId];
-    if(!p)return;
-    const isSelected=currentAssignment===pId;
-    const pColor='var(--'+(p.color||'pri')+')';
-    _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\''+pId+'\')" style="padding:12px;border:2px solid '+(isSelected?pColor:'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isSelected?pColor.replace(')','-bg)'):'var(--card)')+'">';
-    _h+='<div style="width:24px;height:24px;border-radius:50%;background:'+pColor+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">'+(p.short||p.name||'').substring(0,2).toUpperCase()+'</div>';
-    _h+='<div><div style="font-weight:500">'+(p.name||p.short)+'</div><div style="font-size:11px;color:var(--txt2)">Contract - '+(p.comm*100)+'% commission</div></div>';
-    if(isSelected)_h+='<div style="margin-left:auto;color:'+pColor+'">✓</div>';
-    _h+='</div>';
+    if(p)_h+='<option value="'+pId+'"'+(currentAssignment===pId?' selected':'')+'>'+(p.name||p.short)+' (Contract)</option>';
   });
-
-  // Ad hoc practices
   (S.ahPrac||[]).forEach(p=>{
-    if(!p||!p.active)return;
-    const isSelected=currentAssignment===p.id;
-    _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\''+p.id+'\')" style="padding:12px;border:2px solid '+(isSelected?'var(--err)':'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isSelected?'var(--err-bg)':'var(--card)')+'">';
-    _h+='<div style="width:24px;height:24px;border-radius:50%;background:var(--err);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">AH</div>';
-    _h+='<div><div style="font-weight:500">'+p.name+'</div><div style="font-size:11px;color:var(--txt2)">Ad Hoc - £'+p.rate+'/patient</div></div>';
-    if(isSelected)_h+='<div style="margin-left:auto;color:var(--err)">✓</div>';
-    _h+='</div>';
+    if(p&&p.active)_h+='<option value="'+p.id+'"'+(currentAssignment===p.id?' selected':'')+'>'+p.name+' (Ad Hoc)</option>';
   });
+  _h+='</select>';
 
+  // Paid hours section (hidden if day off)
+  const showHours=currentAssignment!=='home';
+  _h+='<div id="_schedHoursDiv" style="display:'+(showHours?'block':'none')+';margin-bottom:12px">';
+  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Paid hours (excluding lunch):</div>';
+  _h+='<div style="display:flex;align-items:center;gap:10px">';
+  _h+='<button type="button" class="adj-btn" style="width:40px;height:40px;font-size:20px" onclick="adjSchedHours(-0.5)">-</button>';
+  _h+='<input type="number" id="_schedHours" class="fi" value="'+(currentHours||7)+'" min="1" max="12" step="0.5" style="width:70px;text-align:center;font-size:16px;font-weight:600">';
+  _h+='<button type="button" class="adj-btn" style="width:40px;height:40px;font-size:20px" onclick="adjSchedHours(0.5)">+</button>';
+  _h+='<span style="font-size:14px;color:var(--txt2)">hours</span>';
+  _h+='</div>';
   _h+='</div>';
 
   // Show if this differs from the weekly pattern
-  if(dateOverride!==undefined&&dateOverride!==dowMapping){
-    _h+='<div style="margin-top:12px;padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn)">';
+  if(dateAssignment!==undefined&&dateAssignment!==dowMapping){
+    _h+='<div style="margin-top:8px;padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn)">';
     _h+='This day has been customized from your weekly pattern.';
     _h+='<button onclick="clearScheduleOverride(\''+dateStr+'\')" style="display:block;margin-top:6px;font-size:11px;color:var(--warn);text-decoration:underline;border:none;background:none;padding:0;cursor:pointer">Reset to weekly pattern</button>';
     _h+='</div>';
   }
 
   _h+='<div class="brow" style="margin-top:16px">';
-  _h+='<button class="btn btn-s" onclick="closeMod2()">Close</button>';
+  _h+='<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  _h+='<button class="btn btn-p" onclick="saveScheduleDay(\''+dateStr+'\')">Save</button>';
   _h+='</div>';
   showModal(_h);
 }
 
-// Set work assignment for a specific date
+// Adjust schedule hours input
+function adjSchedHours(delta){
+  const inp=document.getElementById('_schedHours');
+  if(!inp)return;
+  let val=parseFloat(inp.value)||7;
+  val=Math.max(1,Math.min(12,val+delta));
+  inp.value=val;
+}
+
+// Show/hide hours input based on practice selection
+function updateScheduleHoursVisibility(dateStr){
+  const sel=document.getElementById('_schedPrac');
+  const div=document.getElementById('_schedHoursDiv');
+  const inp=document.getElementById('_schedHours');
+  if(!sel||!div)return;
+  const pId=sel.value;
+  const isWorkDay=pId!=='home';
+  div.style.display=isWorkDay?'block':'none';
+  // Set default hours from practice if available
+  if(isWorkDay&&inp){
+    const d=new Date(dateStr);
+    const dow=d.getDay();
+    const p=S.practices[pId];
+    if(p&&p.paidHours){
+      inp.value=p.paidHours[dow]||p.paidHours[String(dow)]||7;
+    }else{
+      inp.value=7;
+    }
+  }
+}
+
+// Save schedule day with practice and hours
+async function saveScheduleDay(dateStr){
+  const sel=document.getElementById('_schedPrac');
+  const inp=document.getElementById('_schedHours');
+  if(!sel)return;
+
+  const pId=sel.value;
+  const hours=inp?parseFloat(inp.value)||7:7;
+
+  if(!S.workSchedule)S.workSchedule={};
+  if(!S.scheduleHours)S.scheduleHours={};
+
+  // Store practice assignment
+  S.workSchedule[dateStr]=pId;
+
+  // Store hours if working
+  if(pId!=='home'){
+    S.scheduleHours[dateStr]=hours;
+  }else{
+    delete S.scheduleHours[dateStr];
+  }
+
+  // Remove any exceptions for this date
+  if(S.scheduleExceptions){
+    S.scheduleExceptions=S.scheduleExceptions.filter(e=>e.date!==dateStr);
+  }
+
+  closeMod2();
+  showToast('Saving...');
+  save();
+  refreshAnalytics();
+  showToast('Schedule updated');
+}
+
+// Legacy function for backwards compatibility
 async function setScheduleDay(dateStr,pId){
   if(!S.workSchedule)S.workSchedule={};
   S.workSchedule[dateStr]=pId;
