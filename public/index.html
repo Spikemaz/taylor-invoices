@@ -154,6 +154,32 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .inv-section{font-size:16px;font-weight:700;color:var(--txt);padding:16px 0 10px;margin-top:12px;border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:8px}
 .inv-section:first-child{margin-top:0}
 .inv-section .sec-count{font-size:12px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 10px;border-radius:10px}
+.inv-section-hdr{font-size:15px;font-weight:700;padding:14px 16px;margin:12px -16px 0;display:flex;align-items:center;justify-content:space-between}
+.inv-section-hdr:first-child{margin-top:0}
+.inv-section-hdr .sec-count{font-size:11px;font-weight:500;opacity:.7}
+.inv-section-hdr.unpaid-hdr{background:linear-gradient(135deg,#fef2f2,#fee2e2);color:#dc2626;border-left:4px solid #dc2626}
+.inv-section-hdr.paid-hdr{background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a;border-left:4px solid #16a34a}
+.inv-section-content{padding:8px 0}
+.ent-group{background:var(--card);border-radius:var(--rs);margin-bottom:8px;border:1px solid var(--bdr);overflow:hidden}
+.ent-group.collapsed .ent-group-items{display:none}
+.ent-group-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:var(--bg)}
+.ent-group-hdr:active{background:#e5e7eb}
+.ent-label{font-size:13px;font-weight:600}
+.ent-label.self{color:#0891B2}.ent-label.ltd{color:#166534}
+.ent-count{font-size:11px;color:var(--txt3)}
+.ent-group-items{padding:4px}
+.paid-month{margin-bottom:8px;border-radius:var(--rs);overflow:hidden;border:1px solid var(--bdr)}
+.paid-month.collapsed .paid-month-content{display:none}
+.paid-month-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);cursor:pointer;font-size:14px;font-weight:600;color:var(--txt)}
+.paid-month-hdr:active{background:var(--bg)}
+.paid-month-hdr .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
+.paid-month-content{padding:4px 8px 8px;background:var(--bg)}
+.tax-year-folder{margin-bottom:8px;border-radius:var(--rs);overflow:hidden;border:2px solid var(--pri)}
+.tax-year-folder.collapsed .tax-year-content{display:none}
+.tax-year-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--pri-dk);cursor:pointer;font-size:14px;font-weight:600;color:#fff}
+.tax-year-hdr:active{opacity:.9}
+.tax-year-hdr .ty-count{font-size:11px;font-weight:500;opacity:.8}
+.tax-year-content{padding:8px;background:var(--card)}
 .ie-left{min-width:50px;max-width:50px;text-align:center;flex-shrink:0}
 .ie-num{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
 .ie-ent{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
@@ -3141,11 +3167,6 @@ if(iMonthNext)iMonthNext.disabled=isCurrentMonth;
 
 // Get entries for the selected month
 const me=getMonth(viewYear,viewMonth);
-console.log('[refInv] Month:', viewYear, viewMonth, '- Entries this month:', me.length, '- S.iEnt:', S.iEnt);
-const todayStr=n.toISOString().substring(0,10);
-// Calculate 7 days ago for Recent section
-const sevenDaysAgo=new Date(n);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
-const sevenDaysAgoStr=sevenDaysAgo.toISOString().substring(0,10);
 
 // Helper to get practice border class
 function getPrcClass(pid,pType){
@@ -3155,85 +3176,114 @@ function getPrcClass(pid,pType){
   return '';
 }
 
-// Contracted invoices - show pending entries grouped by practice (exclude adhoc)
+// Helper to get entity type from invoice
+function getInvEntity(inv){
+  return inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+}
+
+// Helper to render a single invoice
+function renderInv(inv){
+  const entType=getInvEntity(inv);
+  const entLabel=entType==='ltd'?'Ltd':'Self';
+  let prcClass='';
+  const prcName=inv.isAdhoc?'Ad Hoc':inv.practice;
+  if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
+  else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
+  else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
+  const idx=S.invoices.findIndex(i=>i.num===inv.num&&getInvEntity(i)===entType);
+  const isPaid=inv.paidStatus==='paid';
+  const overdueInfo=isInvoiceOverdue(inv);
+  let statusClass,statusLabel,statusBadgeClass;
+  if(isPaid){
+    statusClass='inv-paid';statusLabel='Paid';statusBadgeClass='paid';
+  }else if(overdueInfo.overdue){
+    statusClass='inv-overdue';statusLabel='Overdue '+overdueInfo.days+'d';statusBadgeClass='overdue';
+  }else{
+    statusClass='inv-unpaid';statusLabel='Unpaid';statusBadgeClass='unpaid';
+  }
+  return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
+    '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
+    '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+'</div></div>'+
+    '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span><span class="ie-status '+statusBadgeClass+'">'+statusLabel+'</span></div>'+
+    '</div>';
+}
+
+// Helper to render entity subgroup
+function renderEntityGroup(invs,entityType,label){
+  if(!invs.length)return '';
+  let html='<div class="ent-group">';
+  html+='<div class="ent-group-hdr" onclick="this.parentElement.classList.toggle(\'collapsed\')">';
+  html+='<span class="ent-label '+(entityType==='ltd'?'ltd':'self')+'">'+label+'</span>';
+  html+='<span class="ent-count">'+invs.length+' invoice'+(invs.length!==1?'s':'')+'</span>';
+  html+='</div>';
+  html+='<div class="ent-group-items">'+invs.map(renderInv).join('')+'</div>';
+  html+='</div>';
+  return html;
+}
+
+// ===== SECTION 1: AWAITING APPROVAL =====
 const mc=document.getElementById('mInv');let mh='';
-Object.keys(S.practices).forEach(function(pid){var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
-// Practice filter
-if(invPracFilter!=='all'&&invPracFilter!==pid)return;
-var allForPrac=me.filter(function(e){return e.pId===pid&&e.pType!=='adhoc'});
-var pe=allForPrac.filter(function(e){return e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
-var totalPts=allForPrac.reduce((s,e)=>s+e.pts,0);
-var filteredPts=pe.reduce((s,e)=>s+e.pts,0);
-console.log('[refInv] Practice:', pid, '- All entries:', allForPrac.length, 'pts:', totalPts, '- After filter:', pe.length, 'pts:', filteredPts);
-if(allForPrac.length!==pe.length){
-  var invoiced=allForPrac.filter(e=>e.invSt==='invoiced');
-  var wrongEntity=allForPrac.filter(e=>e.invSt==='pending'&&S.iEnt!=='all'&&e.entity!==S.iEnt);
-  console.log('[refInv] Excluded - invoiced:', invoiced.length, 'wrong entity:', wrongEntity.length);
-}
-if(!pe.length)return;
-var tg=0,tp=0;pe.forEach(function(e){tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
-var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
-var prcClass=getPrcClass(pid,'contract');
-mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
-'<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Profit Share<strong>'+fc(cm)+'</strong></div></div>'+
-'<div class="ia">';
-if(pe.length>1){
-  mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
-  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Combine Invoice</button>';
-}else{
-  mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Preview</button>';
-  mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Generate PDF</button>';
-}
-mh+='</div></div>';
+Object.keys(S.practices).forEach(function(pid){
+  var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
+  if(invPracFilter!=='all'&&invPracFilter!==pid)return;
+  var pe=me.filter(e=>e.pId===pid&&e.pType!=='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
+  if(!pe.length)return;
+  var tg=0,tp=0;pe.forEach(e=>{tg+=e.gross;tp+=e.pts});var pComm=p.comm||0.35;var cm=tg*pComm;
+  var dates=pe.map(e=>e.date).sort();var dateRange=dates.length>1?fdd(dates[0])+' - '+fdd(dates[dates.length-1]):fdd(dates[0]);
+  var prcClass=getPrcClass(pid,'contract');
+  mh+='<div class="icard '+prcClass+'"><div class="ih"><div><div class="ip">'+p.short+'</div><div class="iper">'+pe.length+' entr'+(pe.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>'+
+  '<div class="is"><div class="ist">Entries<strong>'+pe.length+'</strong></div><div class="ist">Patients<strong>'+tp+'</strong></div><div class="ist">Gross<strong>'+fc(tg)+'</strong></div><div class="ist">Profit Share<strong>'+fc(cm)+'</strong></div></div>'+
+  '<div class="ia">';
+  if(pe.length>1){
+    mh+='<button class="ibtn pv" data-action="cpselect" data-pid="'+pid+'">Select Entries</button>';
+    mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Combine Invoice</button>';
+  }else{
+    mh+='<button class="ibtn pv" data-action="preview" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Preview</button>';
+    mh+='<button class="ibtn gn '+prcClass+'" data-action="generate" data-pid="'+pid+'" data-y="'+viewYear+'" data-m="'+viewMonth+'">Generate PDF</button>';
+  }
+  mh+='</div></div>';
 });
-if(!mh)mh='';
 mc.innerHTML=mh;
 
-// Ad hoc invoices - group by practice (all get red border)
+// Ad hoc pending entries
 const ac=document.getElementById('ahInv');
-// Hide ad hoc section if filtering by contract practice
 if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
 else{
-const ahe=me.filter(function(e){return e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt)});
-if(!ahe.length){ac.innerHTML='';}
-else{
-  // Group by practice
-  const ahByPrac={};ahe.forEach(e=>{if(!ahByPrac[e.pId])ahByPrac[e.pId]={name:e.pName,addr:e.adhocAddr,entries:[]};ahByPrac[e.pId].entries.push(e);});
-  let ahHtml='';
-  Object.keys(ahByPrac).forEach(pId=>{
-    const g=ahByPrac[pId];const entries=g.entries.sort((a,b)=>a.date.localeCompare(b.date));
-    const totalPts=entries.reduce((s,e)=>s+e.pts,0);const totalGross=entries.reduce((s,e)=>s+e.gross,0);
-    const dates=entries.map(e=>e.date);const minDate=dates[0];const maxDate=dates[dates.length-1];
-    const dateRange=minDate===maxDate?fdd(minDate):fdd(minDate)+' - '+fdd(maxDate);
-    ahHtml+='<div class="icard prc-adhoc"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
-    ahHtml+='<div class="is"><div class="ist">Entries<strong>'+entries.length+'</strong></div><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Gross<strong>'+fc(totalGross)+'</strong></div></div>';
-    ahHtml+='<div class="ia">';
-    if(entries.length===1){
-      ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
-      ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
-    }else{
-      ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
-      ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
-    }
-    ahHtml+='</div></div>';
-  });
-  ac.innerHTML=ahHtml;
+  const ahe=me.filter(e=>e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
+  if(!ahe.length){ac.innerHTML='';}
+  else{
+    const ahByPrac={};ahe.forEach(e=>{if(!ahByPrac[e.pId])ahByPrac[e.pId]={name:e.pName,addr:e.adhocAddr,entries:[]};ahByPrac[e.pId].entries.push(e);});
+    let ahHtml='';
+    Object.keys(ahByPrac).forEach(pId=>{
+      const g=ahByPrac[pId];const entries=g.entries.sort((a,b)=>a.date.localeCompare(b.date));
+      const totalPts=entries.reduce((s,e)=>s+e.pts,0);const totalGross=entries.reduce((s,e)=>s+e.gross,0);
+      const dates=entries.map(e=>e.date);const dateRange=dates[0]===dates[dates.length-1]?fdd(dates[0]):fdd(dates[0])+' - '+fdd(dates[dates.length-1]);
+      ahHtml+='<div class="icard prc-adhoc"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
+      ahHtml+='<div class="is"><div class="ist">Entries<strong>'+entries.length+'</strong></div><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Gross<strong>'+fc(totalGross)+'</strong></div></div>';
+      ahHtml+='<div class="ia">';
+      if(entries.length===1){
+        ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
+        ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
+      }else{
+        ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
+        ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Combine Invoice</button>';
+      }
+      ahHtml+='</div></div>';
+    });
+    ac.innerHTML=ahHtml;
+  }
 }
-} // end ad hoc practice filter else
 
-// Show/hide Awaiting Approval header based on whether there's content
+// Show/hide Awaiting Approval header
 const awaitingHeader=document.getElementById('awaitingApprovalHeader');
-if(awaitingHeader){
-  const hasContractPending=mc.innerHTML.trim()!=='';
-  const hasAdhocPending=ac.innerHTML.trim()!=='';
-  awaitingHeader.style.display=(hasContractPending||hasAdhocPending)?'block':'none';
-}
+const hasAwaitingApproval=mc.innerHTML.trim()!==''||ac.innerHTML.trim()!=='';
+if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none';
 
-// Past invoices - grouped into Today/Recent/Previous with uniform display
+// ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
 const pc2=document.getElementById('pInv');
-// Filter by current entity and practice view
-let filteredInvs=S.iEnt==='all'?S.invoices:S.invoices.filter(inv=>{const t=inv.logoType||inv.entity;return t===S.iEnt||t===(S.iEnt==='self'?'Self-Employed':'Ltd Company');});
-// Apply practice filter
+
+// Filter invoices by entity and practice
+let filteredInvs=S.iEnt==='all'?[...S.invoices]:S.invoices.filter(inv=>getInvEntity(inv)===S.iEnt);
 if(invPracFilter!=='all'){
   filteredInvs=filteredInvs.filter(inv=>{
     const prac=(inv.practice||'').toLowerCase();
@@ -3244,156 +3294,130 @@ if(invPracFilter!=='all'){
   });
 }
 
-// Split into Today, Recent (last 7 days), Previous
-const todayInvs=filteredInvs.filter(inv=>inv.date===todayStr);
-const recentInvs=filteredInvs.filter(inv=>inv.date!==todayStr&&inv.date>=sevenDaysAgoStr);
-const previousInvs=filteredInvs.filter(inv=>inv.date<sevenDaysAgoStr);
+// Split into Unpaid and Paid
+const unpaidInvs=filteredInvs.filter(inv=>inv.paidStatus!=='paid').sort((a,b)=>b.date.localeCompare(a.date));
+const paidInvs=filteredInvs.filter(inv=>inv.paidStatus==='paid').sort((a,b)=>b.date.localeCompare(a.date));
 
-// Helper to render a single invoice - UNIFORM with archive entries
-function renderInv(inv){
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
-  const entLabel=entType==='ltd'?'Ltd':'Self';
-  // Determine practice color
-  let prcClass='';
-  const prcName=inv.isAdhoc?'Ad Hoc':inv.practice;
-  if(inv.isAdhoc||inv.practice==='Ad Hoc')prcClass='prc-adhoc';
-  else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
-  else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
-  const idx=S.invoices.findIndex(i=>i.num===inv.num&&((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===entType));
-  // Payment status with overdue check
-  const isPaid=inv.paidStatus==='paid';
-  const overdueInfo=isInvoiceOverdue(inv);
-  let statusClass,statusLabel,statusBadgeClass;
-  if(isPaid){
-    statusClass='inv-paid';
-    statusLabel='Paid';
-    statusBadgeClass='paid';
-  }else if(overdueInfo.overdue){
-    statusClass='inv-overdue';
-    statusLabel='Overdue '+overdueInfo.days+'d';
-    statusBadgeClass='overdue';
-  }else{
-    statusClass='inv-unpaid';
-    statusLabel='Unpaid';
-    statusBadgeClass='unpaid';
-  }
-  // Uniform layout matching archive entries
-  return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
-    '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
-    '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+'</div></div>'+
-    '<div class="ie-amt"><span class="ie-bal">'+fc(inv.amount)+'</span><span class="ie-status '+statusBadgeClass+'">'+statusLabel+'</span></div>'+
-    '</div>';
+// Helper to get tax year (April to April)
+function getTaxYear(dateStr){
+  const d=new Date(dateStr);
+  const year=d.getFullYear();
+  const month=d.getMonth();
+  // Tax year runs April (month 3) to March
+  if(month>=3)return year+'-'+(year+1);
+  return (year-1)+'-'+year;
 }
+
+// Current tax year
+const currentTaxYear=getTaxYear(n.toISOString().substring(0,10));
 
 let invHtml='';
 
-// TODAY section - only show if invoices exist today
-if(todayInvs.length){
-  todayInvs.sort((a,b)=>b.num.localeCompare(a.num));
-  invHtml+='<div class="inv-section">Today <span class="sec-count">'+todayInvs.length+' invoice'+(todayInvs.length!==1?'s':'')+'</span></div>';
-  invHtml+='<div class="alist" style="margin-top:8px">'+todayInvs.map(renderInv).join('')+'</div>';
-}
-
-// RECENT section - last 7 days (excluding today)
-if(recentInvs.length){
-  invHtml+='<div class="inv-section">Recent <span class="sec-count">'+recentInvs.length+' invoice'+(recentInvs.length!==1?'s':'')+'</span></div>';
-  // Group by day
-  const byDay={};
-  recentInvs.forEach(inv=>{if(!byDay[inv.date])byDay[inv.date]=[];byDay[inv.date].push(inv);});
-  invHtml+='<div class="alist" style="margin-top:8px">';
-  Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
-    const dayInvs=byDay[dayKey];
-    const dayDate=new Date(dayKey);
-    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const dayNum=dayDate.getDate();
-    const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
-    const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
-    invHtml+='<div style="font-size:12px;color:var(--txt2);padding:10px 0 6px;font-weight:600">'+dayLabel+' <span style="font-weight:400">('+dayInvs.length+')</span></div>';
-    dayInvs.sort((a,b)=>b.num.localeCompare(a.num));
-    invHtml+=dayInvs.map(renderInv).join('');
-  });
+// ===== UNPAID SECTION =====
+if(unpaidInvs.length){
+  invHtml+='<div class="inv-section-hdr unpaid-hdr">Unpaid <span class="sec-count">'+unpaidInvs.length+' invoice'+(unpaidInvs.length!==1?'s':'')+'</span></div>';
+  invHtml+='<div class="inv-section-content">';
+  // Group by entity
+  const unpaidSelf=unpaidInvs.filter(inv=>getInvEntity(inv)==='self');
+  const unpaidLtd=unpaidInvs.filter(inv=>getInvEntity(inv)==='ltd');
+  if(S.iEnt==='all'){
+    invHtml+=renderEntityGroup(unpaidSelf,'self','Self-Employed');
+    invHtml+=renderEntityGroup(unpaidLtd,'ltd','Ltd Company');
+  }else{
+    invHtml+='<div class="alist">'+unpaidInvs.map(renderInv).join('')+'</div>';
+  }
   invHtml+='</div>';
 }
 
-// Show empty state if no today or recent
-if(!todayInvs.length&&!recentInvs.length){
-  invHtml+='<div class="empty"><div class="emo">📋</div><p>No recent invoices</p></div>';
-}
+// ===== PAID SECTION =====
+if(paidInvs.length){
+  invHtml+='<div class="inv-section-hdr paid-hdr">Paid <span class="sec-count">'+paidInvs.length+' invoice'+(paidInvs.length!==1?'s':'')+'</span></div>';
+  invHtml+='<div class="inv-section-content">';
 
-// PREVIOUS section - monthly collapsible folders with Ad Hoc / Contracted subfolders
-if(previousInvs.length){
-  invHtml+='<div class="inv-section">Previous <span class="sec-count">'+previousInvs.length+' invoice'+(previousInvs.length!==1?'s':'')+'</span></div>';
-
-  // Group by month
-  const invByMonth={};
-  previousInvs.forEach(inv=>{
-    const monthKey=inv.date.substring(0,7);
-    if(!invByMonth[monthKey])invByMonth[monthKey]=[];
-    invByMonth[monthKey].push(inv);
+  // Group by tax year, then month, then entity
+  const byTaxYear={};
+  paidInvs.forEach(inv=>{
+    const ty=getTaxYear(inv.date);
+    if(!byTaxYear[ty])byTaxYear[ty]=[];
+    byTaxYear[ty].push(inv);
   });
 
-  // Render each month as collapsible folder
-  Object.keys(invByMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-    const monthInvs=invByMonth[monthKey];
-    const d=new Date(monthKey+'-01');
-    const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+  // Sort tax years descending
+  Object.keys(byTaxYear).sort((a,b)=>b.localeCompare(a)).forEach(taxYear=>{
+    const tyInvs=byTaxYear[taxYear];
+    const isCurrentTY=taxYear===currentTaxYear;
 
-    // Separate Ad Hoc and Contracted invoices
-    const adhocInvs=monthInvs.filter(inv=>inv.isAdhoc||inv.practice==='Ad Hoc');
-    const contractInvs=monthInvs.filter(inv=>!inv.isAdhoc&&inv.practice!=='Ad Hoc');
-
-    invHtml+='<div class="arc-month collapsed" data-month="'+monthKey+'">'+monthLabel+' <span class="month-count">'+monthInvs.length+' invoice'+(monthInvs.length!==1?'s':'')+'</span></div>';
-    invHtml+='<div class="month-group collapsed" id="invmg_'+monthKey+'">';
-
-    // Ad Hoc subfolder (only if exists)
-    if(adhocInvs.length){
-      invHtml+='<div class="prc-group" data-prc="adhoc">';
-      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:#EF4444">Ad Hoc</span> <span style="color:var(--txt3);font-weight:400">('+adhocInvs.length+' invoice'+(adhocInvs.length!==1?'s':'')+')</span></div>';
-      invHtml+='<div class="prc-group-entries">'+adhocInvs.sort((a,b)=>b.num.localeCompare(a.num)).map(renderInv).join('')+'</div>';
-      invHtml+='</div>';
-    }
-
-    // Contracted subfolder (only if exists)
-    if(contractInvs.length){
-      invHtml+='<div class="prc-group" data-prc="contract">';
-      invHtml+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:var(--pri)">Contracted</span> <span style="color:var(--txt3);font-weight:400">('+contractInvs.length+' invoice'+(contractInvs.length!==1?'s':'')+')</span></div>';
-      invHtml+='<div class="prc-group-entries">';
-      // Group by practice (Bupa, Grove, etc.)
-      const byPractice={};
-      contractInvs.forEach(inv=>{
-        const pKey=inv.practice||'Other';
-        if(!byPractice[pKey])byPractice[pKey]={name:inv.practice,invoices:[]};
-        byPractice[pKey].invoices.push(inv);
+    if(isCurrentTY){
+      // Current tax year: show monthly breakdown
+      const byMonth={};
+      tyInvs.forEach(inv=>{
+        const mk=inv.date.substring(0,7);
+        if(!byMonth[mk])byMonth[mk]=[];
+        byMonth[mk].push(inv);
       });
-      Object.values(byPractice).sort((a,b)=>b.invoices.length-a.invoices.length).forEach(p=>{
-        invHtml+=p.invoices.sort((a,b)=>b.num.localeCompare(a.num)).map(renderInv).join('');
+
+      Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
+        const monthInvs=byMonth[monthKey];
+        const d=new Date(monthKey+'-01');
+        const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+        invHtml+='<div class="paid-month collapsed" data-month="'+monthKey+'">';
+        invHtml+='<div class="paid-month-hdr">'+monthLabel+' <span class="month-count">'+monthInvs.length+'</span></div>';
+        invHtml+='<div class="paid-month-content">';
+
+        if(S.iEnt==='all'){
+          const monthSelf=monthInvs.filter(inv=>getInvEntity(inv)==='self');
+          const monthLtd=monthInvs.filter(inv=>getInvEntity(inv)==='ltd');
+          invHtml+=renderEntityGroup(monthSelf,'self','Self-Employed');
+          invHtml+=renderEntityGroup(monthLtd,'ltd','Ltd Company');
+        }else{
+          invHtml+='<div class="alist">'+monthInvs.map(renderInv).join('')+'</div>';
+        }
+        invHtml+='</div></div>';
       });
+    }else{
+      // Past tax years: collapsed folder
+      invHtml+='<div class="tax-year-folder collapsed" data-ty="'+taxYear+'">';
+      invHtml+='<div class="tax-year-hdr">Tax Year '+taxYear+' <span class="ty-count">'+tyInvs.length+' invoice'+(tyInvs.length!==1?'s':'')+'</span></div>';
+      invHtml+='<div class="tax-year-content">';
+
+      if(S.iEnt==='all'){
+        const tySelf=tyInvs.filter(inv=>getInvEntity(inv)==='self');
+        const tyLtd=tyInvs.filter(inv=>getInvEntity(inv)==='ltd');
+        invHtml+=renderEntityGroup(tySelf,'self','Self-Employed');
+        invHtml+=renderEntityGroup(tyLtd,'ltd','Ltd Company');
+      }else{
+        invHtml+='<div class="alist">'+tyInvs.map(renderInv).join('')+'</div>';
+      }
       invHtml+='</div></div>';
     }
-
-    invHtml+='</div>';
   });
+
+  invHtml+='</div>';
+}
+
+// Empty state if no invoices
+if(!unpaidInvs.length&&!paidInvs.length&&!hasAwaitingApproval){
+  invHtml+='<div class="empty"><div class="emo">📋</div><p>No invoices for this month</p></div>';
 }
 
 pc2.innerHTML=invHtml;
 
-// Add click handlers for collapsible months
-pc2.querySelectorAll('.arc-month').forEach(hdr=>{
-  hdr.onclick=function(){
-    const mk=this.dataset.month;
-    const grp=document.getElementById('invmg_'+mk);
-    const isCollapsed=this.classList.toggle('collapsed');
-    if(grp){
-      grp.classList.toggle('collapsed',isCollapsed);
-    }
-  };
+// Add click handlers for collapsible sections
+pc2.querySelectorAll('.paid-month').forEach(el=>{
+  el.querySelector('.paid-month-hdr').onclick=function(){el.classList.toggle('collapsed');};
+});
+pc2.querySelectorAll('.tax-year-folder').forEach(el=>{
+  el.querySelector('.tax-year-hdr').onclick=function(){el.classList.toggle('collapsed');};
+});
+pc2.querySelectorAll('.ent-group-hdr').forEach(el=>{
+  el.onclick=function(e){e.stopPropagation();this.parentElement.classList.toggle('collapsed');};
 });
 
 // Add click handlers for invoice items
 pc2.querySelectorAll('.aitem[data-inv]').forEach(item=>{
   item.onclick=function(e){
-    if(e.target.closest('.prc-group-hdr'))return;
-    const invNum=this.dataset.inv;
+    if(e.target.closest('.ent-group-hdr'))return;
     const idx=parseInt(this.dataset.idx);
     if(idx>=0)showInvoiceOptionsModal(idx);
   };
