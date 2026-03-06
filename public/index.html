@@ -113,7 +113,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .aitem{background:var(--card);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:2px solid var(--bdr);border-left:5px solid var(--bdr);box-shadow:0 1px 3px rgba(0,0,0,0.08);cursor:pointer;transition:all .15s}
 .aitem:active{background:#f9fafb}
 .aitem.prc-bupa{border-color:var(--bupa);border-left-color:var(--bupa)}.aitem.prc-grove{border-color:var(--grove);border-left-color:var(--grove)}.aitem.prc-adhoc{border-color:#EF4444;border-left-color:#EF4444}
-.aitem[data-inv].inv-unpaid{border-left-color:#dc2626}.aitem[data-inv].inv-paid{border-left-color:#16a34a}.aitem[data-inv].inv-overdue{border-left-color:#f59e0b}
 .ae-left{min-width:50px;max-width:50px;text-align:center;flex-shrink:0}
 .ae-prc{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
 .ae-ent{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
@@ -180,13 +179,12 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ie-type.contract{background:#dbeafe;color:#1d4ed8}.ie-type.adhoc{background:#fee2e2;color:#dc2626}
 .ie-amt{display:flex;flex-direction:column;align-items:flex-end;gap:2px;background:var(--pri-dk);padding:5px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
 .ie-bal{font-size:13px;font-weight:700;color:#86efac}
-.ie-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 6px;border-radius:4px}
-.ie-status.unpaid{background:#fef2f2;color:#dc2626}
-.ie-status.paid{background:#f0fdf4;color:#16a34a}
-.ie-status.overdue{background:#fef3c7;color:#d97706}
-.aitem.inv-unpaid{border-left:3px solid #dc2626}
-.aitem.inv-paid{border-left:3px solid #16a34a;opacity:0.75}
-.aitem.inv-overdue{border-left:3px solid #d97706;background:linear-gradient(90deg,#fef3c7 0%,var(--card) 30%)}
+.ie-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:4px}
+.ie-status.unpaid{background:#dc2626;color:#fff}
+.ie-status.paid{background:#16a34a;color:#fff}
+.ie-status.overdue{background:#d97706;color:#fff}
+.aitem.inv-paid{opacity:0.7}
+.aitem.inv-overdue{background:linear-gradient(90deg,#fef3c7 0%,var(--card) 30%)}
 .overdue-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 6px;border-radius:4px}
 /* Analytics Screen */
 .analytics-card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
