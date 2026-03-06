@@ -2008,7 +2008,7 @@ if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters 
 if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics'){try{refreshAnalytics();}catch(err){console.error('[showScreen] Error in analytics:',err);}}
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
-function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
+function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';S.viewEnt='all';S.viewMonth=null;document.getElementById('eA').classList.add('act');document.getElementById('eS').classList.remove('act');document.getElementById('eL').classList.remove('act');document.getElementById('hdrE').textContent='All';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
 const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',analytics:'Analytics',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
