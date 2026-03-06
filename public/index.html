@@ -5790,9 +5790,9 @@ function refreshAnalytics(){
     }
   }
 
-  const totalDays=actualDaysWorked+scheduledDays;
-  const totalPts=actualPts+projectedPts;
-  const totalNet=actualNet+projectedNet;
+  const calTotalDays=actualDaysWorked+scheduledDays;
+  const calTotalPts=actualPts+projectedPts;
+  const calTotalNet=actualNet+projectedNet;
 
   _h+='<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--rs)">';
 
@@ -5804,13 +5804,13 @@ function refreshAnalytics(){
   // Days worked
   _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
   _h+='<div style="font-size:11px;color:var(--txt2)">Days Worked</div>';
-  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualDaysWorked+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / '+totalDays+' scheduled</span></div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualDaysWorked+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / '+calTotalDays+' scheduled</span></div>';
   _h+='</div>';
 
   // Patients
   _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
   _h+='<div style="font-size:11px;color:var(--txt2)">Patients</div>';
-  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualPts+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / ~'+Math.round(totalPts)+' projected</span></div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+actualPts+'<span style="font-size:12px;color:var(--txt2);font-weight:400"> / ~'+Math.round(calTotalPts)+' projected</span></div>';
   _h+='</div>';
 
   // Take home - actual
@@ -5822,7 +5822,7 @@ function refreshAnalytics(){
   // Take home - projected total
   _h+='<div style="padding:8px;background:var(--card);border-radius:var(--rs)">';
   _h+='<div style="font-size:11px;color:var(--txt2)">Month Projection</div>';
-  _h+='<div style="font-size:16px;font-weight:600;color:var(--txt)">~'+fc(totalNet)+'</div>';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--txt)">~'+fc(calTotalNet)+'</div>';
   _h+='</div>';
 
   _h+='</div>';
