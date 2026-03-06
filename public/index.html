@@ -3542,7 +3542,6 @@ const pc2=document.getElementById('pInv');
 
 // Filter invoices by selected month - use PERIOD (work month) not generation date
 // This ensures invoices show in the month the work was done, not when generated
-const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const periodMonthYear=monthNames[viewMonth]+' '+viewYear;
 let filteredInvs=S.invoices.filter(inv=>{
   // Primary: Match by period (e.g., "February 2026")
