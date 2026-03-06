@@ -6,9 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="TM Invoice">
-<meta name="theme-color" content="#009E60">
-<title>Taylor Invoice Manager</title>
+<meta name="apple-mobile-web-app-title" content="Books IQ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="manifest" href="/manifest.json">
+<title>Books IQ - Invoice Manager</title>
 <style>
 :root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--acc:#00b36b;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--warn:#f59e0b;--warn-bg:#fef9c3;--bupa:#0057a8;--bupa-lt:#e8f0fe;--grove:#2d6a4f;--grove-lt:#e8f5e9;--adhoc:#EF4444;--adhoc-lt:#FEE2E2;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--shm:0 4px 12px rgba(0,0,0,.08);--shl:0 8px 24px rgba(0,0,0,.12);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -1761,6 +1762,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if (pendingOps.length > 0) {
       setTimeout(retryPending, 2000);
     }
+
+    // Handle PWA shortcut URL parameters
+    handlePWAShortcut();
   } else {
     // Cloud failed - still show UI with cached data, show warning
     upHome(true);
@@ -1769,6 +1773,32 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   scheduleMidnightReset();
 });
+
+// Handle PWA shortcut URL parameters
+function handlePWAShortcut(){
+  const params=new URLSearchParams(window.location.search);
+  const screen=params.get('screen');
+  const action=params.get('action');
+
+  if(screen){
+    // Navigate to specified screen
+    if(['invoices','analytics','settings','archive'].includes(screen)){
+      showScreen(screen);
+    }
+  }else if(action==='log'){
+    // Open today's practice based on day mapping
+    const day=new Date().getDay();
+    const t=S.dayMap[day];
+    if(t&&t!=='home'&&S.practices&&S.practices[t]){
+      openPractice(t);
+    }
+  }
+
+  // Clear URL parameters without reload
+  if(screen||action){
+    window.history.replaceState({},'',window.location.pathname);
+  }
+}
 
 // Load all data from cloud (entries, invoices, practices, settings)
 async function loadFromCloud() {
