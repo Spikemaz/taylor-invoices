@@ -5503,23 +5503,14 @@ function refreshAnalytics(){
       monthTotal+=isAdhoc?gross:gross*(e.comm||0);
     });
 
-    // For current month, extrapolate to full month based on daily average
+    // For current month, extrapolate to full month for charts, but keep actual values too
     const isCurrentMonth=(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
     const daysElapsed=now.getDate();
     const daysInThisMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
 
-    if(isCurrentMonth&&daysElapsed>0){
-      // Project full month based on current daily average
-      const dailyAvgPts=monthPts/daysElapsed;
-      const dailyAvgNet=monthTotal/daysElapsed;
-      const projectedMonthPts=Math.round(dailyAvgPts*daysInThisMonth);
-      const projectedMonthNet=dailyAvgNet*daysInThisMonth;
-      monthlyData.push(projectedMonthNet);
-      monthlyPtsData.push(projectedMonthPts);
-    }else{
-      monthlyData.push(monthTotal);
-      monthlyPtsData.push(monthPts);
-    }
+    // Always store actual values
+    monthlyData.push(monthTotal);
+    monthlyPtsData.push(monthPts);
 
     // Calculate projected data for this month
     const projYear=d.getFullYear();
@@ -5736,6 +5727,29 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
   _h+='</div>';
+
+  // Invoice aging - show how long unpaid invoices have been outstanding
+  if(unpaidInvoices.length>0){
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin:12px 0 8px">UNPAID INVOICE AGING</div>';
+    unpaidInvoices.sort((a,b)=>a.date.localeCompare(b.date)).forEach(inv=>{
+      const invDate=new Date(inv.date);
+      const daysOld=Math.floor((now-invDate)/(1000*60*60*24));
+      const isOverdue=daysOld>30;
+      const agingColor=daysOld>30?'var(--err)':daysOld>14?'var(--warn)':'var(--txt2)';
+      const agingLabel=daysOld<=7?'This week':daysOld<=14?daysOld+' days':daysOld<=30?Math.floor(daysOld/7)+' weeks':Math.floor(daysOld/30)+' month'+(daysOld>=60?'s':'');
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+agingColor+'">';
+      _h+='<div>';
+      _h+='<div style="font-size:12px;font-weight:500">#'+inv.num+' - '+(inv.practice||inv.practiceName||'Unknown')+'</div>';
+      _h+='<div style="font-size:10px;color:var(--txt2)">'+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</div>';
+      _h+='</div>';
+      _h+='<div style="text-align:right">';
+      _h+='<div style="font-size:14px;font-weight:600;color:var(--err)">'+fc(inv.amount||0)+'</div>';
+      _h+='<div style="font-size:10px;color:'+agingColor+';font-weight:500">'+agingLabel+(isOverdue?' OVERDUE':'')+'</div>';
+      _h+='</div>';
+      _h+='</div>';
+    });
+  }
+
   _h+='</div>';
 
   // ============= ENHANCED PATIENT METRICS =============
@@ -6308,10 +6322,14 @@ function refreshAnalytics(){
     projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0,monthOffset:m});
   }
 
-  // Show projections as horizontal scrolling carousel
+  // Show projections as horizontal scrolling carousel (skip empty past months)
   _h+='<div style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px" id="projCarousel">';
+  const hasAnyPast=projections.some(p=>p.isPast&&p.net>0);
   projections.forEach((proj,i)=>{
-    // Past months: subtle bg, Current: green, Future: white
+    // Skip empty past months (no data)
+    if(proj.isPast&&proj.net===0&&proj.pts===0)return;
+
+    // Past months: subtle bg, Current: green, Future: white with dashed border
     let bgColor,textColor,labelColor,grossColor,borderStyle='';
     if(proj.isCurrentMonth){
       bgColor='var(--pri)';textColor='#fff';labelColor='rgba(255,255,255,0.8)';grossColor='rgba(255,255,255,0.7)';
@@ -6332,15 +6350,43 @@ function refreshAnalytics(){
     _h+='</div>';
   });
   _h+='</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2);text-align:center;margin-top:4px">&larr; Past (actual) | Current | Future (projected) &rarr;</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);text-align:center;margin-top:4px">'+(hasAnyPast?'&larr; Past (actual) | ':'')+'Current | Future (projected) &rarr;</div>';
 
   // Tax year projection (with exception adjustments)
   // taxYearStart and taxYearEnd already defined above
   const taxYearName=(taxYearStart.getFullYear())+'/'+(taxYearStart.getFullYear()+1).toString().slice(-2);
 
-  // Calculate how many months left in tax year and project total
+  // Calculate remaining tax year projection
+  // Start with actual earnings so far + add projected remaining for this tax year
+  let projectedTaxYearNet=totalNet;
+  let remainingDaysLabel='';
+
+  // Add projection for REST of current month (today+1 to end of month)
+  const daysLeftInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-now.getDate();
+  if(daysLeftInMonth>0){
+    // Project remaining days in current month based on schedule
+    for(let day=now.getDate()+1;day<=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();day++){
+      const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const dow=new Date(now.getFullYear(),now.getMonth(),day).getDay();
+      const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+      const dowMapping=S.dayMap[dow];
+      let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+      if(assignment!=='home'){
+        const p=S.practices[assignment];
+        if(p){
+          let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
+          if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+          const ptsPerHour=p.ptsPerHour||2;
+          const estPts=paidH*ptsPerHour;
+          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          projectedTaxYearNet+=estPts*avgPrice*(p.comm||0);
+        }
+      }
+    }
+  }
+
+  // Calculate how many FULL months left in tax year (after current month)
   let monthsLeftInTaxYear=0;
-  let projectedTaxYearNet=totalNet; // Start with actual earnings so far
   const checkDate=new Date(now.getFullYear(),now.getMonth()+1,1);
   while(checkDate<=taxYearEnd){
     monthsLeftInTaxYear++;
@@ -6396,11 +6442,14 @@ function refreshAnalytics(){
     checkDate.setMonth(checkDate.getMonth()+1);
   }
 
+  // Calculate remaining time description
+  const remainingDesc=daysLeftInMonth>0?(daysLeftInMonth+' days this month'+(monthsLeftInTaxYear>0?' + '+monthsLeftInTaxYear+' full month'+(monthsLeftInTaxYear>1?'s':''):'')):(monthsLeftInTaxYear+' month'+(monthsLeftInTaxYear>1?'s':'')+' remaining');
+
   _h+='<div style="margin-top:12px;padding:12px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);color:#fff">';
   _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
   _h+='<div>';
   _h+='<div style="font-size:11px;opacity:0.85">Tax Year '+taxYearName+' Projection</div>';
-  _h+='<div style="font-size:10px;opacity:0.7">('+monthsLeftInTaxYear+' months remaining)</div>';
+  _h+='<div style="font-size:10px;opacity:0.7">('+remainingDesc+')</div>';
   _h+='</div>';
   _h+='<div style="text-align:right">';
   _h+='<div style="font-size:22px;font-weight:700">'+fc(projectedTaxYearNet)+'</div>';
@@ -6410,90 +6459,8 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // Month Tracking - Same period comparison with projection
-  if(monthsToShow>=2){
-    const now=new Date();
-    const todayDay=now.getDate();
-    const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-    const lastMonthIdx=monthlyData.length-2;
-    const thisMonthIdx=monthlyData.length-1;
-
-    // Full month totals
-    const lastMonthNetFull=monthlyData[lastMonthIdx]||0;
-    const lastMonthPtsFull=monthlyPtsData[lastMonthIdx]||0;
-    const thisMonthNetSoFar=monthlyData[thisMonthIdx]||0;
-    const thisMonthPtsSoFar=monthlyPtsData[thisMonthIdx]||0;
-
-    // Calculate last month's same period (1st to today's date)
-    const lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
-    const lastMonthKey=lastMonthDate.getFullYear()+'-'+String(lastMonthDate.getMonth()+1).padStart(2,'0');
-    let lastMonthNetSamePeriod=0,lastMonthPtsSamePeriod=0;
-    (S.entries||[]).forEach(e=>{
-      if(!e.date||!e.date.startsWith(lastMonthKey))return;
-      const dayOfMonth=parseInt(e.date.split('-')[2]);
-      if(dayOfMonth<=todayDay){
-        lastMonthPtsSamePeriod+=e.pts||0;
-        const g=(e.pts||0)*(e.uPrice||0)+(e.aoAmt||0);
-        lastMonthNetSamePeriod+=e.pType==='adhoc'?g:g*(e.comm||0);
-      }
-    });
-
-    // Project this month's full total based on daily average
-    const dailyAvgNet=todayDay>0?thisMonthNetSoFar/todayDay:0;
-    const dailyAvgPts=todayDay>0?thisMonthPtsSoFar/todayDay:0;
-    const projectedMonthNet=dailyAvgNet*daysInThisMonth;
-    const projectedMonthPts=Math.round(dailyAvgPts*daysInThisMonth);
-
-    // Same period comparison
-    const samePeriodNetDiff=thisMonthNetSoFar-lastMonthNetSamePeriod;
-    const samePeriodPtsDiff=thisMonthPtsSoFar-lastMonthPtsSamePeriod;
-    const samePeriodPct=lastMonthNetSamePeriod>0?((samePeriodNetDiff/lastMonthNetSamePeriod)*100).toFixed(0):0;
-
-    // Projected vs last month full
-    const projVsLastDiff=projectedMonthNet-lastMonthNetFull;
-    const projVsLastPct=lastMonthNetFull>0?((projVsLastDiff/lastMonthNetFull)*100).toFixed(0):0;
-
-    const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
-    const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
-
-    _h+='<div class="analytics-card">';
-    _h+='<h3 class="analytics-title">Month Tracking</h3>';
-
-    // Same period comparison
-    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">SAME PERIOD (1st - '+todayDay+ordinalSuffix(todayDay)+')</div>';
-    _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' 1-'+todayDay+'</div>';
-    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNetSamePeriod)+'</div>';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPtsSamePeriod+' patients</div>';
-    _h+='</div>';
-    const spColor=samePeriodNetDiff>=0?'var(--ok)':'var(--err)';
-    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+spColor+'">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' 1-'+todayDay+'</div>';
-    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(thisMonthNetSoFar)+'</div>';
-    _h+='<div style="font-size:11px;color:'+spColor+'">'+(samePeriodNetDiff>=0?'+':'')+fc(samePeriodNetDiff)+' ('+(samePeriodNetDiff>=0?'+':'')+samePeriodPct+'%)</div>';
-    _h+='</div>';
-    _h+='</div>';
-
-    // Projected full month vs last month
-    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">PROJECTED FULL MONTH</div>';
-    _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' (actual)</div>';
-    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNetFull)+'</div>';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPtsFull+' patients</div>';
-    _h+='</div>';
-    const projColor=projVsLastDiff>=0?'var(--ok)':'var(--err)';
-    _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid '+projColor+'">';
-    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' (projected)</div>';
-    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(projectedMonthNet)+'</div>';
-    _h+='<div style="font-size:11px;color:'+projColor+'">'+(projVsLastDiff>=0?'+':'')+fc(projVsLastDiff)+' ('+(projVsLastDiff>=0?'+':'')+projVsLastPct+'%)</div>';
-    _h+='</div>';
-    _h+='</div>';
-
-    _h+='<div style="font-size:10px;color:var(--txt2);margin-top:8px;text-align:center">Projection based on current daily average of '+fc(dailyAvgNet)+'/day</div>';
-    _h+='</div>';
-  }
+  // Month Tracking section removed - same info already in Patient Metrics "SAME PERIOD COMPARISON"
+  // and the "Projections vs Actuals" section covers the projection piece
 
   // Monthly earnings chart - with actual vs projected
   const chartTitle=monthsToShow<=6?'Monthly Earnings':'Monthly Earnings ('+monthLabels[0]+' - '+monthLabels[monthLabels.length-1]+')';
