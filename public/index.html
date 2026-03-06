@@ -517,11 +517,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="fc act" onclick="filtInv('all')">All</button>
 <button class="fc prc-bupa" onclick="filtInv('bupa')">Bupa</button>
 <button class="fc prc-grove" onclick="filtInv('grove')">Grove</button>
-</div>
-<div class="frow" id="iTypeFilt">
-<button class="fc act" onclick="filtInvType('all')" id="iTypeAll">All</button>
-<button class="fc" onclick="filtInvType('contract')" id="iTypeContract">Contract</button>
-<button class="fc prc-adhoc" onclick="filtInvType('adhoc')" id="iTypeAdhoc">Ad Hoc</button>
+<button class="fc prc-adhoc" onclick="filtInv('adhoc')">Ad Hoc</button>
 </div>
 <div class="sh" id="awaitingApprovalHeader" style="display:none">Awaiting Approval</div>
 <div id="mInv"></div>
@@ -3092,7 +3088,6 @@ async function delEntry(id){
 
 // ===== INVOICES =====
 let invPracFilter='all';
-let invTypeFilter='all'; // 'all', 'contract', 'adhoc'
 let invViewMonth=null; // {year, month} for invoice month navigation
 
 function navInvMonth(dir){
@@ -3140,13 +3135,12 @@ function isInvoiceOverdue(inv){
 
 function resetInvFilters(){
   console.log('[resetInvFilters] Called');
-  S.iEnt='all';invPracFilter='all';invTypeFilter='all';
+  S.iEnt='all';invPracFilter='all';
   invViewMonth=null; // Reset to current month
   document.getElementById('iEA').className='ebtn act';
   document.getElementById('iES').className='ebtn';
   document.getElementById('iEL').className='ebtn';
   document.querySelectorAll('#iFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
-  document.querySelectorAll('#iTypeFilt .fc').forEach(c=>{c.classList.toggle('act',c.id==='iTypeAll');});
   document.getElementById('hdrE').textContent='All';
   console.log('[resetInvFilters] Done, calling refInv...');
 }
@@ -3156,13 +3150,6 @@ function filtInv(f){
     var txt=c.textContent.toLowerCase().replace(/\s+/g,'');
     c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));
   });
-  refInv();
-}
-function filtInvType(f){
-  invTypeFilter=f;
-  document.getElementById('iTypeAll').classList.toggle('act',f==='all');
-  document.getElementById('iTypeContract').classList.toggle('act',f==='contract');
-  document.getElementById('iTypeAdhoc').classList.toggle('act',f==='adhoc');
   refInv();
 }
 function refInv(){
@@ -3201,10 +3188,10 @@ function getInvEntity(inv){
 function renderInv(inv){
   const entType=getInvEntity(inv);
   const entLabel=entType==='ltd'?'Ltd':'Self';
-  const isAdhoc=inv.isAdhoc||inv.practice==='Ad Hoc';
+  const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc';
   const typeLabel=isAdhoc?'Ad Hoc':'Contract';
   let prcClass='';
-  const prcName=isAdhoc?(inv.practice||'Ad Hoc'):inv.practice;
+  const prcName=inv.practice||'Ad Hoc';
   if(isAdhoc)prcClass='prc-adhoc';
   else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
   else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
@@ -3241,8 +3228,8 @@ function renderEntityGroup(invs,entityType,label){
 
 // ===== SECTION 1: AWAITING APPROVAL =====
 const mc=document.getElementById('mInv');let mh='';
-// Skip contract section if type filter is adhoc
-if(invTypeFilter!=='adhoc'){
+// Skip contract section if filtering for adhoc only
+if(invPracFilter!=='adhoc'){
 Object.keys(S.practices).forEach(function(pid){
   var p=S.practices[pid];if(!p||!p.short||p.type==='adhoc')return;
   if(invPracFilter!=='all'&&invPracFilter!==pid)return;
@@ -3268,9 +3255,7 @@ mc.innerHTML=mh;
 
 // Ad hoc pending entries
 const ac=document.getElementById('ahInv');
-// Skip adhoc section if type filter is contract
-if(invTypeFilter==='contract'){ac.innerHTML='';}
-else if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
+if(invPracFilter!=='all'&&invPracFilter!=='adhoc'){ac.innerHTML='';}
 else{
   const ahe=me.filter(e=>e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
   if(!ahe.length){ac.innerHTML='';}
@@ -3305,22 +3290,15 @@ if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none
 // ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
 const pc2=document.getElementById('pInv');
 
-// Filter invoices by entity, practice, and type
+// Filter invoices by entity and practice
 let filteredInvs=S.iEnt==='all'?[...S.invoices]:S.invoices.filter(inv=>getInvEntity(inv)===S.iEnt);
 if(invPracFilter!=='all'){
   filteredInvs=filteredInvs.filter(inv=>{
     const prac=(inv.practice||'').toLowerCase();
+    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc';
+    if(invPracFilter==='adhoc')return isAdhoc;
     if(invPracFilter==='bupa')return prac.includes('bupa');
     if(invPracFilter==='grove')return prac.includes('grove');
-    return true;
-  });
-}
-// Apply type filter (contract/adhoc)
-if(invTypeFilter!=='all'){
-  filteredInvs=filteredInvs.filter(inv=>{
-    const isAdhoc=inv.isAdhoc||inv.practice==='Ad Hoc';
-    if(invTypeFilter==='adhoc')return isAdhoc;
-    if(invTypeFilter==='contract')return !isAdhoc;
     return true;
   });
 }
