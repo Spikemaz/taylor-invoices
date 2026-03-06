@@ -1754,8 +1754,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     console.log('Auto-open check: day=', day, 't=', t);
 
     if (t && t !== 'home' && S.practices && S.practices[t]) {
+      // Auto-opening practice - set entity based on which has more invoices
+      const selfInvCount = (S.invoices || []).filter(i => i.logoType !== 'ltd').length;
+      const ltdInvCount = (S.invoices || []).filter(i => i.logoType === 'ltd').length;
+      const defaultEnt = ltdInvCount > selfInvCount ? 'ltd' : 'self';
+      S.ent = defaultEnt;
+      S.viewEnt = defaultEnt;
+      document.getElementById('hdrE').textContent = defaultEnt === 'ltd' ? 'Ltd Company' : 'Self-Employed';
       openPractice(t);
     } else {
+      // Home page - default to All view
+      S.viewEnt = 'all';
+      document.getElementById('hdrE').textContent = 'All';
       upHome(true);
     }
 
@@ -1906,8 +1916,15 @@ setTimeout(()=>{
 const day=new Date().getDay();const t=S.dayMap[day];
 document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
 S.hist=[];
-if(t&&t!=='home'&&S.practices[t]){S.scr='home';openPractice(t);}
-else{document.getElementById('scr-home').classList.add('act');S.scr='home';upHdr('home');upHome();}
+if(t&&t!=='home'&&S.practices[t]){
+// Set entity based on which has more invoices
+const selfInvCount=(S.invoices||[]).filter(i=>i.logoType!=='ltd').length;
+const ltdInvCount=(S.invoices||[]).filter(i=>i.logoType==='ltd').length;
+const defaultEnt=ltdInvCount>selfInvCount?'ltd':'self';
+S.ent=defaultEnt;S.viewEnt=defaultEnt;
+document.getElementById('hdrE').textContent=defaultEnt==='ltd'?'Ltd Company':'Self-Employed';
+S.scr='home';openPractice(t);}
+else{S.viewEnt='all';document.getElementById('hdrE').textContent='All';document.getElementById('scr-home').classList.add('act');S.scr='home';upHdr('home');upHome();}
 scheduleMidnightReset();
 },ms);
 }
@@ -2113,7 +2130,7 @@ function switchEntity(t){
   if(ahEL)ahEL.className='ebtn'+(S.ent==='ltd'?' act':'');
 
   // Update header entity display
-  document.getElementById('hdrE').textContent=t==='all'?'All Entities':t==='self'?'Self-Employed':'Ltd Company';
+  document.getElementById('hdrE').textContent=t==='all'?'All':t==='self'?'Self-Employed':'Ltd Company';
 
   // Update practice screen monthly summary if we're on it (with animation)
   if(S.prac&&S.practices[S.prac]){
