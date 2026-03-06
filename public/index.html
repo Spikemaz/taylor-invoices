@@ -1786,10 +1786,18 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     // Run data migrations after cloud load
     await runDataMigrations();
 
-    // Smart auto-open based on day
-    const day = new Date().getDay();
-    const t = S.dayMap[day];
-    console.log('Auto-open check: day=', day, 't=', t);
+    // Smart auto-open based on day (check specific date overrides first)
+    const now = new Date();
+    const day = now.getDay();
+    const todayStr = now.toISOString().split('T')[0];
+    // Check date-specific override first, then day-of-week mapping
+    let t = (S.workSchedule && S.workSchedule[todayStr] !== undefined) ? S.workSchedule[todayStr] : S.dayMap[day];
+    // Check for exceptions
+    const isDayOff = (S.scheduleExceptions || []).find(e => e.date === todayStr && e.type === 'off');
+    const isExtraDay = (S.scheduleExceptions || []).find(e => e.date === todayStr && e.type === 'extra');
+    if (isDayOff) t = 'home';
+    if (isExtraDay && isExtraDay.pId) t = isExtraDay.pId;
+    console.log('Auto-open check: day=', day, 'date=', todayStr, 't=', t);
 
     if (t && t !== 'home' && S.practices && S.practices[t]) {
       // Auto-opening practice - set entity based on which has more invoices
@@ -1835,9 +1843,15 @@ function handlePWAShortcut(){
       showScreen(screen);
     }
   }else if(action==='log'){
-    // Open today's practice based on day mapping
-    const day=new Date().getDay();
-    const t=S.dayMap[day];
+    // Open today's practice based on schedule
+    const now=new Date();
+    const day=now.getDay();
+    const todayStr=now.toISOString().split('T')[0];
+    let t=(S.workSchedule&&S.workSchedule[todayStr]!==undefined)?S.workSchedule[todayStr]:S.dayMap[day];
+    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='off');
+    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='extra');
+    if(isDayOff)t='home';
+    if(isExtraDay&&isExtraDay.pId)t=isExtraDay.pId;
     if(t&&t!=='home'&&S.practices&&S.practices[t]){
       openPractice(t);
     }
@@ -1951,7 +1965,14 @@ midnight.setHours(23,59,0,0);
 let ms=midnight.getTime()-now.getTime();
 if(ms<0)ms+=86400000;
 setTimeout(()=>{
-const day=new Date().getDay();const t=S.dayMap[day];
+const newDay=new Date();
+const day=newDay.getDay();
+const todayStr=newDay.toISOString().split('T')[0];
+let t=(S.workSchedule&&S.workSchedule[todayStr]!==undefined)?S.workSchedule[todayStr]:S.dayMap[day];
+const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='off');
+const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===todayStr&&e.type==='extra');
+if(isDayOff)t='home';
+if(isExtraDay&&isExtraDay.pId)t=isExtraDay.pId;
 document.querySelectorAll('.scr').forEach(s=>s.classList.remove('act'));
 S.hist=[];
 if(t&&t!=='home'&&S.practices[t]){
@@ -5582,90 +5603,149 @@ function refreshAnalytics(){
     }
   }
 
-  // Work Schedule Section (based on day mapping)
+  // Work Schedule Calendar Section
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Work Schedule</h3>';
-  _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Your regular working days based on practice assignments</div>';
+  _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Tap any day to set or change your work assignment</div>';
+
+  // Calendar navigation
+  const calYear=S.calYear||now.getFullYear();
+  const calMonth=S.calMonth||now.getMonth();
+  const calDate=new Date(calYear,calMonth,1);
+  const calMonthName=calDate.toLocaleString('en-GB',{month:'long',year:'numeric'});
+
+  _h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  _h+='<button class="btn btn-s" style="padding:6px 12px" onclick="navScheduleCal(-1)">&lt;</button>';
+  _h+='<span style="font-weight:600;font-size:15px">'+calMonthName+'</span>';
+  _h+='<button class="btn btn-s" style="padding:6px 12px" onclick="navScheduleCal(1)">&gt;</button>';
+  _h+='</div>';
+
+  // Calendar grid header
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  const dayNamesFull=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  _h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:12px">';
-  for(let d=0;d<7;d++){
-    const mapping=S.dayMap[d]||'home';
-    const isWorkDay=mapping!=='home';
-    const prac=isWorkDay?(S.practices[mapping]||null):null;
-    const bgColor=isWorkDay?(prac&&prac.color?'var(--'+prac.color+')':'var(--pri)'):'var(--bg)';
-    const txtColor=isWorkDay?'#fff':'var(--txt2)';
-    _h+='<div style="padding:8px 4px;background:'+bgColor+';color:'+txtColor+';border-radius:var(--rs);font-size:11px">';
-    _h+='<div style="font-weight:600">'+dayNames[d]+'</div>';
-    _h+='<div style="font-size:10px;margin-top:2px">'+(isWorkDay?(prac?prac.short:'Work'):'Off')+'</div>';
+  _h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:4px">';
+  dayNames.forEach(d=>{
+    _h+='<div style="font-size:10px;font-weight:600;color:var(--txt2);padding:4px 0">'+d+'</div>';
+  });
+  _h+='</div>';
+
+  // Calendar days grid
+  const firstDow=new Date(calYear,calMonth,1).getDay();
+  const daysInCalMonth=new Date(calYear,calMonth+1,0).getDate();
+  const todayStr=now.toISOString().split('T')[0];
+
+  _h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+
+  // Empty cells before first day
+  for(let i=0;i<firstDow;i++){
+    _h+='<div style="aspect-ratio:1;background:var(--bg);border-radius:4px;opacity:0.3"></div>';
+  }
+
+  // Calendar days
+  for(let day=1;day<=daysInCalMonth;day++){
+    const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dow=new Date(calYear,calMonth,day).getDay();
+    const isToday=dateStr===todayStr;
+
+    // Check for scheduled work: first check specific date overrides, then day-of-week mapping
+    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+    const dowMapping=S.dayMap[dow];
+    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+
+    // Check for day off exceptions
+    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
+    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
+    if(isDayOff)assignment='home';
+    if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
+
+    // Check if entry exists for this date (actual work logged)
+    const hasEntry=allEntries.some(e=>e.date===dateStr);
+
+    // Get practice info
+    const isWorkDay=assignment!=='home';
+    const prac=isWorkDay?(S.practices[assignment]||S.ahPrac.find(p=>p.id===assignment)||null):null;
+    const pracColor=prac?(prac.color?'var(--'+prac.color+')':'var(--pri)'):'transparent';
+    const isAdhoc=prac&&(prac.type==='adhoc'||S.ahPrac.some(ap=>ap.id===assignment));
+
+    // Day cell styling
+    let bgColor=isWorkDay?pracColor:'var(--bg)';
+    let txtColor=isWorkDay?'#fff':'var(--txt2)';
+    let border=isToday?'2px solid var(--pri-dk)':'1px solid var(--bdr)';
+
+    _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;background:'+bgColor+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px">';
+    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px">'+day+'</div>';
+    if(isWorkDay&&prac){
+      _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9">'+(prac.short||prac.name||'').substring(0,4)+'</div>';
+    }
+    // Indicators
+    if(hasEntry){
+      _h+='<div style="position:absolute;bottom:2px;right:2px;width:5px;height:5px;background:var(--ok);border-radius:50%"></div>';
+    }
+    if(isAdhoc&&isWorkDay){
+      _h+='<div style="position:absolute;top:2px;right:2px;width:5px;height:5px;background:var(--err);border-radius:50%"></div>';
+    }
     _h+='</div>';
   }
+
+  // Empty cells after last day
+  const totalCells=firstDow+daysInCalMonth;
+  const remainingCells=totalCells%7===0?0:7-(totalCells%7);
+  for(let i=0;i<remainingCells;i++){
+    _h+='<div style="aspect-ratio:1;background:var(--bg);border-radius:4px;opacity:0.3"></div>';
+  }
   _h+='</div>';
-  // Upcoming work days this week
-  const todayDow=now.getDay();
-  let upcomingDays=[];
-  for(let i=0;i<7;i++){
-    const dow=(todayDow+i)%7;
-    const mapping=S.dayMap[dow]||'home';
-    if(mapping!=='home'){
-      const futureDate=new Date(now);
-      futureDate.setDate(now.getDate()+i);
-      const prac=S.practices[mapping];
-      upcomingDays.push({date:futureDate,dow,prac,isToday:i===0});
+
+  // Legend
+  _h+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:10px">';
+  // Show practice colors in legend
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(p){
+      _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--'+(p.color||'pri')+')"></span>'+(p.short||p.name)+'</div>';
     }
-  }
-  if(upcomingDays.length>0){
-    _h+='<div style="font-size:13px;font-weight:600;margin-bottom:8px">Upcoming Work Days</div>';
-    upcomingDays.slice(0,4).forEach(ud=>{
-      const dateStr=ud.isToday?'Today':ud.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
-      _h+='<span style="font-weight:'+(ud.isToday?'600':'400')+';color:'+(ud.isToday?'var(--pri)':'var(--txt)')+'">'+dateStr+'</span>';
-      _h+='<span style="font-size:13px;color:var(--txt2)">'+(ud.prac?ud.prac.name:'Unknown')+'</span>';
-      _h+='</div>';
-    });
-  }
-  // Monthly work day counts and expected patients (based on paidHours and ptsPerHour)
+  });
+  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--err)"></span>Ad Hoc</div>';
+  _h+='<div style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></span>Logged</div>';
+  _h+='</div>';
+
+  // Monthly summary
   const currentMonthName=now.toLocaleString('en-GB',{month:'long',year:'numeric'});
   let workDaysThisMonth=0;
   let expectedMonthlyPts=0;
   let totalWeeklyHours=0;
-  Object.keys(S.practices||{}).forEach(pId=>{
-    const p=S.practices[pId];
-    if(p&&p.days){
-      const ptsPerHour=p.ptsPerHour||2;
-      p.days.forEach(dow=>{
-        const daysInMonth=countDaysInMonth(now.getFullYear(),now.getMonth(),dow);
-        workDaysThisMonth+=daysInMonth;
+
+  // Count from calendar view month
+  for(let day=1;day<=daysInCalMonth;day++){
+    const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dow=new Date(calYear,calMonth,day).getDay();
+    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+    const dowMapping=S.dayMap[dow];
+    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+    const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
+    const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
+    if(isDayOff)assignment='home';
+    if(isExtraDay&&isExtraDay.pId)assignment=isExtraDay.pId;
+
+    if(assignment!=='home'){
+      workDaysThisMonth++;
+      const p=S.practices[assignment];
+      if(p){
         const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
-        expectedMonthlyPts+=daysInMonth*paidH*ptsPerHour;
-        totalWeeklyHours+=paidH;
-      });
+        const ptsPerHour=p.ptsPerHour||2;
+        expectedMonthlyPts+=paidH*ptsPerHour;
+        if(day<=7)totalWeeklyHours+=paidH; // Just first week for weekly hours
+      }
     }
-  });
-  // Count exceptions for current month
-  const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
-  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().split('T')[0];
-  const monthExceptions=(S.scheduleExceptions||[]).filter(e=>e.date>=monthStart&&e.date<=monthEnd);
-  const daysOff=monthExceptions.filter(e=>e.type==='off').length;
-  const extraDays=monthExceptions.filter(e=>e.type==='extra').length;
-  const adjustedWorkDays=workDaysThisMonth-daysOff+extraDays;
+  }
 
   _h+='<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--rs)">';
   _h+='<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-  _h+='<div><div style="font-size:12px;color:var(--txt2)">Work Days</div><div style="font-size:18px;font-weight:600">'+adjustedWorkDays+' days';
-  if(daysOff>0||extraDays>0){
-    _h+='<span style="font-size:11px;color:var(--txt2)"> ('+workDaysThisMonth;
-    if(daysOff>0)_h+='<span style="color:var(--err)">-'+daysOff+'</span>';
-    if(extraDays>0)_h+='<span style="color:var(--ok)">+'+extraDays+'</span>';
-    _h+=')</span>';
-  }
-  _h+='</div></div>';
-  _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Weekly Hours</div><div style="font-size:18px;font-weight:600">'+totalWeeklyHours+'h</div></div>';
+  _h+='<div><div style="font-size:12px;color:var(--txt2)">Work Days</div><div style="font-size:18px;font-weight:600">'+workDaysThisMonth+' days</div></div>';
+  _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Weekly Hours</div><div style="font-size:18px;font-weight:600">'+Math.round(totalWeeklyHours)+'h</div></div>';
   _h+='<div style="text-align:right"><div style="font-size:12px;color:var(--txt2)">Est. Patients</div><div style="font-size:18px;font-weight:600">~'+Math.round(expectedMonthlyPts)+'</div></div>';
   _h+='</div>';
   _h+='<div style="display:flex;gap:8px">';
-  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editPracticeProjections()">Edit Schedule</button>';
-  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="showScheduleExceptions()">Days Off / Extra</button>';
+  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editPracticeProjections()">Hours/Rates</button>';
+  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editRecurringSchedule()">Set Weekly Pattern</button>';
   _h+='</div>';
   _h+='</div>';
   _h+='</div>';
@@ -6413,6 +6493,200 @@ async function saveWorkSchedule(){
     console.error('[Sync Failed]',e);
     showToast('Cloud sync failed','err');
   }
+}
+
+// Calendar navigation for work schedule
+function navScheduleCal(direction){
+  const now=new Date();
+  S.calYear=S.calYear||now.getFullYear();
+  S.calMonth=S.calMonth!==undefined?S.calMonth:now.getMonth();
+  S.calMonth+=direction;
+  if(S.calMonth<0){S.calMonth=11;S.calYear--;}
+  if(S.calMonth>11){S.calMonth=0;S.calYear++;}
+  refreshAnalytics();
+}
+
+// Edit a specific day on the schedule calendar
+function editScheduleDay(dateStr){
+  const d=new Date(dateStr);
+  const dow=d.getDay();
+  const dayName=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // Get current assignment
+  if(!S.workSchedule)S.workSchedule={};
+  const dateOverride=S.workSchedule[dateStr];
+  const dowMapping=S.dayMap[dow];
+  let currentAssignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+
+  // Check exceptions
+  const isDayOff=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='off');
+  const isExtraDay=(S.scheduleExceptions||[]).find(e=>e.date===dateStr&&e.type==='extra');
+  if(isDayOff)currentAssignment='home';
+  if(isExtraDay&&isExtraDay.pId)currentAssignment=isExtraDay.pId;
+
+  // Check if entry exists
+  const hasEntry=S.entries.some(e=>e.date===dateStr);
+
+  let _h='<div class="mod-hdr"><h3>'+dayName+'</h3></div>';
+
+  if(hasEntry){
+    const dayEntries=S.entries.filter(e=>e.date===dateStr);
+    _h+='<div style="padding:8px 12px;background:var(--ok-bg);border-radius:var(--rs);margin-bottom:12px;font-size:13px">';
+    _h+='<span style="color:var(--ok);font-weight:600">Work logged:</span> ';
+    _h+=dayEntries.map(e=>(e.pName||'Unknown')+' ('+e.pts+' pts)').join(', ');
+    _h+='</div>';
+  }
+
+  _h+='<div style="font-size:13px;color:var(--txt2);margin-bottom:8px">Select work assignment for this day:</div>';
+
+  // Build practice options
+  _h+='<div style="display:flex;flex-direction:column;gap:8px">';
+
+  // Day off option
+  const isOff=currentAssignment==='home';
+  _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\'home\')" style="padding:12px;border:2px solid '+(isOff?'var(--pri)':'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isOff?'var(--pri-bg)':'var(--card)')+'">';
+  _h+='<div style="width:24px;height:24px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:14px">🏠</div>';
+  _h+='<div><div style="font-weight:500">Day Off</div><div style="font-size:11px;color:var(--txt2)">Not working</div></div>';
+  if(isOff)_h+='<div style="margin-left:auto;color:var(--pri)">✓</div>';
+  _h+='</div>';
+
+  // Contract practices
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(!p)return;
+    const isSelected=currentAssignment===pId;
+    const pColor='var(--'+(p.color||'pri')+')';
+    _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\''+pId+'\')" style="padding:12px;border:2px solid '+(isSelected?pColor:'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isSelected?pColor.replace(')','-bg)'):'var(--card)')+'">';
+    _h+='<div style="width:24px;height:24px;border-radius:50%;background:'+pColor+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">'+(p.short||p.name||'').substring(0,2).toUpperCase()+'</div>';
+    _h+='<div><div style="font-weight:500">'+(p.name||p.short)+'</div><div style="font-size:11px;color:var(--txt2)">Contract - '+(p.comm*100)+'% commission</div></div>';
+    if(isSelected)_h+='<div style="margin-left:auto;color:'+pColor+'">✓</div>';
+    _h+='</div>';
+  });
+
+  // Ad hoc practices
+  (S.ahPrac||[]).forEach(p=>{
+    if(!p||!p.active)return;
+    const isSelected=currentAssignment===p.id;
+    _h+='<div onclick="setScheduleDay(\''+dateStr+'\',\''+p.id+'\')" style="padding:12px;border:2px solid '+(isSelected?'var(--err)':'var(--bdr)')+';border-radius:var(--rs);cursor:pointer;display:flex;align-items:center;gap:10px;background:'+(isSelected?'var(--err-bg)':'var(--card)')+'">';
+    _h+='<div style="width:24px;height:24px;border-radius:50%;background:var(--err);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">AH</div>';
+    _h+='<div><div style="font-weight:500">'+p.name+'</div><div style="font-size:11px;color:var(--txt2)">Ad Hoc - £'+p.rate+'/patient</div></div>';
+    if(isSelected)_h+='<div style="margin-left:auto;color:var(--err)">✓</div>';
+    _h+='</div>';
+  });
+
+  _h+='</div>';
+
+  // Show if this differs from the weekly pattern
+  if(dateOverride!==undefined&&dateOverride!==dowMapping){
+    _h+='<div style="margin-top:12px;padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn)">';
+    _h+='This day has been customized from your weekly pattern.';
+    _h+='<button onclick="clearScheduleOverride(\''+dateStr+'\')" style="display:block;margin-top:6px;font-size:11px;color:var(--warn);text-decoration:underline;border:none;background:none;padding:0;cursor:pointer">Reset to weekly pattern</button>';
+    _h+='</div>';
+  }
+
+  _h+='<div class="brow" style="margin-top:16px">';
+  _h+='<button class="btn btn-s" onclick="closeMod2()">Close</button>';
+  _h+='</div>';
+  showModal(_h);
+}
+
+// Set work assignment for a specific date
+async function setScheduleDay(dateStr,pId){
+  if(!S.workSchedule)S.workSchedule={};
+  S.workSchedule[dateStr]=pId;
+
+  // Remove any exceptions for this date
+  if(S.scheduleExceptions){
+    S.scheduleExceptions=S.scheduleExceptions.filter(e=>e.date!==dateStr);
+  }
+
+  closeMod2();
+  showToast('Saving...');
+  save();
+  refreshAnalytics();
+  showToast('Schedule updated');
+}
+
+// Clear override and reset to weekly pattern
+function clearScheduleOverride(dateStr){
+  if(S.workSchedule&&S.workSchedule[dateStr]!==undefined){
+    delete S.workSchedule[dateStr];
+  }
+  if(S.scheduleExceptions){
+    S.scheduleExceptions=S.scheduleExceptions.filter(e=>e.date!==dateStr);
+  }
+  closeMod2();
+  save();
+  refreshAnalytics();
+  showToast('Reset to weekly pattern');
+}
+
+// Edit recurring weekly schedule (day mapping)
+function editRecurringSchedule(){
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  let _h='<div class="mod-hdr"><h3>Weekly Work Pattern</h3></div>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Set your regular weekly schedule. This pattern repeats every week.</p>';
+
+  _h+='<div style="display:flex;flex-direction:column;gap:8px">';
+
+  for(let dow=0;dow<7;dow++){
+    const currentMapping=S.dayMap[dow]||'home';
+    const isWorkDay=currentMapping!=='home';
+    const prac=isWorkDay?S.practices[currentMapping]:null;
+    const pracColor=prac?'var(--'+(prac.color||'pri')+')':'var(--bg)';
+
+    _h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg);border-radius:var(--rs)">';
+    _h+='<div style="width:60px;font-weight:500;font-size:13px">'+dayNames[dow].substring(0,3)+'</div>';
+    _h+='<select id="_dow_'+dow+'" class="fi" style="flex:1" onchange="updateDowPreview('+dow+')">';
+    _h+='<option value="home"'+(currentMapping==='home'?' selected':'')+'>Day Off</option>';
+    Object.keys(S.practices||{}).forEach(pId=>{
+      const p=S.practices[pId];
+      if(p)_h+='<option value="'+pId+'"'+(currentMapping===pId?' selected':'')+'>'+(p.short||p.name)+'</option>';
+    });
+    _h+='</select>';
+    _h+='<div id="_dowPrev_'+dow+'" style="width:16px;height:16px;border-radius:4px;background:'+pracColor+'"></div>';
+    _h+='</div>';
+  }
+
+  _h+='</div>';
+
+  _h+='<div class="brow" style="margin-top:16px">';
+  _h+='<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  _h+='<button class="btn btn-p" onclick="saveRecurringSchedule()">Save Pattern</button>';
+  _h+='</div>';
+  showModal(_h);
+}
+
+function updateDowPreview(dow){
+  const select=document.getElementById('_dow_'+dow);
+  const preview=document.getElementById('_dowPrev_'+dow);
+  if(!select||!preview)return;
+  const pId=select.value;
+  const prac=pId!=='home'?S.practices[pId]:null;
+  preview.style.background=prac?'var(--'+(prac.color||'pri')+')':'var(--bg)';
+}
+
+async function saveRecurringSchedule(){
+  for(let dow=0;dow<7;dow++){
+    const select=document.getElementById('_dow_'+dow);
+    if(select){
+      S.dayMap[dow]=select.value;
+    }
+  }
+  closeMod2();
+  showToast('Saving to cloud...');
+  save();
+  try{
+    // Sync dayMap as part of settings
+    await syncSettingsToCloud();
+    showToast('Weekly pattern saved');
+  }catch(e){
+    console.error('[Sync Failed]',e);
+    showToast('Saved locally','warn');
+  }
+  refreshAnalytics();
+  buildDayMap();
 }
 
 // Schedule Exception Management
