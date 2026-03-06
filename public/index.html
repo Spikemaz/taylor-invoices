@@ -1965,7 +1965,7 @@ scheduleMidnightReset();
 },ms);
 }
 function initDt(){const t=today();const e=document.getElementById('logDt');const a=document.getElementById('ahDt');if(e)e.value=t;if(a)a.value=t;}
-function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];c.innerHTML=days.map(function(d,i){var target=S.dayMap[i];var prac=S.practices[target];var label='Home';if(target!=='home'&&prac){var hrs=(prac.paidHours&&prac.paidHours[i])||7;label=prac.short+' ('+hrs+'h)';}return '<div class="srow" onclick="editDayMapping('+i+')"><span class="la">'+d+'</span><span class="va">'+label+' &#9656;</span></div>'}).join('');}
+function buildDayMap(){var c=document.getElementById('dayMap');if(!c)return;var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];c.innerHTML=days.map(function(d,i){var target=S.dayMap[i];var prac=S.practices[target];var label='Home';if(target!=='home'&&prac){var hrs=(prac.paidHours&&(prac.paidHours[i]||prac.paidHours[String(i)]))||7;label=prac.short+' ('+hrs+'h)';}return '<div class="srow" onclick="editDayMapping('+i+')"><span class="la">'+d+'</span><span class="va">'+label+' &#9656;</span></div>'}).join('');}
 
 // ===== NAVIGATION =====
 function updateNavHighlight(n){
@@ -5010,8 +5010,8 @@ function editDayMapping(dayNum){
 var dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 var current=S.dayMap[dayNum]||'home';
 var currentHours=7;
-if(current!=='home'&&S.practices[current]&&S.practices[current].paidHours&&S.practices[current].paidHours[dayNum]){
-  currentHours=S.practices[current].paidHours[dayNum];
+if(current!=='home'&&S.practices[current]&&S.practices[current].paidHours){
+  currentHours=S.practices[current].paidHours[dayNum]||S.practices[current].paidHours[String(dayNum)]||7;
 }
 var opts='<option value="home"'+(current==='home'?' selected':'')+'>Home (no auto-open)</option>';
 Object.keys(S.practices).forEach(function(k){var p=S.practices[k];opts+='<option value="'+k+'"'+(current===k?' selected':'')+'>'+p.short+'</option>';});
@@ -5623,7 +5623,7 @@ function refreshAnalytics(){
       p.days.forEach(dow=>{
         const daysInMonth=countDaysInMonth(now.getFullYear(),now.getMonth(),dow);
         workDaysThisMonth+=daysInMonth;
-        const paidH=(p.paidHours&&p.paidHours[dow])||7;
+        const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
         expectedMonthlyPts+=daysInMonth*paidH*ptsPerHour;
         totalWeeklyHours+=paidH;
       });
@@ -5705,7 +5705,7 @@ function refreshAnalytics(){
             if(d.getDay()===dow)daysInMonth--;
           });
           if(daysInMonth<0)daysInMonth=0;
-          const paidH=(p.paidHours&&p.paidHours[dow])||7;
+          const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
           const dayPts=paidH*ptsPerHour;
           projWorkDays+=daysInMonth;
           projPts+=daysInMonth*dayPts;
@@ -5788,7 +5788,7 @@ function refreshAnalytics(){
             if(d.getDay()===dow)daysInMonth--;
           });
           if(daysInMonth<0)daysInMonth=0;
-          const paidH=(p.paidHours&&p.paidHours[dow])||7;
+          const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
           const dayPts=paidH*ptsPerHour;
           const dayGross=dayPts*avgPrice;
           projectedTaxYearNet+=daysInMonth*dayGross*(1-comm);
@@ -6158,7 +6158,7 @@ function editPracticeProjections(){
     _h+='</div></div>';
     // Show each work day with paid hours
     p.days.forEach(dow=>{
-      const paidH=(p.paidHours&&p.paidHours[dow])||7;
+      const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
       const estPts=paidH*ptsPerHour;
       _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--bdr)">';
       _h+='<span style="font-size:13px;color:var(--txt)">'+dayNames[dow]+'</span>';
