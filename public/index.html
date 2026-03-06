@@ -1946,7 +1946,7 @@ if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
 if(n==='archive'){resetArcFilters();refArc();}
 if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters and refInv');try{resetInvFilters();refInv();}catch(err){console.error('[showScreen] Error in invoices:',err);}}
-if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics')refreshAnalytics();
+if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics'){try{refreshAnalytics();}catch(err){console.error('[showScreen] Error in analytics:',err);}}
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
