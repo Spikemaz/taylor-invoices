@@ -1228,6 +1228,8 @@ async function loadPracticesFromCloud() {
     }
 
     save();
+    // Rebuild day map with cloud data
+    buildDayMap();
   } else if (Object.keys(S.practices).length > 0) {
     // Cloud load failed but we have local defaults - sync them to cloud
     console.log('[Practices] Cloud load failed but we have local defaults - syncing to cloud...');
