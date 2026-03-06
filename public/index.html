@@ -4328,7 +4328,7 @@ const invData={
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
   entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,
-  commRate:(pComm*100).toFixed(0),svcs:svcs,airTotal:airTotal,addons:addons,
+  commRate:Number((pComm*100).toFixed(2)).toString(),svcs:svcs,airTotal:airTotal,addons:addons,
   logoType:entType,payTerms:S.payTerms,entryCount:entries.length,
   companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
   createdAt:new Date().toISOString()
@@ -4405,7 +4405,7 @@ var addons={};me.forEach(function(e){if(e.aoAmt>0&&e.aoPatients>0){var aType=e.a
 var airTotal=0;Object.values(addons).forEach(function(a){airTotal+=a.total;});
 var tg=0;Object.values(svcs).forEach(function(s){tg+=s.total});tg+=airTotal;
 var cm=tg*pComm;
-var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:entType==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:(pComm*100).toFixed(0),svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,payTerms:S.payTerms,entryCount:me.length,companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
+var invData={num:invNum,date:today(),practice:p.short,practiceName:p.name,practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,entity:entType==='self'?'Self-Employed':'Ltd',entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,bankAcc:ent.acc,bankSort:ent.sort,amount:cm,gross:tg,commRate:Number((pComm*100).toFixed(2)).toString(),svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,payTerms:S.payTerms,entryCount:me.length,companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',createdAt:new Date().toISOString()};
 console.log('[Invoice Generated] Contract #'+invNum, p.short, me.length+'entries', 'gross=£'+tg.toFixed(2), 'comm=£'+cm.toFixed(2), 'entity='+entType);
 S.invoices.push(invData);save();
 await syncInvoiceToCloud(invData);
@@ -5736,9 +5736,80 @@ if(!S.ahPrac||!S.ahPrac.length){ahsec.innerHTML='<p style="color:var(--txt3);fon
 
 function exportCSV(){
 if(!S.entries.length){showToast('No data to export');return;}
-let csv='Date,Practice,Service,Patients,Price,Addon,Gross,ProfitShare%,ProfitShareAmt,Status,InvoiceNo\n';
-S.entries.forEach(e=>{csv+=e.date+','+e.pName+','+e.svc+','+e.pts+','+e.uPrice+','+(e.aoAmt||0)+','+e.gross+','+(e.comm*100).toFixed(0)+'%,'+e.commAmt+','+e.invSt+','+(e.invNo||'')+' \n';});
-const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taylor_invoices_backup.csv';a.click();showToast('✓ CSV downloaded');}
+// Show date range modal
+const now=new Date();
+const firstOfMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+// Get earliest entry date
+const dates=S.entries.map(e=>e.date).sort();
+const earliest=dates[0]||firstOfMonth;
+let _h='<div class="mod-hdr"><h3>Export Data</h3></div>';
+_h+='<div class="fg"><label class="fl">Date Range</label>';
+_h+='<select class="asel" id="_expRange" style="margin-bottom:12px">';
+_h+='<option value="all">All Data</option>';
+_h+='<option value="month" selected>Current Month</option>';
+_h+='<option value="taxyear">Current Tax Year</option>';
+_h+='<option value="custom">Custom Range</option>';
+_h+='</select></div>';
+_h+='<div id="_expCustom" style="display:none">';
+_h+='<div style="display:flex;gap:10px">';
+_h+='<div class="fg" style="flex:1"><label class="fl">From</label><input type="date" class="fi" id="_expFrom" value="'+earliest+'"></div>';
+_h+='<div class="fg" style="flex:1"><label class="fl">To</label><input type="date" class="fi" id="_expTo" value="'+todayStr+'"></div>';
+_h+='</div></div>';
+_h+='<div class="fg"><label class="fl">Entity Filter</label>';
+_h+='<select class="asel" id="_expEnt">';
+_h+='<option value="all">Both Entities</option>';
+_h+='<option value="self">Self-Employed Only</option>';
+_h+='<option value="ltd">Ltd Company Only</option>';
+_h+='</select></div>';
+_h+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p" id="_expGo">Download CSV</button></div>';
+showModal(_h);
+setTimeout(()=>{
+  document.getElementById('_expRange').onchange=function(){
+    document.getElementById('_expCustom').style.display=this.value==='custom'?'block':'none';
+  };
+  document.getElementById('_expGo').onclick=doExportCSV;
+},50);
+}
+function doExportCSV(){
+const range=document.getElementById('_expRange').value;
+const entFilter=document.getElementById('_expEnt').value;
+let entries=[...S.entries];
+// Filter by entity
+if(entFilter!=='all')entries=entries.filter(e=>(e.entity||'self')===entFilter);
+// Filter by date range
+const now=new Date();
+if(range==='month'){
+  const monthKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  entries=entries.filter(e=>e.date.startsWith(monthKey));
+}else if(range==='taxyear'){
+  let taxStart,taxEnd;
+  if(now.getMonth()>3||(now.getMonth()===3&&now.getDate()>=6)){
+    taxStart=new Date(now.getFullYear(),3,6);taxEnd=new Date(now.getFullYear()+1,3,5);
+  }else{
+    taxStart=new Date(now.getFullYear()-1,3,6);taxEnd=new Date(now.getFullYear(),3,5);
+  }
+  const startStr=taxStart.toISOString().slice(0,10);
+  const endStr=taxEnd.toISOString().slice(0,10);
+  entries=entries.filter(e=>e.date>=startStr&&e.date<=endStr);
+}else if(range==='custom'){
+  const from=document.getElementById('_expFrom').value;
+  const to=document.getElementById('_expTo').value;
+  if(from)entries=entries.filter(e=>e.date>=from);
+  if(to)entries=entries.filter(e=>e.date<=to);
+}
+if(!entries.length){showToast('No entries in selected range','err');return;}
+let csv='Date,Entity,Practice,Service,Patients,Price,Addon,Gross,ProfitShare%,ProfitShareAmt,Status,InvoiceNo\n';
+entries.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+  csv+=e.date+','+(e.entity||'self')+','+e.pName+','+e.svc+','+e.pts+','+e.uPrice+','+(e.aoAmt||0)+','+e.gross+','+Number((e.comm*100).toFixed(2))+'%,'+(e.commAmt||0).toFixed(2)+','+e.invSt+','+(e.invNo||'')+'\n';
+});
+const blob=new Blob([csv],{type:'text/csv'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+const filename='booksiq_export_'+range+'_'+new Date().toISOString().slice(0,10)+'.csv';
+a.download=filename;a.click();
+closeMod2();
+showToast('✓ Exported '+entries.length+' entries');
+}
 
 // ===== MODAL =====
 function showModal(html,prcClass){const mod=document.getElementById('modC');mod.innerHTML=html;mod.parentElement.className='mod'+(prcClass?' '+prcClass:'');document.getElementById('modOv').classList.add('show');}
