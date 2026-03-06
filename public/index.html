@@ -5618,23 +5618,48 @@ function refreshAnalytics(){
   _h+='</div>';
 
   // ============= INVOICE STATUS BREAKDOWN =============
+  // Calculate uninvoiced entries (work done but not yet invoiced)
+  const uninvoicedEntries=taxYearEntries.filter(e=>e.invSt!=='invoiced');
+  let uninvoicedTotal=0;
+  uninvoicedEntries.forEach(e=>{
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    uninvoicedTotal+=e.pType==='adhoc'?gross:gross*(e.comm||0);
+  });
+  const invoicedTotal=paidTotal+unpaidTotal;
+  const totalEarnings=selfEarnings+ltdEarnings;
+
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Invoice Status</h3>';
 
-  // Paid vs Unpaid totals
-  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  // Show total breakdown: Paid + Unpaid + Uninvoiced = Total Earnings
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Total earnings breakdown for tax year</div>';
+
+  // Three columns: Paid, Unpaid, Uninvoiced
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">';
   // Paid
-  _h+='<div style="padding:12px;background:rgba(34,197,94,0.1);border-radius:var(--rs);border:1px solid var(--ok)">';
-  _h+='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ok);font-weight:600"><span style="width:8px;height:8px;background:var(--ok);border-radius:50%"></span>PAID</div>';
-  _h+='<div style="font-size:22px;font-weight:700;color:var(--ok)">'+fc(paidTotal)+'</div>';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+paidInvoices.length+' invoice'+(paidInvoices.length!==1?'s':'')+'</div>';
+  _h+='<div style="padding:10px;background:rgba(34,197,94,0.1);border-radius:var(--rs);border:1px solid var(--ok)">';
+  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ok);font-weight:600"><span style="width:6px;height:6px;background:var(--ok);border-radius:50%"></span>PAID</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:var(--ok)">'+fc(paidTotal)+'</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2)">'+paidInvoices.length+' inv</div>';
   _h+='</div>';
   // Unpaid
-  _h+='<div style="padding:12px;background:rgba(239,68,68,0.1);border-radius:var(--rs);border:1px solid var(--err)">';
-  _h+='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--err);font-weight:600"><span style="width:8px;height:8px;background:var(--err);border-radius:50%"></span>UNPAID</div>';
-  _h+='<div style="font-size:22px;font-weight:700;color:var(--err)">'+fc(unpaidTotal)+'</div>';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+unpaidInvoices.length+' invoice'+(unpaidInvoices.length!==1?'s':'')+'</div>';
+  _h+='<div style="padding:10px;background:rgba(239,68,68,0.1);border-radius:var(--rs);border:1px solid var(--err)">';
+  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--err);font-weight:600"><span style="width:6px;height:6px;background:var(--err);border-radius:50%"></span>UNPAID</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:var(--err)">'+fc(unpaidTotal)+'</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2)">'+unpaidInvoices.length+' inv</div>';
   _h+='</div>';
+  // Uninvoiced
+  _h+='<div style="padding:10px;background:rgba(245,158,11,0.1);border-radius:var(--rs);border:1px solid var(--warn)">';
+  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--warn);font-weight:600"><span style="width:6px;height:6px;background:var(--warn);border-radius:50%"></span>NOT INVOICED</div>';
+  _h+='<div style="font-size:18px;font-weight:700;color:var(--warn)">'+fc(uninvoicedTotal)+'</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2)">'+uninvoicedEntries.length+' entries</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Verification row
+  _h+='<div style="padding:8px;background:var(--bg);border-radius:var(--rs);font-size:11px;color:var(--txt2);display:flex;justify-content:space-between;margin-bottom:12px">';
+  _h+='<span>Paid + Unpaid + Uninvoiced:</span>';
+  _h+='<strong style="color:var(--txt)">'+fc(paidTotal+unpaidTotal+uninvoicedTotal)+'</strong>';
   _h+='</div>';
 
   // Entity breakdown for invoices
