@@ -3176,7 +3176,8 @@ function getInvEntity(inv){
 function renderInv(inv){
   const entType=getInvEntity(inv);
   const entLabel=entType==='ltd'?'Ltd':'Self';
-  const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc';
+  // Detect ad hoc: explicit flags, or commRate is 'N/A' (ad hoc invoices have no commission)
+  const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc'||inv.commRate==='N/A';
   const typeLabel=isAdhoc?'Ad Hoc':'Contract';
   let prcClass='';
   const prcName=inv.practice||'Ad Hoc';
@@ -3283,7 +3284,7 @@ let filteredInvs=S.iEnt==='all'?[...S.invoices]:S.invoices.filter(inv=>getInvEnt
 if(invPracFilter!=='all'){
   filteredInvs=filteredInvs.filter(inv=>{
     const prac=(inv.practice||'').toLowerCase();
-    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc';
+    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc'||inv.commRate==='N/A';
     if(invPracFilter==='adhoc')return isAdhoc;
     if(invPracFilter==='bupa')return prac.includes('bupa');
     if(invPracFilter==='grove')return prac.includes('grove');
@@ -4618,7 +4619,7 @@ const invData={
   entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entType,
-  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
+  payTerms:S.payTerms,isAdhoc:true,pType:'adhoc',entryCount:entries.length,
   companyNo:entType==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
   createdAt:new Date().toISOString()
 };
@@ -4717,7 +4718,7 @@ const invData={
   entPhone:ent.phone||'',entEmail:ent.email||'',bankName:ent.bank,bankAccName:ent.bName,
   bankAcc:ent.acc,bankSort:ent.sort,amount:tg,gross:tg,
   commRate:'N/A',svcs:svcs,addons:addons,airTotal:airTotal,logoType:entKey,
-  payTerms:S.payTerms,isAdhoc:true,entryCount:entries.length,
+  payTerms:S.payTerms,isAdhoc:true,pType:'adhoc',entryCount:entries.length,
   companyNo:entKey==='ltd'?(ent.companyNo||''):'',footerMsg:S.invoiceFooter||'',
   createdAt:new Date().toISOString()
 };
