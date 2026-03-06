@@ -360,6 +360,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="scr" id="scr-home">
 <div class="entbox" id="hBan">
 <div class="esw">
+<button class="ebtn" onclick="setEntity('all')" id="eA">All</button>
 <button class="ebtn act" onclick="setEntity('self')" id="eS">Self-Employed</button>
 <button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd Company</button>
 </div>
@@ -378,7 +379,6 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 </div>
 <div class="pgrid">
-<div class="pcard all" onclick="showAllEarnings()" style="border-color:var(--pri)"><div class="ci" style="background:var(--pri)">£</div><div class="cn">All Earnings</div><div class="cm" id="allM">View totals</div></div>
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
 <div class="pcard grove" onclick="openPractice('grove')"><div class="cs" id="grSt"></div><div class="ci">G</div><div class="cn">The Grove</div><div class="cm" id="grM">Thursday</div></div>
 <div class="pcard adhoc" onclick="openPractice('adhoc')"><div class="cs" id="ahSt"></div><div class="ci">A</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div></div>
@@ -1998,7 +1998,9 @@ if(hMonthSub)hMonthSub.textContent=isCurrentMonth?'Current Month':'';
 if(hMonthNext)hMonthNext.disabled=isCurrentMonth;
 
 const me=getMonth(viewYear,viewMonth);
-var entMe=me.filter(function(e){return e.entity===S.ent});
+// Filter by viewEnt: 'all' shows everything, otherwise filter by entity
+const viewEnt=S.viewEnt||S.ent;
+var entMe=viewEnt==='all'?me:me.filter(function(e){return e.entity===viewEnt});
 // Monthly gross and net (net = Taylor's commission/profit share)
 let mGross=0,mNet=0;
 entMe.forEach(function(e){mGross+=e.gross;mNet+=e.pType==='contract'?e.gross*e.comm:e.gross;});
@@ -2062,8 +2064,11 @@ Object.keys(S.practices).forEach(function(k){
 var mEl=document.getElementById(k+'M');if(mEl){var cnt=me.filter(function(e){return e.pId===k}).length;var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var pDays=S.practices[k].days||[];mEl.textContent=pDays.map(function(d){return dn[d]}).join('/')+' \u00b7 '+cnt+' entries';}
 var stEl=document.getElementById(k+'St');if(stEl)stEl.className='cs'+(te.some(function(e){return e.pId===k})?' on':'');
 });
-document.getElementById('eS').className='ebtn'+(S.ent==='self'?' act':'');
-document.getElementById('eL').className='ebtn'+(S.ent==='ltd'?' act':'');
+// Update entity button states based on viewEnt
+const currentViewEnt=S.viewEnt||S.ent;
+const eABtn=document.getElementById('eA');if(eABtn)eABtn.className='ebtn'+(currentViewEnt==='all'?' act':'');
+document.getElementById('eS').className='ebtn'+(currentViewEnt==='self'?' act':'');
+document.getElementById('eL').className='ebtn'+(currentViewEnt==='ltd'?' act':'');
 upRecon(now);
 }
 function upRecon(n){const c=document.getElementById('hRecon'),y=n.getFullYear(),m=n.getMonth(),ld=new Date(y,m+1,0).getDate();
@@ -2080,30 +2085,35 @@ c.innerHTML=h;}
 // ===== ENTITY =====
 // Unified entity switcher - updates ALL toggles across the entire app
 function switchEntity(t){
-  console.log('[Entity Switch]', t==='self'?'Self-Employed':'Ltd Company');
-  S.ent=t;save();
+  console.log('[Entity Switch]', t==='all'?'All':t==='self'?'Self-Employed':'Ltd Company');
+  // For 'all', we set a view filter but don't change S.ent (used for logging)
+  S.viewEnt=t; // 'all', 'self', or 'ltd' - for display filtering
+  if(t!=='all')S.ent=t; // Only update logging entity for self/ltd
+  save();
 
   // Update ALL entity toggle buttons across all screens
+  const allClass='ebtn'+(t==='all'?' act':'');
   const selfClass='ebtn'+(t==='self'?' act':'');
   const ltdClass='ebtn'+(t==='ltd'?' act':'');
 
-  // Home screen toggle
-  const eS=document.getElementById('eS'),eL=document.getElementById('eL');
+  // Home screen toggle (has All button)
+  const eA=document.getElementById('eA'),eS=document.getElementById('eS'),eL=document.getElementById('eL');
+  if(eA)eA.className=allClass;
   if(eS)eS.className=selfClass;
   if(eL)eL.className=ltdClass;
 
-  // Practice screen toggle
+  // Practice screen toggle (no All button)
   const pES=document.getElementById('pES'),pEL=document.getElementById('pEL');
-  if(pES)pES.className=selfClass;
-  if(pEL)pEL.className=ltdClass;
+  if(pES)pES.className='ebtn'+(S.ent==='self'?' act':'');
+  if(pEL)pEL.className='ebtn'+(S.ent==='ltd'?' act':'');
 
-  // Ad Hoc screen toggle
+  // Ad Hoc screen toggle (no All button)
   const ahES=document.getElementById('ahES'),ahEL=document.getElementById('ahEL');
-  if(ahES)ahES.className=selfClass;
-  if(ahEL)ahEL.className=ltdClass;
+  if(ahES)ahES.className='ebtn'+(S.ent==='self'?' act':'');
+  if(ahEL)ahEL.className='ebtn'+(S.ent==='ltd'?' act':'');
 
   // Update header entity display
-  document.getElementById('hdrE').textContent=t==='self'?'Self-Employed':'Ltd Company';
+  document.getElementById('hdrE').textContent=t==='all'?'All Entities':t==='self'?'Self-Employed':'Ltd Company';
 
   // Update practice screen monthly summary if we're on it (with animation)
   if(S.prac&&S.practices[S.prac]){
@@ -2134,66 +2144,6 @@ function setInvEnt(t){
     switchEntity(t);
   }
   refInv();
-}
-
-// ===== ALL EARNINGS VIEW =====
-function showAllEarnings(){
-const now=new Date();
-const viewYear=S.viewMonth?S.viewMonth.year:now.getFullYear();
-const viewMonth=S.viewMonth?S.viewMonth.month:now.getMonth();
-const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const me=getMonth(viewYear,viewMonth);
-// Calculate totals for BOTH entities
-let selfGross=0,selfNet=0,ltdGross=0,ltdNet=0;
-me.forEach(e=>{
-const net=e.pType==='contract'?e.gross*e.comm:e.gross;
-if(e.entity==='ltd'){ltdGross+=e.gross;ltdNet+=net;}
-else{selfGross+=e.gross;selfNet+=net;}
-});
-const totalGross=selfGross+ltdGross;
-const totalNet=selfNet+ltdNet;
-// Build modal
-let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-_h+='<h3 style="font-size:16px;font-weight:600;margin:0">All Earnings - '+monthNames[viewMonth]+' '+viewYear+'</h3></div>';
-_h+='<div style="margin-bottom:20px">';
-_h+='<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bdr)">';
-_h+='<span style="font-weight:600;color:var(--txt)">Combined Total</span>';
-_h+='<span style="color:var(--pri);font-weight:700;font-size:18px">'+fc(totalNet)+'</span></div>';
-_h+='<div style="font-size:13px;color:var(--txt2);margin-top:8px">Gross: '+fc(totalGross)+'</div>';
-_h+='</div>';
-// Self-employed breakdown
-_h+='<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
-_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">Self-Employed</div>';
-_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
-_h+='<span style="color:var(--txt2)">Gross</span><span style="color:var(--txt)">'+fc(selfGross)+'</span></div>';
-_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
-_h+='<span style="color:var(--txt2)">Net (Your Profit)</span><span style="color:var(--pri);font-weight:600">'+fc(selfNet)+'</span></div>';
-_h+='</div>';
-// Ltd breakdown
-_h+='<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:16px">';
-_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">Ltd Company</div>';
-_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
-_h+='<span style="color:var(--txt2)">Gross</span><span style="color:var(--txt)">'+fc(ltdGross)+'</span></div>';
-_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
-_h+='<span style="color:var(--txt2)">Net (Your Profit)</span><span style="color:var(--pri);font-weight:600">'+fc(ltdNet)+'</span></div>';
-_h+='</div>';
-// Practice breakdown
-_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">By Practice</div>';
-const pracTotals={};
-me.forEach(e=>{
-const pKey=e.pId||'adhoc';
-if(!pracTotals[pKey])pracTotals[pKey]={name:e.pName||'Ad Hoc',gross:0,net:0};
-pracTotals[pKey].gross+=e.gross;
-pracTotals[pKey].net+=e.pType==='contract'?e.gross*e.comm:e.gross;
-});
-Object.keys(pracTotals).forEach(k=>{
-const p=pracTotals[k];
-_h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr);font-size:14px">';
-_h+='<span style="color:var(--txt)">'+p.name+'</span>';
-_h+='<span style="color:var(--pri);font-weight:500">'+fc(p.net)+'</span></div>';
-});
-_h+='<button class="btn btn-p" style="width:100%;margin-top:20px" onclick="closeMod2()">Close</button>';
-showModal(_h);
 }
 
 // ===== ENTITY SELECTION MODAL =====
