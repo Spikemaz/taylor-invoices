@@ -378,6 +378,7 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 </div>
 <div class="pgrid">
+<div class="pcard all" onclick="showAllEarnings()" style="border-color:var(--pri)"><div class="ci" style="background:var(--pri)">£</div><div class="cn">All Earnings</div><div class="cm" id="allM">View totals</div></div>
 <div class="pcard bupa" onclick="openPractice('bupa')"><div class="cs" id="buSt"></div><div class="ci">B</div><div class="cn">Bupa</div><div class="cm" id="buM">Mon & Fri</div></div>
 <div class="pcard grove" onclick="openPractice('grove')"><div class="cs" id="grSt"></div><div class="ci">G</div><div class="cn">The Grove</div><div class="cm" id="grM">Thursday</div></div>
 <div class="pcard adhoc" onclick="openPractice('adhoc')"><div class="cs" id="ahSt"></div><div class="ci">A</div><div class="cn">Ad Hoc</div><div class="cm">As needed</div></div>
@@ -2135,9 +2136,97 @@ function setInvEnt(t){
   refInv();
 }
 
+// ===== ALL EARNINGS VIEW =====
+function showAllEarnings(){
+const now=new Date();
+const viewYear=S.viewMonth?S.viewMonth.year:now.getFullYear();
+const viewMonth=S.viewMonth?S.viewMonth.month:now.getMonth();
+const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const me=getMonth(viewYear,viewMonth);
+// Calculate totals for BOTH entities
+let selfGross=0,selfNet=0,ltdGross=0,ltdNet=0;
+me.forEach(e=>{
+const net=e.pType==='contract'?e.gross*e.comm:e.gross;
+if(e.entity==='ltd'){ltdGross+=e.gross;ltdNet+=net;}
+else{selfGross+=e.gross;selfNet+=net;}
+});
+const totalGross=selfGross+ltdGross;
+const totalNet=selfNet+ltdNet;
+// Build modal
+let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+_h+='<h3 style="font-size:16px;font-weight:600;margin:0">All Earnings - '+monthNames[viewMonth]+' '+viewYear+'</h3></div>';
+_h+='<div style="margin-bottom:20px">';
+_h+='<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bdr)">';
+_h+='<span style="font-weight:600;color:var(--txt)">Combined Total</span>';
+_h+='<span style="color:var(--pri);font-weight:700;font-size:18px">'+fc(totalNet)+'</span></div>';
+_h+='<div style="font-size:13px;color:var(--txt2);margin-top:8px">Gross: '+fc(totalGross)+'</div>';
+_h+='</div>';
+// Self-employed breakdown
+_h+='<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">Self-Employed</div>';
+_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
+_h+='<span style="color:var(--txt2)">Gross</span><span style="color:var(--txt)">'+fc(selfGross)+'</span></div>';
+_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
+_h+='<span style="color:var(--txt2)">Net (Your Profit)</span><span style="color:var(--pri);font-weight:600">'+fc(selfNet)+'</span></div>';
+_h+='</div>';
+// Ltd breakdown
+_h+='<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:16px">';
+_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">Ltd Company</div>';
+_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
+_h+='<span style="color:var(--txt2)">Gross</span><span style="color:var(--txt)">'+fc(ltdGross)+'</span></div>';
+_h+='<div style="display:flex;justify-content:space-between;font-size:14px">';
+_h+='<span style="color:var(--txt2)">Net (Your Profit)</span><span style="color:var(--pri);font-weight:600">'+fc(ltdNet)+'</span></div>';
+_h+='</div>';
+// Practice breakdown
+_h+='<div style="font-weight:600;color:var(--txt);margin-bottom:8px">By Practice</div>';
+const pracTotals={};
+me.forEach(e=>{
+const pKey=e.pId||'adhoc';
+if(!pracTotals[pKey])pracTotals[pKey]={name:e.pName||'Ad Hoc',gross:0,net:0};
+pracTotals[pKey].gross+=e.gross;
+pracTotals[pKey].net+=e.pType==='contract'?e.gross*e.comm:e.gross;
+});
+Object.keys(pracTotals).forEach(k=>{
+const p=pracTotals[k];
+_h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr);font-size:14px">';
+_h+='<span style="color:var(--txt)">'+p.name+'</span>';
+_h+='<span style="color:var(--pri);font-weight:500">'+fc(p.net)+'</span></div>';
+});
+_h+='<button class="btn btn-p" style="width:100%;margin-top:20px" onclick="closeMod2()">Close</button>';
+showModal(_h);
+}
+
+// ===== ENTITY SELECTION MODAL =====
+function showEntitySelectModal(practiceId,callback){
+const isAdhoc=practiceId==='adhoc';
+const pracName=isAdhoc?'Ad Hoc':(S.practices[practiceId]?S.practices[practiceId].short:practiceId);
+let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
+_h+='<h3 style="font-size:16px;font-weight:600;margin:0">Select Entity</h3></div>';
+_h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Which entity are you logging work for at <strong>'+pracName+'</strong>?</p>';
+_h+='<div style="display:flex;flex-direction:column;gap:12px">';
+_h+='<button class="btn" id="_entSelSelf" style="padding:16px;font-size:15px;border:2px solid var(--bdr);background:var(--card)">Self-Employed<br><span style="font-size:12px;color:var(--txt2)">Taylor Muir</span></button>';
+_h+='<button class="btn" id="_entSelLtd" style="padding:16px;font-size:15px;border:2px solid var(--bdr);background:var(--card)">Ltd Company<br><span style="font-size:12px;color:var(--txt2)">Hygiene & Therapy Clinical Services Ltd</span></button>';
+_h+='</div>';
+_h+='<button class="btn btn-s" style="width:100%;margin-top:16px" onclick="closeMod2()">Cancel</button>';
+showModal(_h);
+setTimeout(()=>{
+document.getElementById('_entSelSelf').onclick=()=>{
+closeMod2();setEntity('self');callback();
+};
+document.getElementById('_entSelLtd').onclick=()=>{
+closeMod2();setEntity('ltd');callback();
+};
+},50);
+}
+
 // ===== PRACTICE LOGGING =====
-function openPractice(id){
+function openPractice(id,skipEntitySelect){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid in openPractice');return;}
+// Show entity selection modal first (unless skipped)
+if(!skipEntitySelect){
+showEntitySelectModal(id,()=>openPractice(id,true));
+return;
+}
 if(id==='adhoc'){console.log('[Screen] Ad Hoc');S.prac=null;showScreen('adhoc');popAh();return;}
 const p=S.practices[id];if(!p){console.warn('Practice not found:',id);return;}
 console.log('[Screen] Practice:', p.short);
