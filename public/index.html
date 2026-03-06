@@ -169,18 +169,6 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .ent-label.self{color:#0891B2}.ent-label.ltd{color:#166534}
 .ent-count{font-size:11px;color:var(--txt3)}
 .ent-group-items{padding:4px}
-.paid-month{margin-bottom:8px;border-radius:var(--rs);overflow:hidden;border:1px solid var(--bdr)}
-.paid-month.collapsed .paid-month-content{display:none}
-.paid-month-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--card);cursor:pointer;font-size:14px;font-weight:600;color:var(--txt)}
-.paid-month-hdr:active{background:var(--bg)}
-.paid-month-hdr .month-count{font-size:11px;font-weight:500;color:var(--txt3);background:var(--bg);padding:2px 8px;border-radius:10px}
-.paid-month-content{padding:4px 8px 8px;background:var(--bg)}
-.tax-year-folder{margin-bottom:8px;border-radius:var(--rs);overflow:hidden;border:2px solid var(--pri)}
-.tax-year-folder.collapsed .tax-year-content{display:none}
-.tax-year-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--pri-dk);cursor:pointer;font-size:14px;font-weight:600;color:#fff}
-.tax-year-hdr:active{opacity:.9}
-.tax-year-hdr .ty-count{font-size:11px;font-weight:500;opacity:.8}
-.tax-year-content{padding:8px;background:var(--card)}
 .ie-left{min-width:50px;max-width:50px;text-align:center;flex-shrink:0}
 .ie-num{font-size:13px;font-weight:700;color:var(--txt);line-height:1.2}
 .ie-ent{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;margin-top:3px;display:inline-block}
@@ -3307,29 +3295,15 @@ if(invPracFilter!=='all'){
 const unpaidInvs=filteredInvs.filter(inv=>inv.paidStatus!=='paid').sort((a,b)=>b.date.localeCompare(a.date));
 const paidInvs=filteredInvs.filter(inv=>inv.paidStatus==='paid').sort((a,b)=>b.date.localeCompare(a.date));
 
-// Helper to get tax year (April to April)
-function getTaxYear(dateStr){
-  const d=new Date(dateStr);
-  const year=d.getFullYear();
-  const month=d.getMonth();
-  // Tax year runs April (month 3) to March
-  if(month>=3)return year+'-'+(year+1);
-  return (year-1)+'-'+year;
-}
-
-// Current tax year
-const currentTaxYear=getTaxYear(n.toISOString().substring(0,10));
-
 let invHtml='';
 
 // ===== UNPAID SECTION =====
 if(unpaidInvs.length){
   invHtml+='<div class="inv-section-hdr unpaid-hdr">Unpaid <span class="sec-count">'+unpaidInvs.length+' invoice'+(unpaidInvs.length!==1?'s':'')+'</span></div>';
   invHtml+='<div class="inv-section-content">';
-  // Group by entity
-  const unpaidSelf=unpaidInvs.filter(inv=>getInvEntity(inv)==='self');
-  const unpaidLtd=unpaidInvs.filter(inv=>getInvEntity(inv)==='ltd');
   if(S.iEnt==='all'){
+    const unpaidSelf=unpaidInvs.filter(inv=>getInvEntity(inv)==='self');
+    const unpaidLtd=unpaidInvs.filter(inv=>getInvEntity(inv)==='ltd');
     invHtml+=renderEntityGroup(unpaidSelf,'self','Self-Employed');
     invHtml+=renderEntityGroup(unpaidLtd,'ltd','Ltd Company');
   }else{
@@ -3342,66 +3316,14 @@ if(unpaidInvs.length){
 if(paidInvs.length){
   invHtml+='<div class="inv-section-hdr paid-hdr">Paid <span class="sec-count">'+paidInvs.length+' invoice'+(paidInvs.length!==1?'s':'')+'</span></div>';
   invHtml+='<div class="inv-section-content">';
-
-  // Group by tax year, then month, then entity
-  const byTaxYear={};
-  paidInvs.forEach(inv=>{
-    const ty=getTaxYear(inv.date);
-    if(!byTaxYear[ty])byTaxYear[ty]=[];
-    byTaxYear[ty].push(inv);
-  });
-
-  // Sort tax years descending
-  Object.keys(byTaxYear).sort((a,b)=>b.localeCompare(a)).forEach(taxYear=>{
-    const tyInvs=byTaxYear[taxYear];
-    const isCurrentTY=taxYear===currentTaxYear;
-
-    if(isCurrentTY){
-      // Current tax year: show monthly breakdown
-      const byMonth={};
-      tyInvs.forEach(inv=>{
-        const mk=inv.date.substring(0,7);
-        if(!byMonth[mk])byMonth[mk]=[];
-        byMonth[mk].push(inv);
-      });
-
-      Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-        const monthInvs=byMonth[monthKey];
-        const d=new Date(monthKey+'-01');
-        const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-
-        invHtml+='<div class="paid-month collapsed" data-month="'+monthKey+'">';
-        invHtml+='<div class="paid-month-hdr">'+monthLabel+' <span class="month-count">'+monthInvs.length+'</span></div>';
-        invHtml+='<div class="paid-month-content">';
-
-        if(S.iEnt==='all'){
-          const monthSelf=monthInvs.filter(inv=>getInvEntity(inv)==='self');
-          const monthLtd=monthInvs.filter(inv=>getInvEntity(inv)==='ltd');
-          invHtml+=renderEntityGroup(monthSelf,'self','Self-Employed');
-          invHtml+=renderEntityGroup(monthLtd,'ltd','Ltd Company');
-        }else{
-          invHtml+='<div class="alist">'+monthInvs.map(renderInv).join('')+'</div>';
-        }
-        invHtml+='</div></div>';
-      });
-    }else{
-      // Past tax years: collapsed folder
-      invHtml+='<div class="tax-year-folder collapsed" data-ty="'+taxYear+'">';
-      invHtml+='<div class="tax-year-hdr">Tax Year '+taxYear+' <span class="ty-count">'+tyInvs.length+' invoice'+(tyInvs.length!==1?'s':'')+'</span></div>';
-      invHtml+='<div class="tax-year-content">';
-
-      if(S.iEnt==='all'){
-        const tySelf=tyInvs.filter(inv=>getInvEntity(inv)==='self');
-        const tyLtd=tyInvs.filter(inv=>getInvEntity(inv)==='ltd');
-        invHtml+=renderEntityGroup(tySelf,'self','Self-Employed');
-        invHtml+=renderEntityGroup(tyLtd,'ltd','Ltd Company');
-      }else{
-        invHtml+='<div class="alist">'+tyInvs.map(renderInv).join('')+'</div>';
-      }
-      invHtml+='</div></div>';
-    }
-  });
-
+  if(S.iEnt==='all'){
+    const paidSelf=paidInvs.filter(inv=>getInvEntity(inv)==='self');
+    const paidLtd=paidInvs.filter(inv=>getInvEntity(inv)==='ltd');
+    invHtml+=renderEntityGroup(paidSelf,'self','Self-Employed');
+    invHtml+=renderEntityGroup(paidLtd,'ltd','Ltd Company');
+  }else{
+    invHtml+='<div class="alist">'+paidInvs.map(renderInv).join('')+'</div>';
+  }
   invHtml+='</div>';
 }
 
@@ -3412,13 +3334,7 @@ if(!unpaidInvs.length&&!paidInvs.length&&!hasAwaitingApproval){
 
 pc2.innerHTML=invHtml;
 
-// Add click handlers for collapsible sections
-pc2.querySelectorAll('.paid-month').forEach(el=>{
-  el.querySelector('.paid-month-hdr').onclick=function(){el.classList.toggle('collapsed');};
-});
-pc2.querySelectorAll('.tax-year-folder').forEach(el=>{
-  el.querySelector('.tax-year-hdr').onclick=function(){el.classList.toggle('collapsed');};
-});
+// Add click handlers for collapsible entity groups
 pc2.querySelectorAll('.ent-group-hdr').forEach(el=>{
   el.onclick=function(e){e.stopPropagation();this.parentElement.classList.toggle('collapsed');};
 });
