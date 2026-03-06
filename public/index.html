@@ -453,6 +453,14 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="filtArcEnt('self')" id="arcES">Self-Employed</button>
 <button class="ebtn" onclick="filtArcEnt('ltd')" id="arcEL">Ltd Company</button>
 </div>
+<div class="month-nav">
+<button class="month-nav-btn" id="aMonthPrev" onclick="navArcMonth(-1)">‹</button>
+<div style="text-align:center">
+<div class="month-nav-title" id="aMonthTitle">March 2026</div>
+<div class="month-nav-sub" id="aMonthSub">Current Month</div>
+</div>
+<button class="month-nav-btn" id="aMonthNext" onclick="navArcMonth(1)">›</button>
+</div>
 </div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
@@ -2677,13 +2685,46 @@ upHome();
 // ===== ARCHIVE SCREEN =====
 let arcFilter='all';
 let arcEntFilter='all';
+let arcViewMonth=null; // null = current month
+
+function navArcMonth(delta){
+  const now=new Date();
+  if(!arcViewMonth){
+    arcViewMonth={year:now.getFullYear(),month:now.getMonth()};
+  }
+  arcViewMonth.month+=delta;
+  if(arcViewMonth.month<0){arcViewMonth.month=11;arcViewMonth.year--;}
+  if(arcViewMonth.month>11){arcViewMonth.month=0;arcViewMonth.year++;}
+  // Don't allow future months
+  if(arcViewMonth.year>now.getFullYear()||(arcViewMonth.year===now.getFullYear()&&arcViewMonth.month>now.getMonth())){
+    arcViewMonth={year:now.getFullYear(),month:now.getMonth()};
+  }
+  updateArcMonthUI();
+  refArc();
+}
+
+function updateArcMonthUI(){
+  const now=new Date();
+  const viewYear=arcViewMonth?arcViewMonth.year:now.getFullYear();
+  const viewMonth=arcViewMonth?arcViewMonth.month:now.getMonth();
+  const isCurrentMonth=viewYear===now.getFullYear()&&viewMonth===now.getMonth();
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const title=document.getElementById('aMonthTitle');
+  const sub=document.getElementById('aMonthSub');
+  const next=document.getElementById('aMonthNext');
+  if(title)title.textContent=monthNames[viewMonth]+' '+viewYear;
+  if(sub)sub.textContent=isCurrentMonth?'Current Month':'';
+  if(next)next.disabled=isCurrentMonth;
+}
+
 function resetArcFilters(){
-  arcFilter='all';arcEntFilter='all';
+  arcFilter='all';arcEntFilter='all';arcViewMonth=null;
   document.getElementById('arcEAll').className='ebtn act';
   document.getElementById('arcES').className='ebtn';
   document.getElementById('arcEL').className='ebtn';
   document.querySelectorAll('#aFilt .fc').forEach(c=>{c.classList.toggle('act',c.textContent==='All');});
   document.getElementById('hdrE').textContent='All';
+  updateArcMonthUI();
 }
 function filtArcEnt(f){
   arcEntFilter=f;
@@ -2702,10 +2743,11 @@ function filtArc(f){arcFilter=f;document.querySelectorAll('#aFilt .fc').forEach(
 function refArc(){
   const c=document.getElementById('arcList');
   const now=new Date();
-  const todayStr=now.toISOString().substring(0,10);
-  // Calculate 7 days ago for Recent section
-  const sevenDaysAgo=new Date(now);sevenDaysAgo.setDate(sevenDaysAgo.getDate()-7);
-  const sevenDaysAgoStr=sevenDaysAgo.toISOString().substring(0,10);
+
+  // Determine which month to show
+  const viewYear=arcViewMonth?arcViewMonth.year:now.getFullYear();
+  const viewMonth=arcViewMonth?arcViewMonth.month:now.getMonth();
+  const monthStart=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
 
   // Sort by date desc, then by createdAt desc (most recent first)
   let entries=[...S.entries].sort((a,b)=>{
@@ -2714,17 +2756,15 @@ function refArc(){
     return (b.createdAt||'').localeCompare(a.createdAt||'');
   });
 
+  // Filter by selected month
+  entries=entries.filter(e=>e.date.startsWith(monthStart));
+
   // Apply practice filter
   if(arcFilter!=='all')entries=entries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
   // Apply entity filter
   if(arcEntFilter!=='all')entries=entries.filter(e=>(e.entity||'self')===arcEntFilter);
 
-  if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries found.</p></div>';return;}
-
-  // Split into Today, Recent (last 7 days), and Previous
-  const todayEntries=entries.filter(e=>e.date===todayStr);
-  const recentEntries=entries.filter(e=>e.date!==todayStr&&e.date>=sevenDaysAgoStr);
-  const previousEntries=entries.filter(e=>e.date<sevenDaysAgoStr);
+  if(!entries.length){c.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries for this month.</p></div>';return;}
 
   // Helper to get practice border class
   function getPrcClass(e){
@@ -2734,7 +2774,7 @@ function refArc(){
     return '';
   }
 
-  // Helper to render a single entry - simplified for mobile
+  // Helper to render a single entry
   function renderEntry(e){
     const prcClass=getPrcClass(e);
     const prcName=e.pType==='adhoc'?e.pName:(e.pId==='bupa'?'Bupa':(e.pId==='grove'?'Grove':e.pName));
@@ -2749,134 +2789,55 @@ function refArc(){
       '</div></div>';
   }
 
+  // Group entries by day
+  const byDay={};
+  entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
+
+  // Calculate month totals
+  let totalGross=0,totalNet=0;
+  entries.forEach(e=>{
+    totalGross+=e.gross||0;
+    totalNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
+  });
+
   let html='';
 
-  // TODAY section - only show if entries exist today
-  if(todayEntries.length){
-    todayEntries.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-    html+='<div class="arc-section">Today <span class="sec-count">'+todayEntries.length+' entr'+(todayEntries.length===1?'y':'ies')+'</span></div>';
-    html+='<div class="alist" style="margin-top:8px">'+todayEntries.map(renderEntry).join('')+'</div>';
-  }
+  // Month summary
+  html+='<div class="arc-summary" style="display:flex;justify-content:space-between;padding:12px 16px;background:var(--card);border-radius:var(--rs);margin-bottom:12px;border:1px solid var(--bdr)">';
+  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Entries</div><div style="font-size:18px;font-weight:700;color:var(--txt)">'+entries.length+'</div></div>';
+  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Gross</div><div style="font-size:18px;font-weight:700;color:var(--txt)">'+fc(totalGross)+'</div></div>';
+  html+='<div style="text-align:center"><div style="font-size:11px;color:var(--txt2);text-transform:uppercase">Net</div><div style="font-size:18px;font-weight:700;color:var(--pri)">'+fc(totalNet)+'</div></div>';
+  html+='</div>';
 
-  // RECENT section - last 7 days (excluding today)
-  if(recentEntries.length){
-    html+='<div class="arc-section">Recent <span class="sec-count">'+recentEntries.length+' entr'+(recentEntries.length===1?'y':'ies')+'</span></div>';
-    // Group by day
-    const byDay={};
-    recentEntries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
-    html+='<div class="alist" style="margin-top:8px">';
-    Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
-      const dayEntries=byDay[dayKey];
-      const dayDate=new Date(dayKey);
-      const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      const dayNum=dayDate.getDate();
-      const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
-      const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
-      html+='<div style="font-size:12px;color:var(--txt2);padding:10px 0 6px;font-weight:600">'+dayLabel+' <span style="font-weight:400">('+dayEntries.length+')</span></div>';
-      dayEntries.sort((a,b)=>(b.pts||0)-(a.pts||0));
-      html+=dayEntries.map(renderEntry).join('');
+  // Render entries grouped by day
+  html+='<div class="alist">';
+  Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
+    const dayEntries=byDay[dayKey];
+    const dayDate=new Date(dayKey);
+    const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dayNum=dayDate.getDate();
+    const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
+    const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix+' '+monthNames[dayDate.getMonth()];
+
+    // Calculate day totals
+    let dayGross=0,dayNet=0;
+    dayEntries.forEach(e=>{
+      dayGross+=e.gross||0;
+      dayNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
     });
+
+    html+='<div class="arc-day-header" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 6px;border-bottom:1px solid var(--bdr);margin-bottom:8px">';
+    html+='<div style="font-size:13px;color:var(--txt);font-weight:600">'+dayLabel+' <span style="color:var(--txt2);font-weight:400">('+dayEntries.length+')</span></div>';
+    html+='<div style="font-size:12px;color:var(--txt2)">'+fc(dayGross)+' / <span style="color:var(--pri)">'+fc(dayNet)+'</span></div>';
     html+='</div>';
-  }
 
-  // PREVIOUS section - monthly collapsible folders with Ad Hoc / Contracted subfolders
-  if(previousEntries.length){
-    html+='<div class="arc-section">Previous <span class="sec-count">'+previousEntries.length+' entr'+(previousEntries.length===1?'y':'ies')+'</span></div>';
-
-    // Group by month
-    const byMonth={};
-    previousEntries.forEach(e=>{
-      const monthKey=e.date.substring(0,7);
-      if(!byMonth[monthKey])byMonth[monthKey]=[];
-      byMonth[monthKey].push(e);
-    });
-
-    // Render each month as collapsible folder
-    Object.keys(byMonth).sort((a,b)=>b.localeCompare(a)).forEach(monthKey=>{
-      const monthEntries=byMonth[monthKey];
-      const d=new Date(monthKey+'-01');
-      const monthLabel=d.toLocaleString('en-GB',{month:'long',year:'numeric'});
-
-      // Separate Ad Hoc and Contracted entries
-      const adhocEntries=monthEntries.filter(e=>e.pType==='adhoc');
-      const contractEntries=monthEntries.filter(e=>e.pType!=='adhoc');
-
-      html+='<div class="arc-month collapsed" data-month="'+monthKey+'" onclick="toggleArcMonth(this)">'+monthLabel+' <span class="month-count">'+monthEntries.length+' entr'+(monthEntries.length===1?'y':'ies')+'</span></div>';
-      html+='<div class="month-group collapsed" id="mg_'+monthKey+'">';
-
-      // Ad Hoc subfolder (only if exists)
-      if(adhocEntries.length){
-        html+='<div class="prc-group" data-prc="adhoc">';
-        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:#EF4444">Ad Hoc</span> <span style="color:var(--txt3);font-weight:400">('+adhocEntries.length+' entr'+(adhocEntries.length===1?'y':'ies')+')</span></div>';
-        html+='<div class="prc-group-entries">';
-        // Group by practice within Ad Hoc
-        const adhocByPrac={};
-        adhocEntries.forEach(e=>{if(!adhocByPrac[e.pId])adhocByPrac[e.pId]={name:e.pName,entries:[]};adhocByPrac[e.pId].entries.push(e);});
-        Object.values(adhocByPrac).sort((a,b)=>b.entries.length-a.entries.length).forEach(p=>{
-          const byDay={};
-          p.entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
-          Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
-            const dayEntries=byDay[dayKey];
-            const dayDate=new Date(dayKey);
-            const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-            const dayNum=dayDate.getDate();
-            const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
-            const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
-            html+='<div class="day-group" style="border:2px solid #EF4444;border-radius:var(--rs);margin:6px 0;overflow:hidden">';
-            html+='<div style="background:#EF4444;color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+p.name+' - '+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
-            html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
-            html+='</div>';
-          });
-        });
-        html+='</div></div>';
-      }
-
-      // Contracted subfolder (only if exists)
-      if(contractEntries.length){
-        html+='<div class="prc-group" data-prc="contract">';
-        html+='<div class="prc-group-hdr" onclick="event.stopPropagation();this.parentElement.classList.toggle(\'collapsed\')"><span style="color:var(--pri)">Contracted</span> <span style="color:var(--txt3);font-weight:400">('+contractEntries.length+' entr'+(contractEntries.length===1?'y':'ies')+')</span></div>';
-        html+='<div class="prc-group-entries">';
-        // Group by practice (Bupa, Grove, etc.)
-        const byPractice={};
-        contractEntries.forEach(e=>{
-          if(!byPractice[e.pId])byPractice[e.pId]={name:e.pId==='bupa'?'Bupa':(e.pId==='grove'?'Grove':e.pName),pId:e.pId,entries:[]};
-          byPractice[e.pId].entries.push(e);
-        });
-        Object.values(byPractice).sort((a,b)=>b.entries.length-a.entries.length).forEach(p=>{
-          const prcColor=p.pId==='bupa'?'var(--bupa)':'var(--grove)';
-          // Group by day within practice
-          const byDay={};
-          p.entries.forEach(e=>{if(!byDay[e.date])byDay[e.date]=[];byDay[e.date].push(e);});
-          Object.keys(byDay).sort((a,b)=>b.localeCompare(a)).forEach(dayKey=>{
-            const dayEntries=byDay[dayKey];
-            const dayDate=new Date(dayKey);
-            const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-            const dayNum=dayDate.getDate();
-            const suffix=(dayNum===1||dayNum===21||dayNum===31)?'st':(dayNum===2||dayNum===22)?'nd':(dayNum===3||dayNum===23)?'rd':'th';
-            const dayLabel=dayNames[dayDate.getDay()]+' '+dayNum+suffix;
-            html+='<div class="day-group" style="border:2px solid '+prcColor+';border-radius:var(--rs);margin:6px 0;overflow:hidden">';
-            html+='<div style="background:'+prcColor+';color:#fff;padding:6px 12px;font-size:13px;font-weight:600">'+p.name+' - '+dayLabel+' <span style="opacity:.7;font-weight:400;font-size:11px">('+dayEntries.length+')</span></div>';
-            html+='<div style="padding:6px">'+dayEntries.map(renderEntry).join('')+'</div>';
-            html+='</div>';
-          });
-        });
-        html+='</div></div>';
-      }
-
-      html+='</div>';
-    });
-  }
+    dayEntries.sort((a,b)=>(b.pts||0)-(a.pts||0));
+    html+=dayEntries.map(renderEntry).join('');
+  });
+  html+='</div>';
 
   c.innerHTML=html;
-}
-
-function toggleArcMonth(el){
-  el.classList.toggle('collapsed');
-  const monthKey=el.getAttribute('data-month');
-  const group=document.getElementById('mg_'+monthKey);
-  if(group){
-    group.classList.toggle('collapsed');
-  }
 }
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
