@@ -6637,13 +6637,19 @@ function refreshAnalytics(){
     }
   }
 
-  // Calculate how many FULL months left in tax year (after current month)
+  // Calculate how many months left in tax year (after current month)
+  // Tax year ends April 5, so April is partial (only 5 days)
   let monthsLeftInTaxYear=0;
+  let partialMonthDays=0; // For April (only 1-5)
   const checkDate=new Date(now.getFullYear(),now.getMonth()+1,1);
   while(checkDate<=taxYearEnd){
-    monthsLeftInTaxYear++;
     const projYear=checkDate.getFullYear();
     const projMonth=checkDate.getMonth();
+    const isPartialMonth=projMonth===3&&projYear===taxYearEnd.getFullYear(); // April of tax year end
+
+    if(!isPartialMonth)monthsLeftInTaxYear++;
+    else partialMonthDays=5; // April 1-5
+
     const taxMonthExc=getMonthExceptions(projYear,projMonth);
     const taxOffDates=taxMonthExc.filter(e=>e.type==='off').map(e=>e.date);
     const taxExtraShifts=taxMonthExc.filter(e=>e.type==='extra');
@@ -6659,10 +6665,19 @@ function refreshAnalytics(){
           avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
         }
         p.days.forEach(dow=>{
-          let daysInMonth=countDaysInMonth(projYear,projMonth,dow);
+          let daysInMonth;
+          if(isPartialMonth){
+            // For April in tax year, only count days 1-5
+            daysInMonth=0;
+            for(let day=1;day<=5;day++){
+              if(new Date(projYear,projMonth,day).getDay()===dow)daysInMonth++;
+            }
+          }else{
+            daysInMonth=countDaysInMonth(projYear,projMonth,dow);
+          }
           taxOffDates.forEach(offDate=>{
             const d=new Date(offDate);
-            if(d.getDay()===dow)daysInMonth--;
+            if(d.getDay()===dow&&(!isPartialMonth||d.getDate()<=5))daysInMonth--;
           });
           if(daysInMonth<0)daysInMonth=0;
           const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
@@ -6673,8 +6688,9 @@ function refreshAnalytics(){
       }
     });
 
-    // Add extra shifts for this month
+    // Add extra shifts for this month (only if within tax year for partial month)
     taxExtraShifts.forEach(exc=>{
+      if(isPartialMonth&&new Date(exc.date).getDate()>5)return; // Skip shifts after April 5
       const p=S.practices[exc.pId];
       if(p){
         const ptsPerHour=p.ptsPerHour||2;
@@ -6694,8 +6710,22 @@ function refreshAnalytics(){
     checkDate.setMonth(checkDate.getMonth()+1);
   }
 
-  // Calculate remaining time description
-  const remainingDesc=daysLeftInMonth>0?(daysLeftInMonth+' days this month'+(monthsLeftInTaxYear>0?' + '+monthsLeftInTaxYear+' full month'+(monthsLeftInTaxYear>1?'s':''):'')):(monthsLeftInTaxYear+' month'+(monthsLeftInTaxYear>1?'s':'')+' remaining');
+  // Calculate remaining time description - be more accurate
+  let remainingDesc='';
+  if(daysLeftInMonth>0&&monthsLeftInTaxYear>0){
+    remainingDesc=daysLeftInMonth+' days + '+monthsLeftInTaxYear+' month'+(monthsLeftInTaxYear>1?'s':'');
+    if(partialMonthDays>0)remainingDesc+=' + '+partialMonthDays+' days';
+  }else if(daysLeftInMonth>0){
+    remainingDesc=daysLeftInMonth+' days';
+    if(partialMonthDays>0)remainingDesc+=' + '+partialMonthDays+' days';
+  }else if(monthsLeftInTaxYear>0){
+    remainingDesc=monthsLeftInTaxYear+' month'+(monthsLeftInTaxYear>1?'s':'');
+    if(partialMonthDays>0)remainingDesc+=' + '+partialMonthDays+' days';
+  }else if(partialMonthDays>0){
+    remainingDesc=partialMonthDays+' days';
+  }else{
+    remainingDesc='Tax year complete';
+  }
 
   _h+='<div style="margin-top:12px;padding:12px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);color:#fff">';
   _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
