@@ -5502,8 +5502,24 @@ function refreshAnalytics(){
       const isAdhoc=e.pType==='adhoc';
       monthTotal+=isAdhoc?gross:gross*(e.comm||0);
     });
-    monthlyData.push(monthTotal);
-    monthlyPtsData.push(monthPts);
+
+    // For current month, extrapolate to full month based on daily average
+    const isCurrentMonth=(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth());
+    const daysElapsed=now.getDate();
+    const daysInThisMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+
+    if(isCurrentMonth&&daysElapsed>0){
+      // Project full month based on current daily average
+      const dailyAvgPts=monthPts/daysElapsed;
+      const dailyAvgNet=monthTotal/daysElapsed;
+      const projectedMonthPts=Math.round(dailyAvgPts*daysInThisMonth);
+      const projectedMonthNet=dailyAvgNet*daysInThisMonth;
+      monthlyData.push(projectedMonthNet);
+      monthlyPtsData.push(projectedMonthPts);
+    }else{
+      monthlyData.push(monthTotal);
+      monthlyPtsData.push(monthPts);
+    }
 
     // Calculate projected data for this month
     const projYear=d.getFullYear();
@@ -5541,11 +5557,14 @@ function refreshAnalytics(){
     monthlyProjectedNet.push(projNet);
     monthlyProjectedPts.push(projPts);
 
-    monthLabels.push(d.toLocaleString('en-GB',{month:'short',year:monthsToShow>6?'2-digit':undefined}));
+    // Add label - mark current month as projected
+    let label=d.toLocaleString('en-GB',{month:'short',year:monthsToShow>6?'2-digit':undefined});
+    if(isCurrentMonth)label+='*';
+    monthLabels.push(label);
   }
 
-  // Store for drill-down functionality
-  window._analyticsMonthData={monthKeys,monthEntriesMap,monthlyData,monthlyPtsData,monthlyProjectedNet,monthlyProjectedPts,monthLabels};
+  // Store for drill-down functionality (including current month actual values for tooltips)
+  window._analyticsMonthData={monthKeys,monthEntriesMap,monthlyData,monthlyPtsData,monthlyProjectedNet,monthlyProjectedPts,monthLabels,currentMonthIdx:monthsToShow-1};
 
   // Practice breakdown for current tax year
   const practiceData={};
@@ -6456,7 +6475,7 @@ function refreshAnalytics(){
   _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(45,106,79,0.25);border:1px dashed rgba(45,106,79,0.6);border-radius:2px"></span>Projected</span>';
   _h+='</div>';
   _h+='<div class="chart-container"><canvas id="monthlyChart"></canvas></div>';
-  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any bar to see entry breakdown</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any bar to see breakdown | *Current month projected from daily avg</div>';
   _h+='</div>';
 
   // Monthly patients chart - with actual vs projected
@@ -6468,7 +6487,7 @@ function refreshAnalytics(){
   _h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:3px;background:#0057a8;border-radius:2px;opacity:0.4"></span>Projected</span>';
   _h+='</div>';
   _h+='<div class="chart-container"><canvas id="patientsChart"></canvas></div>';
-  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any point to see entry breakdown</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-top:8px;text-align:center">Tap any point to see breakdown | *Current month projected from daily avg</div>';
   _h+='</div>';
 
   // Practice breakdown chart
