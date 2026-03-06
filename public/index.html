@@ -5573,23 +5573,222 @@ function refreshAnalytics(){
   // Build HTML
   let _h='<div style="padding:16px">';
 
-  // Summary cards - Row 1
-  _h+='<div class="stat-grid">';
-  _h+='<div class="stat-card"><div class="stat-label">Tax Year '+taxYearLabel+'</div><div class="stat-value" style="color:var(--pri)">'+fc(selfEarnings+ltdEarnings)+'</div><div class="stat-sub">Total Net Earnings</div></div>';
-  _h+='<div class="stat-card"><div class="stat-label">Self-Employed</div><div class="stat-value">'+fc(selfEarnings)+'</div></div>';
-  _h+='<div class="stat-card"><div class="stat-label">Ltd Company</div><div class="stat-value">'+fc(ltdEarnings)+'</div></div>';
-  _h+='<div class="stat-card"><div class="stat-label">Unpaid Invoices</div><div class="stat-value" style="color:'+(unpaidTotal>0?'var(--err)':'var(--ok)')+'">'+fc(unpaidTotal)+'</div><div class="stat-sub">'+unpaidInvoices.length+' invoice'+(unpaidInvoices.length!==1?'s':'')+'</div></div>';
+  // ============= INVOICE STATUS BREAKDOWN =============
+  // Calculate paid vs unpaid totals
+  const paidInvoices=allInvoices.filter(inv=>inv.paidStatus==='paid');
+  const paidTotal=paidInvoices.reduce((s,inv)=>s+(inv.amount||0),0);
+
+  // Entity breakdown for invoices
+  const selfInvoices=allInvoices.filter(inv=>inv.logoType==='self'||inv.entity==='Self-Employed');
+  const ltdInvoices=allInvoices.filter(inv=>inv.logoType==='ltd'||inv.entity==='Ltd Company');
+  const selfPaid=selfInvoices.filter(inv=>inv.paidStatus==='paid').reduce((s,inv)=>s+(inv.amount||0),0);
+  const selfUnpaid=selfInvoices.filter(inv=>inv.paidStatus!=='paid').reduce((s,inv)=>s+(inv.amount||0),0);
+  const ltdPaid=ltdInvoices.filter(inv=>inv.paidStatus==='paid').reduce((s,inv)=>s+(inv.amount||0),0);
+  const ltdUnpaid=ltdInvoices.filter(inv=>inv.paidStatus!=='paid').reduce((s,inv)=>s+(inv.amount||0),0);
+
+  // ============= TAX YEAR EARNINGS BREAKDOWN =============
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Tax Year '+taxYearLabel+' - Earnings</h3>';
+
+  // Combined total
+  _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);margin-bottom:12px;color:#fff">';
+  _h+='<div><div style="font-size:11px;opacity:0.85">Combined Total</div><div style="font-size:24px;font-weight:700">'+fc(selfEarnings+ltdEarnings)+'</div></div>';
+  _h+='<div style="text-align:right;font-size:12px;opacity:0.85">'+totalPatients+' patients<br>'+fc(avgPerPatient)+'/pt avg</div>';
   _h+='</div>';
 
-  // Patient Metrics Section
+  // Self-Employed vs Ltd breakdown
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  // Self-Employed
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid #0057a8">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Self-Employed</div>';
+  _h+='<div style="font-size:20px;font-weight:700;color:#0057a8">'+fc(selfEarnings)+'</div>';
+  const selfPct=totalNet>0?Math.round((selfEarnings/(selfEarnings+ltdEarnings))*100):0;
+  _h+='<div style="margin-top:4px;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+selfPct+'%;background:#0057a8"></div></div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-top:2px">'+selfPct+'% of total</div>';
+  _h+='</div>';
+  // Ltd Company
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid var(--pri)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Ltd Company</div>';
+  _h+='<div style="font-size:20px;font-weight:700;color:var(--pri)">'+fc(ltdEarnings)+'</div>';
+  const ltdPct=100-selfPct;
+  _h+='<div style="margin-top:4px;height:4px;background:var(--bdr);border-radius:2px;overflow:hidden"><div style="height:100%;width:'+ltdPct+'%;background:var(--pri)"></div></div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-top:2px">'+ltdPct+'% of total</div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // ============= INVOICE STATUS BREAKDOWN =============
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Invoice Status</h3>';
+
+  // Paid vs Unpaid totals
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  // Paid
+  _h+='<div style="padding:12px;background:rgba(34,197,94,0.1);border-radius:var(--rs);border:1px solid var(--ok)">';
+  _h+='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ok);font-weight:600"><span style="width:8px;height:8px;background:var(--ok);border-radius:50%"></span>PAID</div>';
+  _h+='<div style="font-size:22px;font-weight:700;color:var(--ok)">'+fc(paidTotal)+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+paidInvoices.length+' invoice'+(paidInvoices.length!==1?'s':'')+'</div>';
+  _h+='</div>';
+  // Unpaid
+  _h+='<div style="padding:12px;background:rgba(239,68,68,0.1);border-radius:var(--rs);border:1px solid var(--err)">';
+  _h+='<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--err);font-weight:600"><span style="width:8px;height:8px;background:var(--err);border-radius:50%"></span>UNPAID</div>';
+  _h+='<div style="font-size:22px;font-weight:700;color:var(--err)">'+fc(unpaidTotal)+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+unpaidInvoices.length+' invoice'+(unpaidInvoices.length!==1?'s':'')+'</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Entity breakdown for invoices
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">BY ENTITY</div>';
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  // Self-Employed invoices
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-bottom:4px">Self-Employed</div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px">';
+  _h+='<span style="color:var(--ok)">Paid: '+fc(selfPaid)+'</span>';
+  _h+='<span style="color:var(--err)">Unpaid: '+fc(selfUnpaid)+'</span>';
+  _h+='</div>';
+  _h+='</div>';
+  // Ltd invoices
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2);margin-bottom:4px">Ltd Company</div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px">';
+  _h+='<span style="color:var(--ok)">Paid: '+fc(ltdPaid)+'</span>';
+  _h+='<span style="color:var(--err)">Unpaid: '+fc(ltdUnpaid)+'</span>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // ============= ENHANCED PATIENT METRICS =============
+  // Last month calculations
+  const lastMonthDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const lastMonthKey=lastMonthDate.getFullYear()+'-'+String(lastMonthDate.getMonth()+1).padStart(2,'0');
+  const lastMonthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(lastMonthKey));
+  let lastMonthPts=0,lastMonthNet=0;
+  lastMonthEntries.forEach(e=>{
+    lastMonthPts+=e.pts||0;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    lastMonthNet+=e.pType==='adhoc'?gross:gross*(e.comm||0);
+  });
+  const lastMonthAvgPP=lastMonthPts>0?lastMonthNet/lastMonthPts:0;
+  const thisMonthAvgPP=monthPatients>0?monthNet/monthPatients:0;
+
+  // This month projected (from schedule)
+  const todayStr=now.toISOString().split('T')[0];
+  const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  let projectedMonthPts=0,projectedMonthNet=0;
+  for(let day=1;day<=daysInThisMonth;day++){
+    const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dow=new Date(now.getFullYear(),now.getMonth(),day).getDay();
+    const dateOverride=S.workSchedule&&S.workSchedule[dateStr];
+    const dowMapping=S.dayMap[dow];
+    let assignment=dateOverride!==undefined?dateOverride:(dowMapping||'home');
+    if(assignment!=='home'){
+      const p=S.practices[assignment];
+      if(p){
+        let paidH=S.scheduleHours&&S.scheduleHours[dateStr];
+        if(paidH===undefined)paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
+        const ptsPerHour=p.ptsPerHour||2;
+        const estPts=paidH*ptsPerHour;
+        projectedMonthPts+=estPts;
+        const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+        projectedMonthNet+=estPts*avgPrice*p.comm;
+      }
+    }
+  }
+
+  const ptsProgress=projectedMonthPts>0?Math.round((monthPatients/projectedMonthPts)*100):0;
+  const netProgress=projectedMonthNet>0?Math.round((monthNet/projectedMonthNet)*100):0;
+  const ptsVsLast=lastMonthPts>0?monthPatients-lastMonthPts:monthPatients;
+  const netVsLast=lastMonthNet>0?monthNet-lastMonthNet:monthNet;
+
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Patient Metrics ('+taxYearLabel+')</h3>';
-  _h+='<div class="stat-grid" style="margin-top:12px">';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Total Patients</div><div class="stat-value">'+totalPatients.toLocaleString()+'</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg £ Per Patient</div><div class="stat-value">'+fc(avgPerPatient)+'</div><div class="stat-sub">Net earnings</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">This Month</div><div class="stat-value">'+monthPatients+'</div><div class="stat-sub">patients</div></div>';
-  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Month Earnings</div><div class="stat-value" style="color:var(--pri)">'+fc(monthNet)+'</div></div>';
-  _h+='</div></div>';
+
+  // Tax year totals
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Total Patients</div>';
+  _h+='<div style="font-size:22px;font-weight:700">'+totalPatients.toLocaleString()+'</div>';
+  _h+='</div>';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">Avg £ Per Patient</div>';
+  _h+='<div style="font-size:22px;font-weight:700;color:var(--pri)">'+fc(avgPerPatient)+'</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2)">Net earnings</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // This Month vs Last Month comparison
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">THIS MONTH vs LAST MONTH</div>';
+  _h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-bottom:16px;align-items:center">';
+
+  // Last month
+  const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+'</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+lastMonthPts+' pts</div>';
+  _h+='<div style="font-size:13px;color:var(--pri)">'+fc(lastMonthNet)+'</div>';
+  _h+='</div>';
+
+  // Arrow with change
+  const changeColor=ptsVsLast>=0?'var(--ok)':'var(--err)';
+  _h+='<div style="text-align:center">';
+  _h+='<div style="font-size:20px;color:var(--txt2)">&rarr;</div>';
+  _h+='<div style="font-size:11px;color:'+changeColor+'">'+(ptsVsLast>=0?'+':'')+ptsVsLast+' pts</div>';
+  _h+='</div>';
+
+  // This month
+  const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
+  _h+='<div style="padding:10px;background:var(--pri);border-radius:var(--rs);color:#fff">';
+  _h+='<div style="font-size:11px;opacity:0.85">'+thisMonthName+'</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+monthPatients+' pts</div>';
+  _h+='<div style="font-size:13px">'+fc(monthNet)+'</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Progress vs Target
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">PROGRESS vs TARGET ('+thisMonthName+')</div>';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+
+  // Patients progress
+  const ptsColor=ptsProgress>=100?'var(--ok)':ptsProgress>=80?'var(--warn)':'var(--err)';
+  _h+='<div style="margin-bottom:12px">';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
+  _h+='<span>Patients</span>';
+  _h+='<span style="color:'+ptsColor+'">'+monthPatients+' / '+Math.round(projectedMonthPts)+' ('+ptsProgress+'%)</span>';
+  _h+='</div>';
+  _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(ptsProgress,100)+'%;background:'+ptsColor+';border-radius:4px"></div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Earnings progress
+  const netColor=netProgress>=100?'var(--ok)':netProgress>=80?'var(--warn)':'var(--err)';
+  _h+='<div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
+  _h+='<span>Earnings</span>';
+  _h+='<span style="color:'+netColor+'">'+fc(monthNet)+' / '+fc(projectedMonthNet)+' ('+netProgress+'%)</span>';
+  _h+='</div>';
+  _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(netProgress,100)+'%;background:'+netColor+';border-radius:4px"></div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Avg per patient comparison
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">';
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' Avg/Pt</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthAvgPP)+'</div>';
+  _h+='</div>';
+  const avgPPChange=thisMonthAvgPP-lastMonthAvgPP;
+  const avgPPColor=avgPPChange>=0?'var(--ok)':'var(--err)';
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' Avg/Pt</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+fc(thisMonthAvgPP)+' <span style="font-size:11px;color:'+avgPPColor+'">'+(avgPPChange>=0?'+':'')+fc(avgPPChange)+'</span></div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
 
   // Projections vs Actuals Section
   if(projectionsByPractice.length>0){
@@ -6304,11 +6503,11 @@ function refreshAnalytics(){
       return false;
     });
 
-    // Calculate invoice totals
+    // Calculate invoice totals (use paidStatus field, not status)
     const issuedAmount=monthInvoices.reduce((s,inv)=>s+(inv.amount||0),0);
-    const paidInvoices=monthInvoices.filter(inv=>inv.status==='paid');
+    const paidInvoices=monthInvoices.filter(inv=>inv.paidStatus==='paid');
     const paidAmount=paidInvoices.reduce((s,inv)=>s+(inv.amount||0),0);
-    const unpaidMonthInvs=monthInvoices.filter(inv=>inv.status!=='paid');
+    const unpaidMonthInvs=monthInvoices.filter(inv=>inv.paidStatus!=='paid');
     const awaitingPayment=unpaidMonthInvs.reduce((s,inv)=>s+(inv.amount||0),0);
 
     // Entries not yet invoiced for this month
@@ -6360,8 +6559,9 @@ function refreshAnalytics(){
 
     if(monthInvoices.length>0){
       monthInvoices.forEach(inv=>{
-        const invColor=inv.status==='paid'?'var(--ok)':'var(--warn)';
-        const statusLabel=inv.status==='paid'?'Paid':'Awaiting';
+        const isPaid=inv.paidStatus==='paid';
+        const invColor=isPaid?'var(--ok)':'var(--err)';
+        const statusLabel=isPaid?'Paid':'Unpaid';
         _h+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--bdr)">';
         _h+='<span><strong>#'+inv.num+'</strong> - '+(inv.practice||'')+'</span>';
         _h+='<span><span style="background:'+invColor+';color:#fff;padding:2px 6px;border-radius:10px;font-size:10px;margin-right:6px">'+statusLabel+'</span><strong>'+fc(inv.amount)+'</strong></span>';
