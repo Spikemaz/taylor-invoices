@@ -5799,9 +5799,25 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // This Month vs Last Month comparison (same date range: 1st to today)
+  // Month names for comparisons
   const lastMonthName=lastMonthDate.toLocaleString('en-GB',{month:'short'});
   const thisMonthName=now.toLocaleString('en-GB',{month:'short'});
+
+  // Avg per patient comparison (moved here for better flow)
+  const avgPPChange=thisMonthAvgPP-lastMonthAvgPP;
+  const avgPPColor=avgPPChange>=0?'var(--ok)':'var(--err)';
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' Avg/Pt</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthAvgPP)+'</div>';
+  _h+='</div>';
+  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' Avg/Pt</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+fc(thisMonthAvgPP)+' <span style="font-size:11px;color:'+avgPPColor+'">'+(avgPPChange>=0?'+':'')+fc(avgPPChange)+'</span></div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // This Month vs Last Month comparison (same date range: 1st to today)
   const dateRangeLabel='1st-'+todayDay+ordinalSuffix(todayDay);
 
   // Calculate change based on same date range
@@ -5860,20 +5876,6 @@ function refreshAnalytics(){
   _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
   _h+='<div style="height:100%;width:'+Math.min(netProgress,100)+'%;background:'+netColor+';border-radius:4px"></div>';
   _h+='</div>';
-  _h+='</div>';
-  _h+='</div>';
-
-  // Avg per patient comparison
-  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">';
-  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' Avg/Pt</div>';
-  _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthAvgPP)+'</div>';
-  _h+='</div>';
-  const avgPPChange=thisMonthAvgPP-lastMonthAvgPP;
-  const avgPPColor=avgPPChange>=0?'var(--ok)':'var(--err)';
-  _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthName+' Avg/Pt</div>';
-  _h+='<div style="font-size:16px;font-weight:600">'+fc(thisMonthAvgPP)+' <span style="font-size:11px;color:'+avgPPColor+'">'+(avgPPChange>=0?'+':'')+fc(avgPPChange)+'</span></div>';
   _h+='</div>';
   _h+='</div>';
   _h+='</div>';
