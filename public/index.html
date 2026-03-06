@@ -3596,10 +3596,10 @@ async function regenerateInvoiceAfterEdit(invoiceIdx,newNum,newDate){
 
   // Handle invoice number change
   if(newNum&&newNum!==oldNum){
-    // Check if new number already exists
-    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv);
+    // Check if new number already exists within the SAME entity (different entities can have same numbers)
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'?'ltd':'self')===entity));
     if(existingInv){
-      showToast('Invoice #'+newNum+' already exists','err');
+      showToast('Invoice #'+newNum+' already exists for this entity','err');
       showEditInvoiceModal(invoiceIdx);
       return;
     }
@@ -3744,11 +3744,11 @@ async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
   closeMod2();
   showToast('Saving changes...');
 
-  // Check if new number already exists
+  // Check if new number already exists within the SAME entity
   if(newNum!==oldNum){
-    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv);
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'?'ltd':'self')===entity));
     if(existingInv){
-      showToast('Invoice #'+newNum+' already exists','err');
+      showToast('Invoice #'+newNum+' already exists for this entity','err');
       return;
     }
     // Update all linked entries with new invoice number
