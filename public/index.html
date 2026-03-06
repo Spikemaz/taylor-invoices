@@ -3103,6 +3103,32 @@ function navInvMonth(dir){
   refInv();
 }
 
+// Helper to calculate working days between dates
+function getWorkingDaysBetween(startDate,endDate){
+  let count=0;
+  const cur=new Date(startDate);
+  while(cur<=endDate){
+    const day=cur.getDay();
+    if(day!==0&&day!==6)count++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return count;
+}
+
+// Helper to check if invoice is overdue
+function isInvoiceOverdue(inv){
+  if(inv.paidStatus==='paid')return{overdue:false,days:0};
+  const payTerms=parseInt(S.payTerms)||10;
+  const invDate=new Date(inv.date);
+  const todayDate=new Date();
+  todayDate.setHours(0,0,0,0);
+  const workingDays=getWorkingDaysBetween(invDate,todayDate);
+  if(workingDays>payTerms){
+    return{overdue:true,days:workingDays-payTerms};
+  }
+  return{overdue:false,days:0};
+}
+
 function resetInvFilters(){
   console.log('[resetInvFilters] Called');
   S.iEnt='all';invPracFilter='all';
@@ -3247,32 +3273,6 @@ if(invPracFilter!=='all'){
 const todayInvs=filteredInvs.filter(inv=>inv.date===todayStr);
 const recentInvs=filteredInvs.filter(inv=>inv.date!==todayStr&&inv.date>=sevenDaysAgoStr);
 const previousInvs=filteredInvs.filter(inv=>inv.date<sevenDaysAgoStr);
-
-// Helper to calculate working days between dates
-function getWorkingDaysBetween(startDate,endDate){
-  let count=0;
-  const cur=new Date(startDate);
-  while(cur<=endDate){
-    const day=cur.getDay();
-    if(day!==0&&day!==6)count++;
-    cur.setDate(cur.getDate()+1);
-  }
-  return count;
-}
-
-// Helper to check if invoice is overdue
-function isInvoiceOverdue(inv){
-  if(inv.paidStatus==='paid')return{overdue:false,days:0};
-  const payTerms=parseInt(S.payTerms)||10;
-  const invDate=new Date(inv.date);
-  const today=new Date();
-  today.setHours(0,0,0,0);
-  const workingDays=getWorkingDaysBetween(invDate,today);
-  if(workingDays>payTerms){
-    return{overdue:true,days:workingDays-payTerms};
-  }
-  return{overdue:false,days:0};
-}
 
 // Helper to render a single invoice - UNIFORM with archive entries
 function renderInv(inv){
