@@ -6195,9 +6195,9 @@ function refreshAnalytics(){
     return (S.scheduleExceptions||[]).filter(e=>e.date>=mStart&&e.date<=mEnd);
   }
 
-  // Calculate projections for next 3 months with exception adjustments
+  // Calculate projections for next 12 months with exception adjustments
   let projections=[];
-  for(let m=0;m<3;m++){
+  for(let m=0;m<12;m++){
     const projDate=new Date(now.getFullYear(),now.getMonth()+m,1);
     const projYear=projDate.getFullYear();
     const projMonth=projDate.getMonth();
@@ -6267,19 +6267,24 @@ function refreshAnalytics(){
     projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0});
   }
 
-  // Show projections grid
-  _h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  // Show projections as horizontal scrolling carousel
+  _h+='<div style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px" id="projCarousel">';
   projections.forEach((proj,i)=>{
     const bgColor=proj.isCurrentMonth?'var(--pri)':'var(--bg)';
     const textColor=proj.isCurrentMonth?'#fff':'var(--txt)';
     const labelColor=proj.isCurrentMonth?'rgba(255,255,255,0.8)':'var(--txt2)';
-    _h+='<div style="padding:12px;background:'+bgColor+';border-radius:var(--rs);text-align:center">';
-    _h+='<div style="font-size:11px;font-weight:600;color:'+labelColor+';margin-bottom:4px">'+proj.month+'</div>';
-    _h+='<div style="font-size:18px;font-weight:700;color:'+textColor+'">'+fc(proj.net)+'</div>';
-    _h+='<div style="font-size:10px;color:'+labelColor+'">'+proj.workDays+' days / ~'+proj.pts+' pts</div>';
+    const grossColor=proj.isCurrentMonth?'rgba(255,255,255,0.7)':'var(--txt2)';
+    _h+='<div style="flex:0 0 auto;width:140px;padding:12px;background:'+bgColor+';border-radius:var(--rs);text-align:center;scroll-snap-align:start">';
+    _h+='<div style="font-size:11px;font-weight:600;color:'+labelColor+';margin-bottom:6px">'+proj.month+'</div>';
+    _h+='<div style="font-size:10px;color:'+grossColor+';margin-bottom:2px">Gross</div>';
+    _h+='<div style="font-size:14px;font-weight:600;color:'+textColor+';opacity:0.85">'+fc(proj.gross)+'</div>';
+    _h+='<div style="font-size:10px;color:'+grossColor+';margin-top:6px;margin-bottom:2px">Net (yours)</div>';
+    _h+='<div style="font-size:16px;font-weight:700;color:'+textColor+'">'+fc(proj.net)+'</div>';
+    _h+='<div style="font-size:10px;color:'+labelColor+';margin-top:6px">'+proj.workDays+' days / ~'+proj.pts+' pts</div>';
     _h+='</div>';
   });
   _h+='</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);text-align:center;margin-top:4px">Swipe to see more months &rarr;</div>';
 
   // Tax year projection (with exception adjustments)
   // taxYearStart and taxYearEnd already defined above
