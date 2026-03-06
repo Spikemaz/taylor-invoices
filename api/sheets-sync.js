@@ -459,7 +459,7 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
 async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:AA',
+    range: 'Invoices!A:AD',
   });
 
   const rows = response.data.values || [];
@@ -600,7 +600,7 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:AA',
+    range: 'Invoices!A:AD',
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
@@ -628,7 +628,7 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
 async function updateInvoice(sheets, sheetId, { num, updates }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:AA',
+    range: 'Invoices!A:AD',
   });
 
   const rows = response.data.values || [];
@@ -753,7 +753,7 @@ async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate 
 async function triggerPdfRegeneration(sheets, sheetId, { num }, res) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Invoices!A:AA',
+    range: 'Invoices!A:AD',
   });
 
   const rows = response.data.values || [];
@@ -854,7 +854,7 @@ async function syncInvoices(sheets, sheetId, { invoices }, res) {
 async function loadAll(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:T' }),
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AD' })  // Extended to include paidStatus, paidDate
   ]);
 
   const entriesRows = entriesRes.data.values || [];
@@ -1158,7 +1158,7 @@ async function loadSettings(sheets, sheetId, res) {
 async function getDashboard(sheets, sheetId, res) {
   const [entriesRes, invoicesRes] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Entries!A:T' }),
-    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AA' })
+    sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: 'Invoices!A:AD' })
   ]);
 
   const entriesRows = entriesRes.data.values || [];
