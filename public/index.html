@@ -174,8 +174,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .analytics-card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
 .analytics-card h3{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .analytics-card h3 span{font-size:16px}
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-card{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:var(--sh)}
 .stat-box{background:var(--bg);border-radius:var(--rs);padding:12px;text-align:center}
+.analytics-title{font-size:14px;font-weight:600;color:var(--txt);margin:0 0 12px 0}
 .stat-box.full{grid-column:span 2}
 .stat-label{font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
 .stat-value{font-size:22px;font-weight:700;color:var(--txt)}
@@ -300,6 +302,7 @@ input[type="date"].fi{min-width:100%;display:block}
 .pending-bar button{background:rgba(255,255,255,.25);border:0;color:#fff;padding:4px 10px;border-radius:4px;font-weight:600;cursor:pointer;font-size:11px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <!-- Splash screen - shown briefly on startup -->
@@ -1885,6 +1888,7 @@ function updateNavHighlight(n){
 document.getElementById('navHome').classList.toggle('act',n==='home');
 document.getElementById('navArchive').classList.toggle('act',n==='archive');
 document.getElementById('navInvoice').classList.toggle('act',n==='invoices');
+document.getElementById('navAnalytics').classList.toggle('act',n==='analytics');
 document.getElementById('navSettings').classList.toggle('act',n==='settings');
 }
 // Reset home values to zero then animate - for smooth transitions every time
@@ -1911,12 +1915,12 @@ if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
 if(n==='archive'){resetArcFilters();refArc();}
 if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters and refInv');try{resetInvFilters();refInv();}catch(err){console.error('[showScreen] Error in invoices:',err);}}
-if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();
+if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics')refreshAnalytics();
 }
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
-const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',settings:'Settings'};
+const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',analytics:'Analytics',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
 // For archive/invoices screen, respect entity filter
 if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}
@@ -5191,6 +5195,209 @@ syncPracticesToCloud().then(r=>{if(r.success)console.log('[Ad Hoc Practice Delet
 showToast('\u2713 Deleted '+p.name);
 syncSettingsToCloud().catch(e=>{console.error('[Settings Sync Failed]',e);});
 }
+
+// ===== ANALYTICS SCREEN =====
+let analyticsCharts={};
+
+function refreshAnalytics(){
+  const container=document.getElementById('analyticsContent');
+  if(!container)return;
+
+  // Get UK tax year boundaries (Apr 6 to Apr 5)
+  const now=new Date();
+  let taxYearStart,taxYearEnd;
+  if(now.getMonth()>3||(now.getMonth()===3&&now.getDate()>=6)){
+    taxYearStart=new Date(now.getFullYear(),3,6);
+    taxYearEnd=new Date(now.getFullYear()+1,3,5);
+  }else{
+    taxYearStart=new Date(now.getFullYear()-1,3,6);
+    taxYearEnd=new Date(now.getFullYear(),3,5);
+  }
+  const taxYearLabel=(taxYearStart.getFullYear())+'/'+(taxYearEnd.getFullYear());
+
+  // Calculate stats
+  const allEntries=S.entries||[];
+  const allInvoices=S.invoices||[];
+
+  // Filter entries for current tax year
+  const taxYearEntries=allEntries.filter(e=>{
+    const d=new Date(e.date);
+    return d>=taxYearStart&&d<=taxYearEnd;
+  });
+
+  // Total earnings by entity
+  let selfEarnings=0,ltdEarnings=0;
+  taxYearEntries.forEach(e=>{
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    const net=isAdhoc?gross:gross*(e.comm||0);
+    if(e.entity==='ltd')ltdEarnings+=net;
+    else selfEarnings+=net;
+  });
+
+  // Unpaid invoices
+  const unpaidInvoices=allInvoices.filter(inv=>inv.paidStatus!=='paid');
+  let unpaidTotal=0;
+  unpaidInvoices.forEach(inv=>unpaidTotal+=(inv.amount||0));
+
+  // Monthly data for chart (last 12 months)
+  const monthlyData=[];
+  const monthLabels=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const mKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const monthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(mKey));
+    let monthTotal=0;
+    monthEntries.forEach(e=>{
+      const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+      const isAdhoc=e.pType==='adhoc';
+      monthTotal+=isAdhoc?gross:gross*(e.comm||0);
+    });
+    monthlyData.push(monthTotal);
+    monthLabels.push(d.toLocaleString('en-GB',{month:'short'}));
+  }
+
+  // Practice breakdown for current tax year
+  const practiceData={};
+  taxYearEntries.forEach(e=>{
+    const pName=e.pName||'Unknown';
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    const net=isAdhoc?gross:gross*(e.comm||0);
+    practiceData[pName]=(practiceData[pName]||0)+net;
+  });
+  const practiceLabels=Object.keys(practiceData);
+  const practiceValues=practiceLabels.map(k=>practiceData[k]);
+  const practiceColors=['#2d6a4f','#0057a8','#7c3aed','#f59e0b','#14b8a6','#ef4444'];
+
+  // Build HTML
+  let _h='<div style="padding:16px">';
+
+  // Summary cards
+  _h+='<div class="stat-grid">';
+  _h+='<div class="stat-card"><div class="stat-label">Tax Year '+taxYearLabel+'</div><div class="stat-value" style="color:var(--pri)">'+fc(selfEarnings+ltdEarnings)+'</div><div class="stat-sub">Total Net Earnings</div></div>';
+  _h+='<div class="stat-card"><div class="stat-label">Self-Employed</div><div class="stat-value">'+fc(selfEarnings)+'</div></div>';
+  _h+='<div class="stat-card"><div class="stat-label">Ltd Company</div><div class="stat-value">'+fc(ltdEarnings)+'</div></div>';
+  _h+='<div class="stat-card"><div class="stat-label">Unpaid Invoices</div><div class="stat-value" style="color:'+(unpaidTotal>0?'var(--err)':'var(--ok)')+'">'+fc(unpaidTotal)+'</div><div class="stat-sub">'+unpaidInvoices.length+' invoice'+(unpaidInvoices.length!==1?'s':'')+'</div></div>';
+  _h+='</div>';
+
+  // Monthly earnings chart
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Monthly Earnings (Last 12 Months)</h3>';
+  _h+='<div class="chart-container"><canvas id="monthlyChart"></canvas></div>';
+  _h+='</div>';
+
+  // Practice breakdown chart
+  if(practiceLabels.length>0){
+    _h+='<div class="analytics-card">';
+    _h+='<h3 class="analytics-title">Earnings by Practice ('+taxYearLabel+')</h3>';
+    _h+='<div class="chart-container" style="height:250px"><canvas id="practiceChart"></canvas></div>';
+    _h+='</div>';
+  }
+
+  // Overdue invoices list
+  const overdueInvoices=unpaidInvoices.filter(inv=>isInvoiceOverdue(inv).overdue);
+  if(overdueInvoices.length>0){
+    _h+='<div class="analytics-card" style="border-left:3px solid var(--warn)">';
+    _h+='<h3 class="analytics-title" style="color:var(--warn)">Overdue Invoices ('+overdueInvoices.length+')</h3>';
+    overdueInvoices.forEach(inv=>{
+      const od=isInvoiceOverdue(inv);
+      _h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<div><strong>#'+inv.num+'</strong> - '+inv.practice+'<br><span style="font-size:12px;color:var(--txt2)">'+inv.period+'</span></div>';
+      _h+='<div style="text-align:right"><strong style="color:var(--warn)">'+fc(inv.amount)+'</strong><br><span style="font-size:12px;color:var(--warn)">'+od.days+' day'+(od.days!==1?'s':'')+' overdue</span></div>';
+      _h+='</div>';
+    });
+    _h+='</div>';
+  }
+
+  _h+='</div>';
+  container.innerHTML=_h;
+
+  // Destroy existing charts
+  if(analyticsCharts.monthly)analyticsCharts.monthly.destroy();
+  if(analyticsCharts.practice)analyticsCharts.practice.destroy();
+
+  // Create monthly earnings chart
+  setTimeout(()=>{
+    const monthlyCtx=document.getElementById('monthlyChart');
+    if(monthlyCtx&&typeof Chart!=='undefined'){
+      analyticsCharts.monthly=new Chart(monthlyCtx,{
+        type:'bar',
+        data:{
+          labels:monthLabels,
+          datasets:[{
+            label:'Net Earnings',
+            data:monthlyData,
+            backgroundColor:'rgba(45,106,79,0.7)',
+            borderColor:'#2d6a4f',
+            borderWidth:1,
+            borderRadius:4
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{
+              callbacks:{
+                label:function(ctx){return fc(ctx.raw);}
+              }
+            }
+          },
+          scales:{
+            y:{
+              beginAtZero:true,
+              ticks:{
+                callback:function(v){return '£'+v.toLocaleString();}
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Create practice breakdown chart
+    const practiceCtx=document.getElementById('practiceChart');
+    if(practiceCtx&&typeof Chart!=='undefined'&&practiceLabels.length>0){
+      analyticsCharts.practice=new Chart(practiceCtx,{
+        type:'doughnut',
+        data:{
+          labels:practiceLabels,
+          datasets:[{
+            data:practiceValues,
+            backgroundColor:practiceColors.slice(0,practiceLabels.length),
+            borderWidth:2,
+            borderColor:'#fff'
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{
+              position:'bottom',
+              labels:{
+                font:{size:11},
+                padding:12
+              }
+            },
+            tooltip:{
+              callbacks:{
+                label:function(ctx){
+                  const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+                  const pct=((ctx.raw/total)*100).toFixed(1);
+                  return ctx.label+': '+fc(ctx.raw)+' ('+pct+'%)';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  },100);
+}
+
 function refreshSettings(){
 var se=S.ents.self,lt=S.ents.ltd;var el;
 el=document.getElementById('se_name');if(el)el.textContent=se.name||'-';
