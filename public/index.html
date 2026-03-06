@@ -5010,8 +5010,26 @@ showModal(_h);
 setTimeout(function(){
 document.getElementById('_dmC').onclick=function(){closeMod2()};
 document.getElementById('_dmS').onclick=function(){
-S.dayMap[dayNum]=document.getElementById('_dmVal').value;
-save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});showToast('\u2713 Updated');};
+var oldPrac=S.dayMap[dayNum];
+var newPrac=document.getElementById('_dmVal').value;
+S.dayMap[dayNum]=newPrac;
+// Sync practice.days arrays with dayMap changes
+if(oldPrac&&oldPrac!=='home'&&S.practices[oldPrac]){
+  S.practices[oldPrac].days=S.practices[oldPrac].days.filter(function(d){return d!==dayNum;});
+  // Remove paidHours for this day if it exists
+  if(S.practices[oldPrac].paidHours)delete S.practices[oldPrac].paidHours[dayNum];
+}
+if(newPrac&&newPrac!=='home'&&S.practices[newPrac]){
+  if(!S.practices[newPrac].days)S.practices[newPrac].days=[];
+  if(S.practices[newPrac].days.indexOf(dayNum)===-1){
+    S.practices[newPrac].days.push(dayNum);
+    S.practices[newPrac].days.sort();
+  }
+  // Add default paidHours for this day
+  if(!S.practices[newPrac].paidHours)S.practices[newPrac].paidHours={};
+  if(!S.practices[newPrac].paidHours[dayNum])S.practices[newPrac].paidHours[dayNum]=7;
+}
+save();closeMod2();buildDayMap();refreshSettings();syncSettingsToCloud().catch(function(e){console.error('[Settings Sync Failed]',e);});syncPracticesToCloud().catch(function(e){console.error('[Practice Sync Failed]',e);});showToast('\u2713 Updated');};
 },50);
 }
 function editInvNum(){
