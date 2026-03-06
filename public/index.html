@@ -3495,9 +3495,27 @@ if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none
 // ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
 const pc2=document.getElementById('pInv');
 
-// Filter invoices by selected month (based on invoice date)
-const monthPrefix=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
-let filteredInvs=S.invoices.filter(inv=>inv.date&&inv.date.startsWith(monthPrefix));
+// Filter invoices by selected month - use PERIOD (work month) not generation date
+// This ensures invoices show in the month the work was done, not when generated
+const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const periodMonthYear=monthNames[viewMonth]+' '+viewYear;
+let filteredInvs=S.invoices.filter(inv=>{
+  // Primary: Match by period (e.g., "February 2026")
+  if(inv.period&&inv.period.includes(periodMonthYear))return true;
+  // Check for date range periods like "01/02/2026 - 28/02/2026" or single date "11/02/2026"
+  if(inv.period){
+    const periodMatch=inv.period.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(periodMatch){
+      const pMonth=parseInt(periodMatch[2])-1;
+      const pYear=parseInt(periodMatch[3]);
+      if(pMonth===viewMonth&&pYear===viewYear)return true;
+    }
+  }
+  // Fallback: Match by generation date if no period or period doesn't match standard format
+  const monthPrefix=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+  if(!inv.period&&inv.date&&inv.date.startsWith(monthPrefix))return true;
+  return false;
+});
 
 // Filter by entity
 if(S.iEnt!=='all'){
