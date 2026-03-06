@@ -2146,37 +2146,9 @@ function setInvEnt(t){
   refInv();
 }
 
-// ===== ENTITY SELECTION MODAL =====
-function showEntitySelectModal(practiceId,callback){
-const isAdhoc=practiceId==='adhoc';
-const pracName=isAdhoc?'Ad Hoc':(S.practices[practiceId]?S.practices[practiceId].short:practiceId);
-let _h='<div style="background:var(--pri-dk);color:#fff;padding:14px 20px;margin:-20px -20px 16px;border-radius:var(--rs) var(--rs) 0 0">';
-_h+='<h3 style="font-size:16px;font-weight:600;margin:0">Select Entity</h3></div>';
-_h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">Which entity are you logging work for at <strong>'+pracName+'</strong>?</p>';
-_h+='<div style="display:flex;flex-direction:column;gap:12px">';
-_h+='<button class="btn" id="_entSelSelf" style="padding:16px;font-size:15px;border:2px solid var(--bdr);background:var(--card)">Self-Employed<br><span style="font-size:12px;color:var(--txt2)">Taylor Muir</span></button>';
-_h+='<button class="btn" id="_entSelLtd" style="padding:16px;font-size:15px;border:2px solid var(--bdr);background:var(--card)">Ltd Company<br><span style="font-size:12px;color:var(--txt2)">Hygiene & Therapy Clinical Services Ltd</span></button>';
-_h+='</div>';
-_h+='<button class="btn btn-s" style="width:100%;margin-top:16px" onclick="closeMod2()">Cancel</button>';
-showModal(_h);
-setTimeout(()=>{
-document.getElementById('_entSelSelf').onclick=()=>{
-closeMod2();setEntity('self');callback();
-};
-document.getElementById('_entSelLtd').onclick=()=>{
-closeMod2();setEntity('ltd');callback();
-};
-},50);
-}
-
 // ===== PRACTICE LOGGING =====
-function openPractice(id,skipEntitySelect){
+function openPractice(id){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid in openPractice');return;}
-// Show entity selection modal first (unless skipped)
-if(!skipEntitySelect){
-showEntitySelectModal(id,()=>openPractice(id,true));
-return;
-}
 if(id==='adhoc'){console.log('[Screen] Ad Hoc');S.prac=null;showScreen('adhoc');popAh();return;}
 const p=S.practices[id];if(!p){console.warn('Practice not found:',id);return;}
 console.log('[Screen] Practice:', p.short);
