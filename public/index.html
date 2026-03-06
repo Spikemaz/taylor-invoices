@@ -5438,6 +5438,7 @@ function refreshAnalytics(){
   // Practice breakdown for current tax year
   const practiceData={};
   const practicePatients={};
+  const practiceColorMap={}; // Map practice name to color
   taxYearEntries.forEach(e=>{
     const pName=e.pName||'Unknown';
     const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
@@ -5445,10 +5446,20 @@ function refreshAnalytics(){
     const net=isAdhoc?gross:gross*(e.comm||0);
     practiceData[pName]=(practiceData[pName]||0)+net;
     practicePatients[pName]=(practicePatients[pName]||0)+(e.pts||0);
+    // Track practice color
+    if(!practiceColorMap[pName]&&e.color){
+      practiceColorMap[pName]=e.color;
+    }
   });
   const practiceLabels=Object.keys(practiceData);
   const practiceValues=practiceLabels.map(k=>practiceData[k]);
-  const practiceColors=['#2d6a4f','#0057a8','#7c3aed','#f59e0b','#14b8a6','#ef4444'];
+  // Use practice-specific colors, fallback to defaults
+  const defaultColors=['#2d6a4f','#0057a8','#7c3aed','#f59e0b','#14b8a6','#ef4444'];
+  const colorVars={bupa:'#0057a8',grove:'#2d6a4f',adhoc:'#7c3aed'};
+  const practiceColors=practiceLabels.map((name,i)=>{
+    const colorKey=practiceColorMap[name];
+    return colorVars[colorKey]||defaultColors[i%defaultColors.length];
+  });
 
   // Calculate projections vs actuals for current month by practice
   const projectionsByPractice=[];
@@ -5893,23 +5904,25 @@ function refreshAnalytics(){
     _h+='<div class="analytics-card">';
     _h+='<h3 class="analytics-title">Earnings by Practice ('+taxYearLabel+')</h3>';
     _h+='<div class="chart-container" style="height:250px"><canvas id="practiceChart"></canvas></div>';
-    // Practice patient breakdown
+    // Practice patient breakdown with colors
     _h+='<div style="margin-top:16px;font-size:13px">';
     practiceLabels.forEach((name,i)=>{
       const pts=practicePatients[name]||0;
       const earnings=practiceData[name]||0;
       const avgPP=pts>0?earnings/pts:0;
+      const pColor=practiceColors[i]||'var(--pri)';
       _h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)">';
-      _h+='<span>'+name+'</span>';
-      _h+='<span style="color:var(--txt2)">'+pts+' pts @ '+fc(avgPP)+'/pt = <strong style="color:var(--pri)">'+fc(earnings)+'</strong></span>';
+      _h+='<span style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+pColor+'"></span>'+name+'</span>';
+      _h+='<span style="color:var(--txt2)">'+pts+' pts @ '+fc(avgPP)+'/pt = <strong style="color:'+pColor+'">'+fc(earnings)+'</strong></span>';
       _h+='</div>';
     });
     _h+='</div></div>';
   }
 
-  // Service Breakdown (tax year)
+  // Service Breakdown (tax year) - track practice for color coding
   const serviceData={};
   const servicePatients={};
+  const servicePractice={}; // Track which practice each service belongs to
   taxYearEntries.forEach(e=>{
     const svcName=e.svc||'Unknown';
     const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
@@ -5917,6 +5930,10 @@ function refreshAnalytics(){
     const net=isAdhoc?gross:gross*(e.comm||0);
     serviceData[svcName]=(serviceData[svcName]||0)+net;
     servicePatients[svcName]=(servicePatients[svcName]||0)+(e.pts||0);
+    // Track the practice for this service (use the one with most pts)
+    if(!servicePractice[svcName]||servicePatients[svcName]>servicePractice[svcName].pts){
+      servicePractice[svcName]={pId:e.pId,color:e.color||'pri',pts:servicePatients[svcName]};
+    }
   });
   const serviceNames=Object.keys(serviceData).sort((a,b)=>serviceData[b]-serviceData[a]);
   if(serviceNames.length>0){
@@ -5927,13 +5944,15 @@ function refreshAnalytics(){
       const earnings=serviceData[name]||0;
       const pts=servicePatients[name]||0;
       const pct=(earnings/maxSvcEarnings)*100;
+      const prac=servicePractice[name];
+      const barColor=prac&&prac.color?'var(--'+prac.color+')':'var(--pri)';
       _h+='<div style="margin-bottom:10px">';
       _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">';
       _h+='<span>'+name+'</span>';
-      _h+='<span style="color:var(--txt2)">'+pts+' pts = <strong style="color:var(--pri)">'+fc(earnings)+'</strong></span>';
+      _h+='<span style="color:var(--txt2)">'+pts+' pts = <strong style="color:'+barColor+'">'+fc(earnings)+'</strong></span>';
       _h+='</div>';
       _h+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">';
-      _h+='<div style="height:100%;width:'+pct+'%;background:var(--pri);border-radius:3px"></div>';
+      _h+='<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:3px"></div>';
       _h+='</div>';
       _h+='</div>';
     });
@@ -5949,11 +5968,13 @@ function refreshAnalytics(){
       const isAdhoc=e.pType==='adhoc';
       const net=isAdhoc?gross:gross*(e.comm||0);
       if(!dayTotals[e.date]){
-        dayTotals[e.date]={date:e.date,net:0,pts:0,entries:[]};
+        dayTotals[e.date]={date:e.date,net:0,pts:0,entries:[],color:null};
       }
       dayTotals[e.date].net+=net;
       dayTotals[e.date].pts+=e.pts||0;
       dayTotals[e.date].entries.push(e);
+      // Use the color of the practice with most patients that day
+      if(!dayTotals[e.date].color&&e.color)dayTotals[e.date].color=e.color;
     });
     const sortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net).slice(0,5);
     if(sortedDays.length>0){
@@ -5963,13 +5984,14 @@ function refreshAnalytics(){
         const d=new Date(day.date);
         const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
         const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
+        const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
         _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
         _h+='<div>';
-        _h+='<span style="display:inline-block;width:20px;height:20px;background:var(--pri);color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+1)+'</span>';
+        _h+='<span style="display:inline-block;width:20px;height:20px;background:'+dayColor+';color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+1)+'</span>';
         _h+='<span style="font-weight:500">'+dateStr+'</span>';
         _h+='<div style="font-size:12px;color:var(--txt2);margin-left:28px">'+practices+' - '+day.pts+' patients</div>';
         _h+='</div>';
-        _h+='<strong style="color:var(--pri)">'+fc(day.net)+'</strong>';
+        _h+='<strong style="color:'+dayColor+'">'+fc(day.net)+'</strong>';
         _h+='</div>';
       });
       _h+='</div>';
