@@ -6512,15 +6512,15 @@ function refreshAnalytics(){
     // Days worked this month
     const daysThisMonth=new Set(monthEntries.map(e=>e.date)).size;
 
-    // Get invoices for this month (by period or date)
+    // Get invoices for this month (by period for monthly invoices, by date for ad-hoc)
     const monthInvoices=S.invoices.filter(inv=>{
-      // Check if invoice period matches (e.g., "February 2026")
-      if(inv.period){
+      // For monthly invoices, match by period (e.g., "February 2026")
+      if(inv.period&&!inv.isAdhoc){
         const periodMatch=inv.period.toLowerCase().includes(monthName.toLowerCase().split(' ')[0]);
         const yearMatch=inv.period.includes(String(yr));
-        if(periodMatch&&yearMatch)return true;
+        return periodMatch&&yearMatch;
       }
-      // Or check invoice date
+      // For ad-hoc invoices (or if no period), match by invoice date
       if(inv.date){
         const d=new Date(inv.date);
         return d.getFullYear()===yr&&(d.getMonth()+1)===mo;
