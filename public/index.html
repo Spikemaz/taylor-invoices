@@ -246,6 +246,7 @@ input[type="date"].fi{min-width:100%;display:block}
 .brow{display:flex;gap:8px;margin-top:20px}
 .btn{flex:1;padding:14px;border-radius:var(--rs);border:0;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--f)}.btn:active{transform:scale(.98)}
 .btn-s{background:#f3f4f6;color:var(--txt)}.btn-p{background:var(--pri);color:#fff}.btn-d{background:var(--err);color:#fff}
+.adj-btn{width:32px;height:32px;border:1px solid var(--bdr);border-radius:6px;background:var(--card);font-size:16px;font-weight:600;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center}.adj-btn:active{background:var(--pri-bg);border-color:var(--pri)}
 .ssec{background:var(--card);border-radius:var(--r);border:1px solid var(--bdr);margin-bottom:12px;overflow:hidden}
 .srow{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bdr);cursor:pointer}.srow:last-child{border:0}
 .srow .la{font-size:15px}.srow .va{font-size:14px;color:var(--txt2)}
@@ -597,9 +598,11 @@ const LOGO={self:"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAIBAQI
 const S={scr:'home',hist:[],prac:null,svc:null,ent:'self',iEnt:'self',entries:[],invoices:[],undoT:null,undoE:null,viewMonth:null,
 practices:{
 bupa:{id:'bupa',name:'Bupa Dental Care',short:'Bupa',addr:'39 Buckingham Road\nAylesbury\nBuckinghamshire\nHP19 9PT',days:[1,5],comm:.35,type:'contract',color:'bupa',
-svcs:{Private:{p:93,d:'per patient hygiene'},Denplan:{p:93,d:'per patient Denplan'},'Bupa Smile Plan':{p:93,d:'per patient Smile Plan'},'Bupa UKI 20%':{p:74.40,d:'per patient UKI (-20%)'}}},
+svcs:{Private:{p:93,d:'per patient hygiene'},Denplan:{p:93,d:'per patient Denplan'},'Bupa Smile Plan':{p:93,d:'per patient Smile Plan'},'Bupa UKI 20%':{p:74.40,d:'per patient UKI (-20%)'}},
+paidHours:{1:7,5:7},ptsPerHour:2},
 grove:{id:'grove',name:'The Grove Dental Practice',short:'Grove',addr:'170 Tring Rd\nAylesbury\nHP20 1JL',days:[4],comm:.40,type:'contract',color:'grove',
-svcs:{Hygiene:{p:70,d:'per patient hygiene'},Perio:{p:160,d:'per patient periodontal'}}}
+svcs:{Hygiene:{p:70,d:'per patient hygiene'},Perio:{p:160,d:'per patient periodontal'}},
+paidHours:{4:7},ptsPerHour:2}
 },
 ahPrac:[
 {id:'haddenham',name:'Haddenham Dental',addr:'Banks Cottage\nBanks Road\nHaddenham\nBuckinghamshire\nHP17 8EE',rate:25,air:9,active:true},
@@ -610,6 +613,7 @@ self:{name:'Taylor Muir',addr:'9 Queen Cathrine Road\nSteeple Claydon\nBuckingha
 ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street\nCovent Garden\nLondon\nWC2H 9JQ',phone:'+44 7429 399687',email:'',bank:'Lloyds Bank',bName:'Taylor Muir',acc:'45191768',sort:'77-21-08',companyNo:'15011714'}
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
+scheduleExceptions:[], // [{date:'2026-03-15',type:'off',note:'Bank Holiday'},{date:'2026-03-20',type:'extra',pId:'bupa',note:'Cover shift'}]
 nextInvSelf:2,nextInvLtd:1,payTerms:'10 working days',invoiceFooter:'Thank you for your continued support.'
 };
 // Helper to get/set nextInv for current entity
@@ -4229,6 +4233,12 @@ html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"
 html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Gross</span><span id="cpPrevGross" style="font-weight:600">'+fc(pe.reduce((s,e)=>s+e.gross,0))+'</span></div>';
 html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--bdr);padding-top:6px;margin-top:6px"><span style="font-weight:600">Profit Share ('+Math.round(pComm*100)+'%)</span><span id="cpPrevNet" style="font-weight:700;color:var(--pri)">'+fc(pe.reduce((s,e)=>s+e.gross,0)*pComm)+'</span></div>';
 html+='</div>';
+// Invoice date picker
+const todayStr=new Date().toISOString().split('T')[0];
+html+='<div style="margin-bottom:12px">';
+html+='<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">Date of Issue</label>';
+html+='<input type="date" id="cpInvDate" class="fi '+prcClass+'" value="'+todayStr+'" style="width:100%">';
+html+='</div>';
 html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p '+prcClass+'" id="cpGenBtn" onclick="genCpMulti(\''+pid+'\')">Generate Invoice</button></div>';
 showModal(html,prcClass);
 }
@@ -4254,6 +4264,9 @@ const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
 if(!ids.length){showToast('Select at least one entry');return;}
 const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
 if(!entries.length){showToast('Entries not found');return;}
+// Get invoice date from picker
+const invDateInp=document.getElementById('cpInvDate');
+const invDate=invDateInp?invDateInp.value:new Date().toISOString().split('T')[0];
 // Disable button to prevent double-click
 document.getElementById('cpGenBtn').disabled=true;
 document.getElementById('cpGenBtn').textContent='Generating...';
@@ -4262,18 +4275,20 @@ const selfEntries=entries.filter(e=>e.entity==='self');
 const ltdEntries=entries.filter(e=>e.entity==='ltd');
 if(selfEntries.length>0&&ltdEntries.length>0){
   // Mixed entities - generate separate invoices
-  await genCpInvMulti(pid,selfEntries);
-  await genCpInvMulti(pid,ltdEntries);
+  await genCpInvMulti(pid,selfEntries,invDate);
+  await genCpInvMulti(pid,ltdEntries,invDate);
   showToast('Generated 2 invoices (split by entity)');
 }else{
-  await genCpInvMulti(pid,entries);
+  await genCpInvMulti(pid,entries,invDate);
 }
 closeMod2();
 }
 
 // Generate invoice for multiple contract practice entries
-async function genCpInvMulti(pid,entries){
+async function genCpInvMulti(pid,entries,invDate){
 const p=S.practices[pid];if(!p)return;
+// Use provided date or default to today
+const invoiceDate=invDate||today();
 const pComm=p.comm||0.35;
 // Use entity from first entry (all selected entries should be same entity)
 const entType=entries[0].entity||'self';
@@ -4322,7 +4337,7 @@ let tg=0;Object.values(svcs).forEach(s=>tg+=s.total);tg+=airTotal;
 const cm=tg*pComm;
 
 const invData={
-  num:invNum,date:today(),practice:p.short,practiceName:p.name,
+  num:invNum,date:invoiceDate,practice:p.short,practiceName:p.name,
   practiceAddr:(p.addr||'').replace(/\\n/g,'\n'),period:period,
   entity:entType==='self'?'Self-Employed':'Ltd',
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
@@ -4510,6 +4525,12 @@ html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"
 html+='<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--txt2);font-size:13px">Patients</span><span id="ahPrevPts" style="font-weight:600">'+ahe.reduce((s,e)=>s+e.pts,0)+'</span></div>';
 html+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--bdr);padding-top:6px;margin-top:6px"><span style="font-weight:600">Invoice Total</span><span id="ahPrevTotal" style="font-weight:700;color:var(--pri)">'+fc(ahe.reduce((s,e)=>s+e.gross,0))+'</span></div>';
 html+='</div>';
+// Invoice date picker
+const ahTodayStr=new Date().toISOString().split('T')[0];
+html+='<div style="margin-bottom:12px">';
+html+='<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">Date of Issue</label>';
+html+='<input type="date" id="ahInvDate" class="fi prc-adhoc" value="'+ahTodayStr+'" style="width:100%">';
+html+='</div>';
 html+='<div class="brow"><button class="btn btn-s" onclick="closeMod2()">Cancel</button><button class="btn btn-p prc-adhoc" id="ahGenBtn" onclick="genAhMulti(\''+pId+'\')">Generate Invoice</button></div>';
 showModal(html,'prc-adhoc');
 }
@@ -4534,6 +4555,9 @@ const ids=Array.from(checkboxes).map(cb=>cb.getAttribute('data-eid'));
 if(!ids.length){showToast('Select at least one entry');return;}
 const entries=ids.map(id=>S.entries.find(e=>e.id===id)).filter(Boolean);
 if(!entries.length){showToast('Entries not found');return;}
+// Get invoice date from picker
+const ahInvDateInp=document.getElementById('ahInvDate');
+const invDate=ahInvDateInp?ahInvDateInp.value:new Date().toISOString().split('T')[0];
 // Disable button to prevent double-click
 document.getElementById('ahGenBtn').disabled=true;
 document.getElementById('ahGenBtn').textContent='Generating...';
@@ -4542,11 +4566,11 @@ const selfEntries=entries.filter(e=>e.entity==='self');
 const ltdEntries=entries.filter(e=>e.entity==='ltd');
 if(selfEntries.length>0&&ltdEntries.length>0){
   // Mixed entities - generate separate invoices
-  await genAhInvMultiWithEntity(selfEntries,'self');
-  await genAhInvMultiWithEntity(ltdEntries,'ltd');
+  await genAhInvMultiWithEntity(selfEntries,'self',invDate);
+  await genAhInvMultiWithEntity(ltdEntries,'ltd',invDate);
   showToast('Generated 2 invoices (split by entity)');
 }else{
-  await genAhInvMulti(entries);
+  await genAhInvMulti(entries,invDate);
 }
 closeMod2();
 }
@@ -4563,8 +4587,10 @@ await genAhInvMulti(entries);
 }
 
 // Generate invoice for multiple ad hoc entries
-async function genAhInvMulti(entries){
+async function genAhInvMulti(entries,invDate){
 if(!entries.length)return;
+// Use provided date or default to today
+const invoiceDate=invDate||today();
 // Determine entity from entries (use first entry's entity)
 const entType=entries[0].entity||'self';
 const ent=S.ents[entType];
@@ -4631,7 +4657,7 @@ if(minDate===maxDate){
 }
 
 const invData={
-  num:invNum,date:today(),practice:pName,practiceName:pName,
+  num:invNum,date:invoiceDate,practice:pName,practiceName:pName,
   practiceAddr:pAddr.replace(/\\n/g,'\n'),period:period,
   entity:entType==='self'?'Self-Employed':'Ltd',
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
@@ -4670,8 +4696,10 @@ refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 }
 
 // Generate invoice for multiple ad hoc entries with specific entity (for auto-combine)
-async function genAhInvMultiWithEntity(entries, entKey){
+async function genAhInvMultiWithEntity(entries, entKey, invDate){
 if(!entries.length)return;
+// Use provided date or default to today
+const invoiceDate=invDate||today();
 const ent=S.ents[entKey];
 const invNum=pad(entKey==='ltd'?S.nextInvLtd:S.nextInvSelf);
 // Store original states for rollback
@@ -4730,7 +4758,7 @@ if(minDate===maxDate){
 }
 
 const invData={
-  num:invNum,date:today(),practice:pName,practiceName:pName,
+  num:invNum,date:invoiceDate,practice:pName,practiceName:pName,
   practiceAddr:pAddr.replace(/\\n/g,'\n'),period:period,
   entity:entKey==='self'?'Self-Employed':'Ltd',
   entName:ent.name,entAddr:(ent.addr||'').replace(/\\n/g,'\n'),
@@ -5307,11 +5335,27 @@ function refreshAnalytics(){
   let unpaidTotal=0;
   unpaidInvoices.forEach(inv=>unpaidTotal+=(inv.amount||0));
 
-  // Monthly data for chart (last 12 months) - with patient counts
+  // Find earliest entry date to determine date range
+  let earliestDate=null;
+  allEntries.forEach(e=>{
+    if(e.date){
+      const d=new Date(e.date);
+      if(!earliestDate||d<earliestDate)earliestDate=d;
+    }
+  });
+  // Default to current month if no entries
+  if(!earliestDate)earliestDate=new Date(now.getFullYear(),now.getMonth(),1);
+  const earliestMonth=new Date(earliestDate.getFullYear(),earliestDate.getMonth(),1);
+
+  // Calculate months between earliest and now
+  const monthsDiff=((now.getFullYear()-earliestMonth.getFullYear())*12)+(now.getMonth()-earliestMonth.getMonth())+1;
+  const monthsToShow=Math.min(Math.max(monthsDiff,1),24); // Show at least 1, max 24 months
+
+  // Monthly data for chart (from earliest entry to now)
   const monthlyData=[];
   const monthlyPtsData=[];
   const monthLabels=[];
-  for(let i=11;i>=0;i--){
+  for(let i=monthsToShow-1;i>=0;i--){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const mKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     const monthEntries=allEntries.filter(e=>e.date&&e.date.startsWith(mKey));
@@ -5324,7 +5368,7 @@ function refreshAnalytics(){
     });
     monthlyData.push(monthTotal);
     monthlyPtsData.push(monthPts);
-    monthLabels.push(d.toLocaleString('en-GB',{month:'short'}));
+    monthLabels.push(d.toLocaleString('en-GB',{month:'short',year:monthsToShow>6?'2-digit':undefined}));
   }
 
   // Practice breakdown for current tax year
@@ -5463,15 +5507,321 @@ function refreshAnalytics(){
     }
   }
 
-  // Monthly earnings chart
+  // Work Schedule Section (based on day mapping)
   _h+='<div class="analytics-card">';
-  _h+='<h3 class="analytics-title">Monthly Earnings (Last 12 Months)</h3>';
+  _h+='<h3 class="analytics-title">Work Schedule</h3>';
+  _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Your regular working days based on practice assignments</div>';
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayNamesFull=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  _h+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:12px">';
+  for(let d=0;d<7;d++){
+    const mapping=S.dayMap[d]||'home';
+    const isWorkDay=mapping!=='home';
+    const prac=isWorkDay?(S.practices[mapping]||null):null;
+    const bgColor=isWorkDay?(prac&&prac.color?'var(--'+prac.color+')':'var(--pri)'):'var(--bg)';
+    const txtColor=isWorkDay?'#fff':'var(--txt2)';
+    _h+='<div style="padding:8px 4px;background:'+bgColor+';color:'+txtColor+';border-radius:var(--rs);font-size:11px">';
+    _h+='<div style="font-weight:600">'+dayNames[d]+'</div>';
+    _h+='<div style="font-size:10px;margin-top:2px">'+(isWorkDay?(prac?prac.short:'Work'):'Off')+'</div>';
+    _h+='</div>';
+  }
+  _h+='</div>';
+  // Upcoming work days this week
+  const todayDow=now.getDay();
+  let upcomingDays=[];
+  for(let i=0;i<7;i++){
+    const dow=(todayDow+i)%7;
+    const mapping=S.dayMap[dow]||'home';
+    if(mapping!=='home'){
+      const futureDate=new Date(now);
+      futureDate.setDate(now.getDate()+i);
+      const prac=S.practices[mapping];
+      upcomingDays.push({date:futureDate,dow,prac,isToday:i===0});
+    }
+  }
+  if(upcomingDays.length>0){
+    _h+='<div style="font-size:13px;font-weight:600;margin-bottom:8px">Upcoming Work Days</div>';
+    upcomingDays.slice(0,4).forEach(ud=>{
+      const dateStr=ud.isToday?'Today':ud.date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<span style="font-weight:'+(ud.isToday?'600':'400')+';color:'+(ud.isToday?'var(--pri)':'var(--txt)')+'">'+dateStr+'</span>';
+      _h+='<span style="font-size:13px;color:var(--txt2)">'+(ud.prac?ud.prac.name:'Unknown')+'</span>';
+      _h+='</div>';
+    });
+  }
+  // Monthly work day counts and expected patients (based on paidHours and ptsPerHour)
+  const currentMonthName=now.toLocaleString('en-GB',{month:'long',year:'numeric'});
+  let workDaysThisMonth=0;
+  let expectedMonthlyPts=0;
+  let totalWeeklyHours=0;
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(p&&p.days){
+      const ptsPerHour=p.ptsPerHour||2;
+      p.days.forEach(dow=>{
+        const daysInMonth=countDaysInMonth(now.getFullYear(),now.getMonth(),dow);
+        workDaysThisMonth+=daysInMonth;
+        const paidH=(p.paidHours&&p.paidHours[dow])||7;
+        expectedMonthlyPts+=daysInMonth*paidH*ptsPerHour;
+        totalWeeklyHours+=paidH;
+      });
+    }
+  });
+  // Count exceptions for current month
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().split('T')[0];
+  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().split('T')[0];
+  const monthExceptions=(S.scheduleExceptions||[]).filter(e=>e.date>=monthStart&&e.date<=monthEnd);
+  const daysOff=monthExceptions.filter(e=>e.type==='off').length;
+  const extraDays=monthExceptions.filter(e=>e.type==='extra').length;
+  const adjustedWorkDays=workDaysThisMonth-daysOff+extraDays;
+
+  _h+='<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--rs)">';
+  _h+='<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+  _h+='<div><div style="font-size:12px;color:var(--txt2)">Work Days</div><div style="font-size:18px;font-weight:600">'+adjustedWorkDays+' days';
+  if(daysOff>0||extraDays>0){
+    _h+='<span style="font-size:11px;color:var(--txt2)"> ('+workDaysThisMonth;
+    if(daysOff>0)_h+='<span style="color:var(--err)">-'+daysOff+'</span>';
+    if(extraDays>0)_h+='<span style="color:var(--ok)">+'+extraDays+'</span>';
+    _h+=')</span>';
+  }
+  _h+='</div></div>';
+  _h+='<div style="text-align:center"><div style="font-size:12px;color:var(--txt2)">Weekly Hours</div><div style="font-size:18px;font-weight:600">'+totalWeeklyHours+'h</div></div>';
+  _h+='<div style="text-align:right"><div style="font-size:12px;color:var(--txt2)">Est. Patients</div><div style="font-size:18px;font-weight:600">~'+Math.round(expectedMonthlyPts)+'</div></div>';
+  _h+='</div>';
+  _h+='<div style="display:flex;gap:8px">';
+  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="editPracticeProjections()">Edit Schedule</button>';
+  _h+='<button class="btn btn-s" style="flex:1;font-size:12px" onclick="showScheduleExceptions()">Days Off / Extra</button>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Forward-Looking Projections (next 3 months)
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Earnings Projections</h3>';
+  _h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:12px">Projected earnings based on your work schedule (including exceptions)</div>';
+
+  // Helper to get exceptions for a month
+  function getMonthExceptions(year,month){
+    const mStart=new Date(year,month,1).toISOString().split('T')[0];
+    const mEnd=new Date(year,month+1,0).toISOString().split('T')[0];
+    return (S.scheduleExceptions||[]).filter(e=>e.date>=mStart&&e.date<=mEnd);
+  }
+
+  // Calculate projections for next 3 months with exception adjustments
+  let projections=[];
+  for(let m=0;m<3;m++){
+    const projDate=new Date(now.getFullYear(),now.getMonth()+m,1);
+    const projYear=projDate.getFullYear();
+    const projMonth=projDate.getMonth();
+    const projMonthName=projDate.toLocaleString('en-GB',{month:'short',year:'numeric'});
+    let projWorkDays=0;
+    let projPts=0;
+    let projGross=0;
+    let projNet=0;
+
+    // Get exceptions for this month
+    const monthExc=getMonthExceptions(projYear,projMonth);
+    const offDates=monthExc.filter(e=>e.type==='off').map(e=>e.date);
+    const extraShifts=monthExc.filter(e=>e.type==='extra');
+
+    Object.keys(S.practices||{}).forEach(pId=>{
+      const p=S.practices[pId];
+      if(p&&p.days){
+        const ptsPerHour=p.ptsPerHour||2;
+        const comm=p.comm||0;
+        let avgPrice=70;
+        if(p.svcs&&Object.keys(p.svcs).length>0){
+          const prices=Object.values(p.svcs).map(s=>s.p||70);
+          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
+        }
+        p.days.forEach(dow=>{
+          // Count work days for this DOW, minus any days off
+          let daysInMonth=countDaysInMonth(projYear,projMonth,dow);
+          // Subtract off days that fall on this DOW
+          offDates.forEach(offDate=>{
+            const d=new Date(offDate);
+            if(d.getDay()===dow)daysInMonth--;
+          });
+          if(daysInMonth<0)daysInMonth=0;
+          const paidH=(p.paidHours&&p.paidHours[dow])||7;
+          const dayPts=paidH*ptsPerHour;
+          projWorkDays+=daysInMonth;
+          projPts+=daysInMonth*dayPts;
+          const dayGross=dayPts*avgPrice;
+          projGross+=daysInMonth*dayGross;
+          projNet+=daysInMonth*dayGross*(1-comm);
+        });
+      }
+    });
+
+    // Add extra shifts
+    extraShifts.forEach(exc=>{
+      const p=S.practices[exc.pId];
+      if(p){
+        const ptsPerHour=p.ptsPerHour||2;
+        const comm=p.comm||0;
+        let avgPrice=70;
+        if(p.svcs&&Object.keys(p.svcs).length>0){
+          const prices=Object.values(p.svcs).map(s=>s.p||70);
+          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
+        }
+        // Use average paid hours for this practice
+        const avgPaidH=p.paidHours?Object.values(p.paidHours).reduce((a,b)=>a+b,0)/Object.values(p.paidHours).length:7;
+        const dayPts=avgPaidH*ptsPerHour;
+        projWorkDays+=1;
+        projPts+=dayPts;
+        const dayGross=dayPts*avgPrice;
+        projGross+=dayGross;
+        projNet+=dayGross*(1-comm);
+      }
+    });
+
+    projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0});
+  }
+
+  // Show projections grid
+  _h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+  projections.forEach((proj,i)=>{
+    const bgColor=proj.isCurrentMonth?'var(--pri)':'var(--bg)';
+    const textColor=proj.isCurrentMonth?'#fff':'var(--txt)';
+    const labelColor=proj.isCurrentMonth?'rgba(255,255,255,0.8)':'var(--txt2)';
+    _h+='<div style="padding:12px;background:'+bgColor+';border-radius:var(--rs);text-align:center">';
+    _h+='<div style="font-size:11px;font-weight:600;color:'+labelColor+';margin-bottom:4px">'+proj.month+'</div>';
+    _h+='<div style="font-size:18px;font-weight:700;color:'+textColor+'">'+fc(proj.net)+'</div>';
+    _h+='<div style="font-size:10px;color:'+labelColor+'">'+proj.workDays+' days / ~'+proj.pts+' pts</div>';
+    _h+='</div>';
+  });
+  _h+='</div>';
+
+  // Tax year projection (with exception adjustments)
+  const taxYearStart=now.getMonth()>=3?new Date(now.getFullYear(),3,6):new Date(now.getFullYear()-1,3,6);
+  const taxYearEnd=now.getMonth()>=3?new Date(now.getFullYear()+1,3,5):new Date(now.getFullYear(),3,5);
+  const taxYearName=(taxYearStart.getFullYear())+'/'+(taxYearStart.getFullYear()+1).toString().slice(-2);
+
+  // Calculate how many months left in tax year and project total
+  let monthsLeftInTaxYear=0;
+  let projectedTaxYearNet=totalNet; // Start with actual earnings so far
+  const checkDate=new Date(now.getFullYear(),now.getMonth()+1,1);
+  while(checkDate<=taxYearEnd){
+    monthsLeftInTaxYear++;
+    const projYear=checkDate.getFullYear();
+    const projMonth=checkDate.getMonth();
+    const taxMonthExc=getMonthExceptions(projYear,projMonth);
+    const taxOffDates=taxMonthExc.filter(e=>e.type==='off').map(e=>e.date);
+    const taxExtraShifts=taxMonthExc.filter(e=>e.type==='extra');
+
+    Object.keys(S.practices||{}).forEach(pId=>{
+      const p=S.practices[pId];
+      if(p&&p.days){
+        const ptsPerHour=p.ptsPerHour||2;
+        const comm=p.comm||0;
+        let avgPrice=70;
+        if(p.svcs&&Object.keys(p.svcs).length>0){
+          const prices=Object.values(p.svcs).map(s=>s.p||70);
+          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
+        }
+        p.days.forEach(dow=>{
+          let daysInMonth=countDaysInMonth(projYear,projMonth,dow);
+          taxOffDates.forEach(offDate=>{
+            const d=new Date(offDate);
+            if(d.getDay()===dow)daysInMonth--;
+          });
+          if(daysInMonth<0)daysInMonth=0;
+          const paidH=(p.paidHours&&p.paidHours[dow])||7;
+          const dayPts=paidH*ptsPerHour;
+          const dayGross=dayPts*avgPrice;
+          projectedTaxYearNet+=daysInMonth*dayGross*(1-comm);
+        });
+      }
+    });
+
+    // Add extra shifts for this month
+    taxExtraShifts.forEach(exc=>{
+      const p=S.practices[exc.pId];
+      if(p){
+        const ptsPerHour=p.ptsPerHour||2;
+        const comm=p.comm||0;
+        let avgPrice=70;
+        if(p.svcs&&Object.keys(p.svcs).length>0){
+          const prices=Object.values(p.svcs).map(s=>s.p||70);
+          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
+        }
+        const avgPaidH=p.paidHours?Object.values(p.paidHours).reduce((a,b)=>a+b,0)/Object.values(p.paidHours).length:7;
+        const dayPts=avgPaidH*ptsPerHour;
+        const dayGross=dayPts*avgPrice;
+        projectedTaxYearNet+=dayGross*(1-comm);
+      }
+    });
+
+    checkDate.setMonth(checkDate.getMonth()+1);
+  }
+
+  _h+='<div style="margin-top:12px;padding:12px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);color:#fff">';
+  _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+  _h+='<div>';
+  _h+='<div style="font-size:11px;opacity:0.85">Tax Year '+taxYearName+' Projection</div>';
+  _h+='<div style="font-size:10px;opacity:0.7">('+monthsLeftInTaxYear+' months remaining)</div>';
+  _h+='</div>';
+  _h+='<div style="text-align:right">';
+  _h+='<div style="font-size:22px;font-weight:700">'+fc(projectedTaxYearNet)+'</div>';
+  _h+='<div style="font-size:10px;opacity:0.7">Earned so far: '+fc(totalNet)+'</div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Month-over-Month Comparison
+  if(monthsToShow>=2){
+    const lastMonthIdx=monthlyData.length-2;
+    const thisMonthIdx=monthlyData.length-1;
+    const lastMonthNet=monthlyData[lastMonthIdx]||0;
+    const thisMonthNet=monthlyData[thisMonthIdx]||0;
+    const lastMonthPts=monthlyPtsData[lastMonthIdx]||0;
+    const thisMonthPts=monthlyPtsData[thisMonthIdx]||0;
+    const netChange=thisMonthNet-lastMonthNet;
+    const netChangePct=lastMonthNet>0?((netChange/lastMonthNet)*100).toFixed(1):0;
+    const ptsChange=thisMonthPts-lastMonthPts;
+    const ptsChangePct=lastMonthPts>0?((ptsChange/lastMonthPts)*100).toFixed(1):0;
+
+    _h+='<div class="analytics-card">';
+    _h+='<h3 class="analytics-title">Month-over-Month Comparison</h3>';
+    _h+='<div style="display:flex;justify-content:space-between;gap:12px">';
+    // Last month
+    _h+='<div style="flex:1;padding:12px;background:var(--bg);border-radius:var(--rs)">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+monthLabels[lastMonthIdx]+'</div>';
+    _h+='<div style="font-size:16px;font-weight:600">'+fc(lastMonthNet)+'</div>';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthPts+' patients</div>';
+    _h+='</div>';
+    // Arrow
+    _h+='<div style="display:flex;align-items:center;font-size:20px;color:var(--txt2)">&rarr;</div>';
+    // This month
+    _h+='<div style="flex:1;padding:12px;background:var(--bg);border-radius:var(--rs)">';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+monthLabels[thisMonthIdx]+'</div>';
+    _h+='<div style="font-size:16px;font-weight:600;color:var(--pri)">'+fc(thisMonthNet)+'</div>';
+    _h+='<div style="font-size:11px;color:var(--txt2)">'+thisMonthPts+' patients</div>';
+    _h+='</div>';
+    // Change
+    const changeColor=netChange>=0?'var(--ok)':'var(--err)';
+    _h+='<div style="flex:1;padding:12px;background:'+changeColor+';border-radius:var(--rs);color:#fff">';
+    _h+='<div style="font-size:11px;opacity:0.9">Change</div>';
+    _h+='<div style="font-size:16px;font-weight:600">'+(netChange>=0?'+':'')+fc(netChange)+'</div>';
+    _h+='<div style="font-size:11px;opacity:0.9">'+(netChange>=0?'+':'')+netChangePct+'%</div>';
+    _h+='</div>';
+    _h+='</div>';
+    _h+='</div>';
+  }
+
+  // Monthly earnings chart
+  const chartTitle=monthsToShow<=6?'Monthly Earnings':'Monthly Earnings ('+monthLabels[0]+' - '+monthLabels[monthLabels.length-1]+')';
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">'+chartTitle+'</h3>';
   _h+='<div class="chart-container"><canvas id="monthlyChart"></canvas></div>';
   _h+='</div>';
 
   // Monthly patients chart
+  const ptsChartTitle=monthsToShow<=6?'Monthly Patients':'Monthly Patients ('+monthLabels[0]+' - '+monthLabels[monthLabels.length-1]+')';
   _h+='<div class="analytics-card">';
-  _h+='<h3 class="analytics-title">Monthly Patients (Last 12 Months)</h3>';
+  _h+='<h3 class="analytics-title">'+ptsChartTitle+'</h3>';
   _h+='<div class="chart-container"><canvas id="patientsChart"></canvas></div>';
   _h+='</div>';
 
@@ -5493,6 +5843,93 @@ function refreshAnalytics(){
     });
     _h+='</div></div>';
   }
+
+  // Service Breakdown (tax year)
+  const serviceData={};
+  const servicePatients={};
+  taxYearEntries.forEach(e=>{
+    const svcName=e.svc||'Unknown';
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    const net=isAdhoc?gross:gross*(e.comm||0);
+    serviceData[svcName]=(serviceData[svcName]||0)+net;
+    servicePatients[svcName]=(servicePatients[svcName]||0)+(e.pts||0);
+  });
+  const serviceNames=Object.keys(serviceData).sort((a,b)=>serviceData[b]-serviceData[a]);
+  if(serviceNames.length>0){
+    _h+='<div class="analytics-card">';
+    _h+='<h3 class="analytics-title">Earnings by Service ('+taxYearLabel+')</h3>';
+    const maxSvcEarnings=Math.max(...Object.values(serviceData));
+    serviceNames.forEach(name=>{
+      const earnings=serviceData[name]||0;
+      const pts=servicePatients[name]||0;
+      const pct=(earnings/maxSvcEarnings)*100;
+      _h+='<div style="margin-bottom:10px">';
+      _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">';
+      _h+='<span>'+name+'</span>';
+      _h+='<span style="color:var(--txt2)">'+pts+' pts = <strong style="color:var(--pri)">'+fc(earnings)+'</strong></span>';
+      _h+='</div>';
+      _h+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">';
+      _h+='<div style="height:100%;width:'+pct+'%;background:var(--pri);border-radius:3px"></div>';
+      _h+='</div>';
+      _h+='</div>';
+    });
+    _h+='</div>';
+  }
+
+  // Best Performing Days (top 5 by net earnings)
+  if(allEntries.length>=5){
+    const dayTotals={};
+    allEntries.forEach(e=>{
+      if(!e.date)return;
+      const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+      const isAdhoc=e.pType==='adhoc';
+      const net=isAdhoc?gross:gross*(e.comm||0);
+      if(!dayTotals[e.date]){
+        dayTotals[e.date]={date:e.date,net:0,pts:0,entries:[]};
+      }
+      dayTotals[e.date].net+=net;
+      dayTotals[e.date].pts+=e.pts||0;
+      dayTotals[e.date].entries.push(e);
+    });
+    const sortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net).slice(0,5);
+    if(sortedDays.length>0){
+      _h+='<div class="analytics-card">';
+      _h+='<h3 class="analytics-title">Top 5 Best Days</h3>';
+      sortedDays.forEach((day,i)=>{
+        const d=new Date(day.date);
+        const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+        const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
+        _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+        _h+='<div>';
+        _h+='<span style="display:inline-block;width:20px;height:20px;background:var(--pri);color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+1)+'</span>';
+        _h+='<span style="font-weight:500">'+dateStr+'</span>';
+        _h+='<div style="font-size:12px;color:var(--txt2);margin-left:28px">'+practices+' - '+day.pts+' patients</div>';
+        _h+='</div>';
+        _h+='<strong style="color:var(--pri)">'+fc(day.net)+'</strong>';
+        _h+='</div>';
+      });
+      _h+='</div>';
+    }
+  }
+
+  // Key Performance Indicators
+  const daysWorked=new Set(allEntries.map(e=>e.date)).size;
+  const avgPerDay=daysWorked>0?totalNet/daysWorked:0;
+  const totalGrossEarnings=taxYearEntries.reduce((sum,e)=>{
+    return sum+(e.pts*e.uPrice)+(e.aoAmt||0);
+  },0);
+  const commissionPaid=totalGrossEarnings-totalNet;
+
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Key Performance Indicators</h3>';
+  _h+='<div class="stat-grid" style="margin-top:8px">';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Days Worked</div><div class="stat-value">'+daysWorked+'</div><div class="stat-sub">'+taxYearLabel+'</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Avg Per Day</div><div class="stat-value">'+fc(avgPerDay)+'</div><div class="stat-sub">Net earnings</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Gross Revenue</div><div class="stat-value">'+fc(totalGrossEarnings)+'</div></div>';
+  _h+='<div class="stat-card" style="background:var(--bg)"><div class="stat-label">Commission Paid</div><div class="stat-value" style="color:var(--err)">'+fc(commissionPaid)+'</div><div class="stat-sub">'+(totalGrossEarnings>0?((commissionPaid/totalGrossEarnings)*100).toFixed(0):'0')+'% of gross</div></div>';
+  _h+='</div>';
+  _h+='</div>';
 
   // Overdue invoices list
   const overdueInvoices=unpaidInvoices.filter(inv=>isInvoiceOverdue(inv).overdue);
@@ -5641,49 +6078,245 @@ function refreshAnalytics(){
 
 // Edit expected patients per day for each practice
 function editPracticeProjections(){
-  let _h='<div class="mod-hdr"><h3>Expected Patients Per Day</h3></div>';
-  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Set how many patients you typically see per day at each practice. This helps track projections vs actuals.</p>';
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let _h='<div class="mod-hdr"><h3>Work Schedule Settings</h3></div>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Set your paid hours per day and patients per hour for accurate projections. Exclude lunch breaks - only count paid working hours.</p>';
 
   Object.keys(S.practices||{}).forEach(pId=>{
     const p=S.practices[pId];
     if(!p||!p.days||!p.days.length)return;
-    const currentVal=p.expectedPts||8;
-    _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--bdr)">';
-    _h+='<span style="font-weight:500">'+(p.short||p.name)+'</span>';
-    _h+='<div style="display:flex;align-items:center;gap:8px">';
-    _h+='<button class="adj-btn" onclick="adjExpPts(\''+pId+'\',-1)">-</button>';
-    _h+='<input type="number" id="_exp_'+pId+'" value="'+currentVal+'" style="width:50px;text-align:center;padding:6px;border:1px solid var(--bdr);border-radius:var(--rs)" min="1" max="30"/>';
-    _h+='<button class="adj-btn" onclick="adjExpPts(\''+pId+'\',1)">+</button>';
-    _h+='<span style="font-size:12px;color:var(--txt2)">pts/day</span>';
+    const ptsPerHour=p.ptsPerHour||2;
+    _h+='<div style="border:2px solid var(--'+(p.color||'pri')+');border-radius:var(--rs);padding:12px;margin-bottom:12px">';
+    _h+='<div style="font-weight:600;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">';
+    _h+='<span>'+(p.short||p.name)+'</span>';
+    _h+='<div style="display:flex;align-items:center;gap:6px">';
+    _h+='<span style="font-size:11px;color:var(--txt2)">Pts/hour:</span>';
+    _h+='<button class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjPtsPerHour(\''+pId+'\',-1)">-</button>';
+    _h+='<input type="number" id="_pph_'+pId+'" value="'+ptsPerHour+'" style="width:40px;text-align:center;padding:4px;border:1px solid var(--bdr);border-radius:4px;font-size:13px" min="1" max="6"/>';
+    _h+='<button class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjPtsPerHour(\''+pId+'\',1)">+</button>';
     _h+='</div></div>';
+    // Show each work day with paid hours
+    p.days.forEach(dow=>{
+      const paidH=(p.paidHours&&p.paidHours[dow])||7;
+      const estPts=paidH*ptsPerHour;
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--bdr)">';
+      _h+='<span style="font-size:13px;color:var(--txt)">'+dayNames[dow]+'</span>';
+      _h+='<div style="display:flex;align-items:center;gap:8px">';
+      _h+='<button class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjPaidHours(\''+pId+'\','+dow+',-0.5)">-</button>';
+      _h+='<input type="number" id="_ph_'+pId+'_'+dow+'" value="'+paidH+'" style="width:50px;text-align:center;padding:4px;border:1px solid var(--bdr);border-radius:4px;font-size:13px" min="1" max="12" step="0.5" onchange="updateEstPts(\''+pId+'\','+dow+')"/>';
+      _h+='<button class="adj-btn" style="width:28px;height:28px;font-size:14px" onclick="adjPaidHours(\''+pId+'\','+dow+',0.5)">+</button>';
+      _h+='<span style="font-size:12px;color:var(--txt2);width:50px">hrs</span>';
+      _h+='<span id="_est_'+pId+'_'+dow+'" style="font-size:11px;color:var(--pri);min-width:45px;text-align:right">~'+estPts+' pts</span>';
+      _h+='</div></div>';
+    });
+    _h+='</div>';
   });
+
+  if(Object.keys(S.practices||{}).length===0){
+    _h+='<p style="color:var(--txt2);text-align:center;padding:20px">No contracted practices set up yet.</p>';
+  }
 
   _h+='<div class="brow" style="margin-top:16px">';
   _h+='<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
-  _h+='<button class="btn btn-p" onclick="saveExpectedPatients()">Save</button>';
+  _h+='<button class="btn btn-p" onclick="saveWorkSchedule()">Save</button>';
   _h+='</div>';
   showModal(_h);
 }
 
-function adjExpPts(pId,delta){
-  const inp=document.getElementById('_exp_'+pId);
+function adjPtsPerHour(pId,delta){
+  const inp=document.getElementById('_pph_'+pId);
   if(!inp)return;
-  let val=parseInt(inp.value)||8;
-  val=Math.max(1,Math.min(30,val+delta));
+  let val=parseFloat(inp.value)||2;
+  val=Math.max(1,Math.min(6,val+delta));
   inp.value=val;
+  // Update all estimated pts for this practice
+  const p=S.practices[pId];
+  if(p&&p.days){
+    p.days.forEach(dow=>{
+      updateEstPts(pId,dow);
+    });
+  }
 }
 
-function saveExpectedPatients(){
+function adjPaidHours(pId,dow,delta){
+  const inp=document.getElementById('_ph_'+pId+'_'+dow);
+  if(!inp)return;
+  let val=parseFloat(inp.value)||7;
+  val=Math.max(1,Math.min(12,val+delta));
+  inp.value=val;
+  updateEstPts(pId,dow);
+}
+
+function updateEstPts(pId,dow){
+  const phInp=document.getElementById('_ph_'+pId+'_'+dow);
+  const pphInp=document.getElementById('_pph_'+pId);
+  const estEl=document.getElementById('_est_'+pId+'_'+dow);
+  if(!phInp||!pphInp||!estEl)return;
+  const paidH=parseFloat(phInp.value)||7;
+  const ptsPerHour=parseFloat(pphInp.value)||2;
+  estEl.textContent='~'+Math.round(paidH*ptsPerHour)+' pts';
+}
+
+function saveWorkSchedule(){
   Object.keys(S.practices||{}).forEach(pId=>{
-    const inp=document.getElementById('_exp_'+pId);
-    if(inp){
-      S.practices[pId].expectedPts=parseInt(inp.value)||8;
+    const p=S.practices[pId];
+    if(!p||!p.days)return;
+    // Save pts per hour
+    const pphInp=document.getElementById('_pph_'+pId);
+    if(pphInp){
+      p.ptsPerHour=parseFloat(pphInp.value)||2;
     }
+    // Save paid hours per day
+    if(!p.paidHours)p.paidHours={};
+    p.days.forEach(dow=>{
+      const phInp=document.getElementById('_ph_'+pId+'_'+dow);
+      if(phInp){
+        p.paidHours[dow]=parseFloat(phInp.value)||7;
+      }
+    });
   });
   save();
   closeMod2();
-  showToast('Projections updated');
-  refreshAnalytics();
+  showToast('Work schedule updated');
+  if(S.scr==='analytics')refreshAnalytics();
+  syncPracticesToCloud().catch(e=>console.error('[Sync Failed]',e));
+}
+
+// Schedule Exception Management
+function showScheduleExceptions(){
+  if(!S.scheduleExceptions)S.scheduleExceptions=[];
+  const now=new Date();
+  const today=now.toISOString().split('T')[0];
+
+  let _h='<div class="mod-hdr"><h3>Schedule Exceptions</h3></div>';
+  _h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Add days off or extra shifts to adjust your projections</p>';
+
+  // Add new exception form
+  _h+='<div style="border:2px solid var(--pri);border-radius:var(--rs);padding:12px;margin-bottom:16px;background:var(--pri-bg)">';
+  _h+='<div style="font-weight:600;margin-bottom:8px">Add Exception</div>';
+  _h+='<div style="display:flex;gap:8px;margin-bottom:8px">';
+  _h+='<div style="flex:1"><label style="font-size:11px;color:var(--txt2)">Date</label>';
+  _h+='<input type="date" id="_excDate" class="fi" value="'+today+'" min="'+today+'"></div>';
+  _h+='<div style="flex:1"><label style="font-size:11px;color:var(--txt2)">Type</label>';
+  _h+='<select id="_excType" class="fi"><option value="off">Day Off</option><option value="extra">Extra Shift</option></select></div>';
+  _h+='</div>';
+  _h+='<div id="_excPracDiv" style="display:none;margin-bottom:8px"><label style="font-size:11px;color:var(--txt2)">Practice</label>';
+  _h+='<select id="_excPrac" class="fi">';
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(p)_h+='<option value="'+pId+'">'+(p.short||p.name)+'</option>';
+  });
+  _h+='</select></div>';
+  _h+='<div style="margin-bottom:8px"><label style="font-size:11px;color:var(--txt2)">Note (optional)</label>';
+  _h+='<input type="text" id="_excNote" class="fi" placeholder="e.g. Bank Holiday, Cover shift"></div>';
+  _h+='<button class="btn btn-p" style="width:100%" onclick="addScheduleException()">Add Exception</button>';
+  _h+='</div>';
+
+  // List existing exceptions
+  const futureExceptions=S.scheduleExceptions.filter(e=>e.date>=today).sort((a,b)=>a.date.localeCompare(b.date));
+  const pastExceptions=S.scheduleExceptions.filter(e=>e.date<today).sort((a,b)=>b.date.localeCompare(a.date));
+
+  if(futureExceptions.length>0){
+    _h+='<div style="font-weight:600;margin-bottom:8px">Upcoming Exceptions</div>';
+    futureExceptions.forEach((exc,i)=>{
+      const excDate=new Date(exc.date);
+      const dateStr=excDate.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      const isOff=exc.type==='off';
+      const bgColor=isOff?'var(--err-bg)':'var(--ok-bg)';
+      const textColor=isOff?'var(--err)':'var(--ok)';
+      const label=isOff?'Day Off':(S.practices[exc.pId]?S.practices[exc.pId].short:'Extra');
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:'+bgColor+';border-radius:var(--rs);margin-bottom:6px">';
+      _h+='<div><span style="font-weight:500">'+dateStr+'</span>';
+      if(exc.note)_h+='<span style="font-size:12px;color:var(--txt2);margin-left:8px">'+exc.note+'</span>';
+      _h+='</div>';
+      _h+='<div style="display:flex;align-items:center;gap:8px">';
+      _h+='<span style="font-size:12px;font-weight:600;color:'+textColor+'">'+label+'</span>';
+      _h+='<button class="adj-btn" style="width:24px;height:24px;font-size:12px;color:var(--err)" onclick="deleteScheduleException(\''+exc.date+'\')">×</button>';
+      _h+='</div></div>';
+    });
+  }
+
+  if(pastExceptions.length>0){
+    _h+='<div style="font-weight:600;margin:12px 0 8px;color:var(--txt2)">Past Exceptions</div>';
+    pastExceptions.slice(0,5).forEach((exc,i)=>{
+      const excDate=new Date(exc.date);
+      const dateStr=excDate.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      const isOff=exc.type==='off';
+      _h+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);opacity:0.6">';
+      _h+='<span style="font-size:13px">'+dateStr+(exc.note?' - '+exc.note:'')+'</span>';
+      _h+='<span style="font-size:12px;color:'+(isOff?'var(--err)':'var(--ok)')+'">'+( isOff?'Off':'Extra')+'</span>';
+      _h+='</div>';
+    });
+  }
+
+  if(futureExceptions.length===0&&pastExceptions.length===0){
+    _h+='<p style="text-align:center;color:var(--txt2);padding:20px">No exceptions added yet</p>';
+  }
+
+  _h+='<div class="brow" style="margin-top:16px">';
+  _h+='<button class="btn btn-s" onclick="closeMod2()">Close</button>';
+  _h+='</div>';
+  showModal(_h);
+
+  setTimeout(()=>{
+    const typeSelect=document.getElementById('_excType');
+    const pracDiv=document.getElementById('_excPracDiv');
+    if(typeSelect&&pracDiv){
+      typeSelect.onchange=()=>{
+        pracDiv.style.display=typeSelect.value==='extra'?'block':'none';
+      };
+    }
+  },50);
+}
+
+function addScheduleException(){
+  const dateInp=document.getElementById('_excDate');
+  const typeInp=document.getElementById('_excType');
+  const pracInp=document.getElementById('_excPrac');
+  const noteInp=document.getElementById('_excNote');
+
+  if(!dateInp||!dateInp.value){showToast('Please select a date');return;}
+
+  const exc={
+    date:dateInp.value,
+    type:typeInp.value,
+    note:noteInp.value.trim()
+  };
+
+  if(exc.type==='extra'){
+    exc.pId=pracInp.value;
+  }
+
+  // Check for duplicate
+  if(!S.scheduleExceptions)S.scheduleExceptions=[];
+  const existingIdx=S.scheduleExceptions.findIndex(e=>e.date===exc.date);
+  if(existingIdx>=0){
+    S.scheduleExceptions[existingIdx]=exc;
+    showToast('Exception updated');
+  }else{
+    S.scheduleExceptions.push(exc);
+    showToast('Exception added');
+  }
+
+  save();
+  closeMod2();
+  showScheduleExceptions();
+  if(S.scr==='analytics')refreshAnalytics();
+}
+
+function deleteScheduleException(date){
+  if(!S.scheduleExceptions)return;
+  S.scheduleExceptions=S.scheduleExceptions.filter(e=>e.date!==date);
+  save();
+  closeMod2();
+  showScheduleExceptions();
+  if(S.scr==='analytics')refreshAnalytics();
+}
+
+// Check if date has exception
+function getExceptionForDate(dateStr){
+  if(!S.scheduleExceptions)return null;
+  return S.scheduleExceptions.find(e=>e.date===dateStr)||null;
 }
 
 function refreshSettings(){
@@ -6105,12 +6738,15 @@ if(genActions.includes(action)){
 }
 try{
   if(action==='preview'){previewInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
-  if(action==='generate'){await genInv(btn.getAttribute('data-pid'),parseInt(btn.getAttribute('data-y')),parseInt(btn.getAttribute('data-m')));}
+  // Route generate through entry selection modal to allow date picking
+  if(action==='generate'){showCpSelect(btn.getAttribute('data-pid'));}
   if(action==='cpselect'){showCpSelect(btn.getAttribute('data-pid'));}
   if(action==='ahpreview'){previewAhInv(btn.getAttribute('data-eid'));}
-  if(action==='ahgenerate'){await genAhInv(btn.getAttribute('data-eid'));}
+  // Route generate through entry selection modal to allow date picking
+  if(action==='ahgenerate'){showAhSelect(btn.getAttribute('data-pid'));}
   if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
-  if(action==='ahgenall'){await genAhAll(btn.getAttribute('data-pid'));}
+  // Route generate all through entry selection modal
+  if(action==='ahgenall'){showAhSelect(btn.getAttribute('data-pid'));}
   if(action==='redownload'){await redownloadInvoice(parseInt(btn.getAttribute('data-idx')));}
   if(action==='delinv'){deleteInvoice(parseInt(btn.getAttribute('data-idx')));}
 }finally{
