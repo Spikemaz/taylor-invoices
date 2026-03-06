@@ -890,6 +890,10 @@ async function loadAll(sheets, sheetId, res) {
     .filter((row, idx) => idx > 0 && row[0] && row[0] !== 'num')
     .map(row => {
       const obj = {};
+      // Pad row to match header length (Google Sheets API omits trailing empty cells)
+      while (row.length < invoiceHeaders.length) {
+        row.push('');
+      }
       invoiceHeaders.forEach((col, i) => {
         if (!col) return; // Skip empty header columns
         let val = row[i];
@@ -905,9 +909,7 @@ async function loadAll(sheets, sheetId, res) {
         obj[col] = val || '';
       });
       // Debug: Log paidStatus for each invoice
-      if (obj.paidStatus) {
-        console.log('[loadAll] Invoice', obj.num, 'paidStatus:', obj.paidStatus, 'paidDate:', obj.paidDate);
-      }
+      console.log('[loadAll] Invoice', obj.num, 'row length:', row.length, 'paidStatus:', obj.paidStatus || '(empty)', 'paidDate:', obj.paidDate || '(empty)');
       return obj;
     });
 
