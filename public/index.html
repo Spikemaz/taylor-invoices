@@ -723,6 +723,18 @@ function loadSettings(){
     if (d.workSchedule) S.workSchedule = d.workSchedule;
     if (d.scheduleHours) S.scheduleHours = d.scheduleHours;
     if (d.scheduleExceptions) S.scheduleExceptions = d.scheduleExceptions;
+
+    // Migration: Clear schedule data before Feb 2, 2025 (Taylor's first day was Feb 2nd at Bupa)
+    const firstDayStr = '2025-02-02';
+    if (S.workSchedule) {
+      const keysToDelete = Object.keys(S.workSchedule).filter(k => k < firstDayStr);
+      keysToDelete.forEach(k => delete S.workSchedule[k]);
+      if (keysToDelete.length > 0) console.log('[Migration] Cleared ' + keysToDelete.length + ' schedule entries before ' + firstDayStr);
+    }
+    if (S.scheduleHours) {
+      const keysToDelete = Object.keys(S.scheduleHours).filter(k => k < firstDayStr);
+      keysToDelete.forEach(k => delete S.scheduleHours[k]);
+    }
     // Load pending operations
     const pending = JSON.parse(localStorage.getItem('tm_inv_pending') || '[]');
     if (pending.length) pendingOps = pending;
