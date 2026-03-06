@@ -5455,7 +5455,7 @@ function refreshAnalytics(){
   const practiceValues=practiceLabels.map(k=>practiceData[k]);
   // Use practice-specific colors, fallback to defaults
   const defaultColors=['#2d6a4f','#0057a8','#7c3aed','#f59e0b','#14b8a6','#ef4444'];
-  const colorVars={bupa:'#0057a8',grove:'#2d6a4f',adhoc:'#7c3aed'};
+  const colorVars={bupa:'#0057a8',grove:'#2d6a4f',adhoc:'#ef4444'};
   const practiceColors=practiceLabels.map((name,i)=>{
     const colorKey=practiceColorMap[name];
     return colorVars[colorKey]||defaultColors[i%defaultColors.length];
