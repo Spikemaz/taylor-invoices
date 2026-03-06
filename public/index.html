@@ -3311,6 +3311,16 @@ function navInvMonth(dir){
   refInv();
 }
 
+function jumpToInvMonth(year,month){
+  const now=new Date();
+  // Don't allow jumping to future months
+  const futureLimit=new Date(now.getFullYear(),now.getMonth(),1);
+  const newDate=new Date(year,month,1);
+  if(newDate>futureLimit)return;
+  invViewMonth={year:year,month:month};
+  refInv();
+}
+
 // Helper to calculate working days between dates
 function getWorkingDaysBetween(startDate,endDate){
   let count=0;
@@ -3365,11 +3375,46 @@ const isCurrentMonth=viewYear===n.getFullYear()&&viewMonth===n.getMonth();
 
 // Update month navigator UI
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const iMonthTitle=document.getElementById('iMonthTitle');
 const iMonthSub=document.getElementById('iMonthSub');
 const iMonthNext=document.getElementById('iMonthNext');
 if(iMonthTitle)iMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
-if(iMonthSub)iMonthSub.textContent=isCurrentMonth?'Current Month':'';
+if(iMonthSub){
+  // Find months with data for quick jump
+  const monthsWithData=[];
+  const allDates=new Set([
+    ...(S.entries||[]).map(e=>e.date?.substring(0,7)),
+    ...(S.invoices||[]).map(inv=>{
+      // Check period for month name
+      const periodMatch=inv.period?.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/);
+      if(periodMatch){
+        const mIdx=monthNames.indexOf(periodMatch[1]);
+        return periodMatch[2]+'-'+String(mIdx+1).padStart(2,'0');
+      }
+      return inv.date?.substring(0,7);
+    })
+  ].filter(Boolean));
+  allDates.forEach(d=>{
+    const [y,m]=d.split('-').map(Number);
+    if(y&&m)monthsWithData.push({year:y,month:m-1,key:d});
+  });
+  // Sort and dedupe
+  const uniqueMonths=[...new Set(monthsWithData.map(m=>m.key))].sort().slice(-6);
+
+  // Build quick jump UI
+  let subHtml='';
+  if(uniqueMonths.length>1){
+    uniqueMonths.forEach(key=>{
+      const [y,m]=key.split('-').map(Number);
+      const isActive=y===viewYear&&(m-1)===viewMonth;
+      subHtml+='<span onclick="jumpToInvMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;'+(isActive?'background:var(--pri);color:#fff':'color:var(--txt2)')+'">'+shortMonths[m-1]+'</span>';
+    });
+  }else{
+    subHtml=isCurrentMonth?'Current Month':'';
+  }
+  iMonthSub.innerHTML=subHtml;
+}
 if(iMonthNext)iMonthNext.disabled=isCurrentMonth;
 
 // Get entries for the selected month
@@ -5293,6 +5338,14 @@ if(sel&&row){
   row.style.display=sel.value!=='home'?'block':'none';
 }
 }
+function toggleBestDays(){
+var extra=document.getElementById('bestDaysExtra');
+var btn=document.getElementById('toggleBestDays');
+if(!extra||!btn)return;
+var isExpanded=extra.style.display!=='none';
+extra.style.display=isExpanded?'none':'block';
+btn.textContent=isExpanded?'Show 10':'Show 5';
+}
 function adjDmHours(delta){
 var inp=document.getElementById('_dmHours');
 if(!inp)return;
@@ -5952,9 +6005,11 @@ function refreshAnalytics(){
       }else{
         agingLabel=daysRemaining+' days left';
       }
+      const invEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'Ltd':'Self';
+      const invEntityColor=invEntity==='Ltd'?'var(--pri)':'#0057a8';
       _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+agingColor+'">';
       _h+='<div>';
-      _h+='<div style="font-size:12px;font-weight:500">#'+inv.num+' - '+(inv.practice||inv.practiceName||'Unknown')+'</div>';
+      _h+='<div style="font-size:12px;font-weight:500"><span style="display:inline-block;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:600;color:#fff;background:'+invEntityColor+';margin-right:4px">'+invEntity+'</span>#'+inv.num+' - '+(inv.practice||inv.practiceName||'Unknown')+'</div>';
       _h+='<div style="font-size:10px;color:var(--txt2)">Issued: '+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</div>';
       _h+='</div>';
       _h+='<div style="text-align:right">';
@@ -6002,27 +6057,39 @@ function refreshAnalytics(){
   const lastMonthAvgPP=lastMonthPtsSameRange>0?lastMonthNetSameRange/lastMonthPtsSameRange:0;
   const thisMonthAvgPP=monthPatients>0?monthNet/monthPatients:0;
 
-  // This month projected (from schedule - supports split days)
+  // This month projected - use ACTUAL for past days, PROJECTED for future days
+  // This ensures missed days don't inflate the projection
   const todayStr=now.toISOString().split('T')[0];
   const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   let projectedMonthPts=0,projectedMonthNet=0;
   for(let day=1;day<=daysInThisMonth;day++){
     const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const dow=new Date(now.getFullYear(),now.getMonth(),day).getDay();
+    const isPastDay=dateStr<todayStr;
 
-    // Use split-day helper
-    const dayPractices = getPracticesForDate(dateStr);
-    dayPractices.forEach(prac => {
-      const p=S.practices[prac.pId];
-      if(p){
-        const paidH = prac.hours || 7;
-        const ptsPerHour=p.ptsPerHour||2;
-        const estPts=paidH*ptsPerHour;
-        projectedMonthPts+=estPts;
-        const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
-        projectedMonthNet+=estPts*avgPrice*p.comm;
-      }
-    });
+    if(isPastDay){
+      // For past days, use ACTUAL data (missed days = 0)
+      const dayEntries=currentMonthEntries.filter(e=>e.date===dateStr);
+      dayEntries.forEach(e=>{
+        projectedMonthPts+=e.pts||0;
+        const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+        const isAdhoc=e.pType==='adhoc';
+        projectedMonthNet+=isAdhoc?gross:gross*(e.comm||0);
+      });
+    }else{
+      // For today and future, use projected data from schedule
+      const dayPractices = getPracticesForDate(dateStr);
+      dayPractices.forEach(prac => {
+        const p=S.practices[prac.pId];
+        if(p){
+          const paidH = prac.hours || 7;
+          const ptsPerHour=p.ptsPerHour||2;
+          const estPts=paidH*ptsPerHour;
+          projectedMonthPts+=estPts;
+          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          projectedMonthNet+=estPts*avgPrice*p.comm;
+        }
+      });
+    }
   }
 
   const ptsProgress=projectedMonthPts>0?Math.round((monthPatients/projectedMonthPts)*100):0;
@@ -6788,36 +6855,39 @@ function refreshAnalytics(){
     _h+='</div></div>';
   }
 
-  // Service Breakdown (tax year) - track practice for color coding
+  // Service Breakdown (tax year) - group by practice+service to avoid collisions (e.g., Grove Hygiene vs Ad-hoc Hygiene)
   const serviceData={};
   const servicePatients={};
-  const servicePractice={}; // Track which practice each service belongs to
+  const serviceInfo={}; // Track practice info for each service key
   taxYearEntries.forEach(e=>{
+    const pracName=e.pName||'Unknown';
     const svcName=e.svc||'Unknown';
+    // Key by practice+service to keep Grove Hygiene separate from Ad-hoc Hygiene
+    const key=pracName+'|'+svcName;
     const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
     const isAdhoc=e.pType==='adhoc';
     const net=isAdhoc?gross:gross*(e.comm||0);
-    serviceData[svcName]=(serviceData[svcName]||0)+net;
-    servicePatients[svcName]=(servicePatients[svcName]||0)+(e.pts||0);
-    // Track the practice for this service (use the one with most pts)
-    if(!servicePractice[svcName]||servicePatients[svcName]>servicePractice[svcName].pts){
-      servicePractice[svcName]={pId:e.pId,color:e.color||'pri',pts:servicePatients[svcName]};
+    serviceData[key]=(serviceData[key]||0)+net;
+    servicePatients[key]=(servicePatients[key]||0)+(e.pts||0);
+    if(!serviceInfo[key]){
+      serviceInfo[key]={pId:e.pId,pName:pracName,svcName:svcName,color:e.color||'pri'};
     }
   });
-  const serviceNames=Object.keys(serviceData).sort((a,b)=>serviceData[b]-serviceData[a]);
-  if(serviceNames.length>0){
+  const serviceKeys=Object.keys(serviceData).sort((a,b)=>serviceData[b]-serviceData[a]);
+  if(serviceKeys.length>0){
     _h+='<div class="analytics-card">';
     _h+='<h3 class="analytics-title">Earnings by Service ('+taxYearLabel+')</h3>';
     const maxSvcEarnings=Math.max(...Object.values(serviceData));
-    serviceNames.forEach(name=>{
-      const earnings=serviceData[name]||0;
-      const pts=servicePatients[name]||0;
+    serviceKeys.forEach(key=>{
+      const earnings=serviceData[key]||0;
+      const pts=servicePatients[key]||0;
       const pct=(earnings/maxSvcEarnings)*100;
-      const prac=servicePractice[name];
-      const barColor=prac&&prac.color?'var(--'+prac.color+')':'var(--pri)';
+      const info=serviceInfo[key];
+      const barColor=info&&info.color?'var(--'+info.color+')':'var(--pri)';
+      const displayName=info?info.svcName+' ('+info.pName+')':key;
       _h+='<div style="margin-bottom:10px">';
       _h+='<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">';
-      _h+='<span>'+name+'</span>';
+      _h+='<span>'+displayName+'</span>';
       _h+='<span style="color:var(--txt2)">'+pts+' pts = <strong style="color:'+barColor+'">'+fc(earnings)+'</strong></span>';
       _h+='</div>';
       _h+='<div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">';
@@ -6828,7 +6898,7 @@ function refreshAnalytics(){
     _h+='</div>';
   }
 
-  // Best Performing Days (top 5 by net earnings)
+  // Best Performing Days - expandable top 5/10
   if(allEntries.length>=5){
     const dayTotals={};
     allEntries.forEach(e=>{
@@ -6845,16 +6915,24 @@ function refreshAnalytics(){
       // Use the color of the practice with most patients that day
       if(!dayTotals[e.date].color&&e.color)dayTotals[e.date].color=e.color;
     });
-    const sortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net).slice(0,5);
-    if(sortedDays.length>0){
-      _h+='<div class="analytics-card">';
-      _h+='<h3 class="analytics-title">Top 5 Best Days</h3>';
-      sortedDays.forEach((day,i)=>{
+    const allSortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net);
+    const initialCount=5;
+    const expandedCount=Math.min(10,allSortedDays.length);
+    if(allSortedDays.length>0){
+      _h+='<div class="analytics-card" id="bestDaysCard">';
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+      _h+='<h3 class="analytics-title" style="margin:0">Top '+initialCount+' Best Days</h3>';
+      if(allSortedDays.length>initialCount){
+        _h+='<button class="btn btn-s" style="padding:4px 10px;font-size:11px" id="toggleBestDays" onclick="toggleBestDays()">Show '+expandedCount+'</button>';
+      }
+      _h+='</div>';
+      _h+='<div id="bestDaysList">';
+      allSortedDays.slice(0,initialCount).forEach((day,i)=>{
         const d=new Date(day.date);
         const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
         const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
         const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
-        _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+        _h+='<div class="best-day-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
         _h+='<div>';
         _h+='<span style="display:inline-block;width:20px;height:20px;background:'+dayColor+';color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+1)+'</span>';
         _h+='<span style="font-weight:500">'+dateStr+'</span>';
@@ -6863,6 +6941,26 @@ function refreshAnalytics(){
         _h+='<strong style="color:'+dayColor+'">'+fc(day.net)+'</strong>';
         _h+='</div>';
       });
+      // Hidden extra items
+      if(allSortedDays.length>initialCount){
+        _h+='<div id="bestDaysExtra" style="display:none">';
+        allSortedDays.slice(initialCount,expandedCount).forEach((day,i)=>{
+          const d=new Date(day.date);
+          const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+          const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
+          const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
+          _h+='<div class="best-day-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+          _h+='<div>';
+          _h+='<span style="display:inline-block;width:20px;height:20px;background:'+dayColor+';color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+initialCount+1)+'</span>';
+          _h+='<span style="font-weight:500">'+dateStr+'</span>';
+          _h+='<div style="font-size:12px;color:var(--txt2);margin-left:28px">'+practices+' - '+day.pts+' patients</div>';
+          _h+='</div>';
+          _h+='<strong style="color:'+dayColor+'">'+fc(day.net)+'</strong>';
+          _h+='</div>';
+        });
+        _h+='</div>';
+      }
+      _h+='</div>';
       _h+='</div>';
     }
   }
