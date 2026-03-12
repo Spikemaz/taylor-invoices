@@ -8508,8 +8508,8 @@ try{
   if(action==='generate'){showCpSelect(btn.getAttribute('data-pid'));}
   if(action==='cpselect'){showCpSelect(btn.getAttribute('data-pid'));}
   if(action==='ahpreview'){previewAhInv(btn.getAttribute('data-eid'));}
-  // Route generate through entry selection modal to allow date picking
-  if(action==='ahgenerate'){showAhSelect(btn.getAttribute('data-pid'));}
+  // For single ad-hoc entry, generate directly; for multiple, show selection modal
+  if(action==='ahgenerate'){genAhInv(btn.getAttribute('data-eid'));}
   if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
   // Route generate all through entry selection modal
   if(action==='ahgenall'){showAhSelect(btn.getAttribute('data-pid'));}
