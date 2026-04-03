@@ -62,7 +62,7 @@ function getSheetId(entity) {
 // The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'color', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'paidStatus', 'paidDate', 'createdAt'];
-const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'createdAt'];
+const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'email', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 const TRASH_COLUMNS = ['deletedAt', 'dataType', 'originalData'];
@@ -1040,7 +1040,7 @@ async function loadPractices(sheets, sheetId, res) {
   console.log('[loadPractices] Loading from sheet:', sheetId);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Practices!A:O',
+    range: 'Practices!A:P',
   });
 
   const rows = response.data.values || [];
@@ -1380,7 +1380,7 @@ async function setupAllTabs(sheets, res) {
   const TABS = [
     { name: 'Entries', columns: ENTRY_COLUMNS, range: 'A:T' },
     { name: 'Invoices', columns: INVOICE_COLUMNS, range: 'A:AA' },
-    { name: 'Practices', columns: PRACTICE_COLUMNS, range: 'A:O' },
+    { name: 'Practices', columns: PRACTICE_COLUMNS, range: 'A:P' },
     { name: 'Settings', columns: SETTINGS_COLUMNS, range: 'A:C' },
     { name: 'Log', columns: LOG_COLUMNS, range: 'A:G' },
     { name: 'Trash', columns: TRASH_COLUMNS, range: 'A:C' }

@@ -366,6 +366,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-btn" id="navHome" onclick="goHome()" title="Home">&#127968;</button>
 <button class="hdr-btn" id="navArchive" onclick="showScreen('archive')" title="Archive">&#128274;</button>
 <button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')" title="Invoices">&#128196;</button>
+<button class="hdr-btn" id="navTracker" onclick="showScreen('tracker')" title="Invoice Tracker">&#128203;</button>
 <button class="hdr-btn" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
 <button class="hdr-btn" id="navSettings" onclick="showScreen('settings')" title="Settings">&#9881;</button>
 </div>
@@ -511,6 +512,16 @@ input[type="date"].fi{min-width:100%;display:block}
 <div id="mInv"></div>
 <div id="ahInv"></div>
 <div id="pInv"></div>
+</div>
+
+<!-- INVOICE TRACKER -->
+<div class="scr" id="scr-tracker">
+<div class="esw">
+<button class="ebtn" onclick="setTrackerEnt('all')" id="tEA">All</button>
+<button class="ebtn act" onclick="setTrackerEnt('self')" id="tES">Self-Employed</button>
+<button class="ebtn" onclick="setTrackerEnt('ltd')" id="tEL">Ltd Company</button>
+</div>
+<div id="trackerContent"></div>
 </div>
 
 <!-- ANALYTICS -->
@@ -710,12 +721,13 @@ function loadSettings(){
             if (saved.name) S.practices[k].name = saved.name;
             if (saved.short) S.practices[k].short = saved.short;
             if (saved.addr) S.practices[k].addr = saved.addr;
+            if (saved.email !== undefined) S.practices[k].email = saved.email;
             if (saved.days) S.practices[k].days = saved.days;
             if (saved.svcs) S.practices[k].svcs = saved.svcs;
           }
         } else if (d.practices[k] && d.practices[k].short && d.practices[k].name) {
           const saved = d.practices[k];
-          S.practices[k] = { id: k, name: saved.name, short: saved.short, addr: saved.addr || '', days: saved.days || [], comm: saved.comm || 0.35, type: 'contract', color: saved.color || 'grove', svcs: saved.svcs || { Hygiene: { p: 70, d: 'per patient' } } };
+          S.practices[k] = { id: k, name: saved.name, short: saved.short, addr: saved.addr || '', email: saved.email || '', days: saved.days || [], comm: saved.comm || 0.35, type: 'contract', color: saved.color || 'grove', svcs: saved.svcs || { Hygiene: { p: 70, d: 'per patient' } } };
         }
       });
     }
@@ -749,7 +761,7 @@ function save() {
     const pData = {};
     Object.keys(S.practices).forEach(k => {
       const p = S.practices[k];
-      pData[k] = { name: p.name, short: p.short, addr: p.addr, comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract', paidHours: p.paidHours || {}, ptsPerHour: p.ptsPerHour || 2 };
+      pData[k] = { name: p.name, short: p.short, addr: p.addr, email: p.email || '', comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract', paidHours: p.paidHours || {}, ptsPerHour: p.ptsPerHour || 2 };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
       ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, workSchedule: S.workSchedule || {}, scheduleHours: S.scheduleHours || {}, scheduleExceptions: S.scheduleExceptions || []
@@ -1278,6 +1290,7 @@ async function syncPracticesToCloud() {
     name: p.name || p.short || id,
     type: 'contract',
     addr: p.addr || '',
+    email: p.email || '',  // Practice email for invoice sending
     comm: p.comm || 0,
     services: p.svcs || {},
     days: p.days || [],
@@ -1305,6 +1318,7 @@ async function syncPracticesToCloud() {
       name: p.name || p.id,
       type: 'adhoc',
       addr: p.addr || '',
+      email: p.email || '',  // Practice email for invoice sending
       comm: 0,  // Ad hoc = 0% commission (billed directly)
       services: services,
       days: [],
@@ -1399,7 +1413,9 @@ async function loadPracticesFromCloud() {
       }
       p.paidHours = (p.paidHours && Object.keys(p.paidHours).length > 0) ? p.paidHours : (existing?.paidHours || {});
       p.ptsPerHour = p.ptsPerHour || existing?.ptsPerHour || 2;
-      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days, 'paidHours=', p.paidHours);
+      // Email for invoices - keep cloud value or fall back to local
+      p.email = p.email || existing?.email || '';
+      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days, 'paidHours=', p.paidHours, 'email=', p.email);
       S.practices[p.id] = p;
     });
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
@@ -2173,6 +2189,7 @@ var el;
 el=document.getElementById('navHome');if(el)el.classList.toggle('act',n==='home');
 el=document.getElementById('navArchive');if(el)el.classList.toggle('act',n==='archive');
 el=document.getElementById('navInvoice');if(el)el.classList.toggle('act',n==='invoices');
+el=document.getElementById('navTracker');if(el)el.classList.toggle('act',n==='tracker');
 el=document.getElementById('navAnalytics');if(el)el.classList.toggle('act',n==='analytics');
 el=document.getElementById('navSettings');if(el)el.classList.toggle('act',n==='settings');
 }
@@ -2200,12 +2217,12 @@ if(S.scr!==n)S.hist.push(S.scr);
 S.scr=n;upHdr(n);updateNavHighlight(n);
 if(n==='archive'){resetArcFilters();refArc();}
 if(n==='invoices'){console.log('[showScreen] invoices - calling resetInvFilters and refInv');try{resetInvFilters();refInv();}catch(err){console.error('[showScreen] Error in invoices:',err);}}
-if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='analytics'){try{refreshAnalytics();}catch(err){console.error('[showScreen] Error in analytics:',err);}}
+if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='tracker'){try{refTracker();}catch(err){console.error('[showScreen] Error in tracker:',err);}}if(n==='analytics'){try{refreshAnalytics();}catch(err){console.error('[showScreen] Error in analytics:',err);}}
 }
-function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();}
+function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();if(p==='tracker')refTracker();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';S.viewEnt='all';S.viewMonth=null;var eA=document.getElementById('eA'),eS=document.getElementById('eS'),eL=document.getElementById('eL');if(eA)eA.classList.add('act');if(eS)eS.classList.remove('act');if(eL)eL.classList.remove('act');document.getElementById('hdrE').textContent='All';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
-const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',analytics:'Analytics',settings:'Settings'};
+const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',tracker:'Invoice Tracker',analytics:'Analytics',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
 // For archive/invoices screen, respect entity filter
 if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}
@@ -3632,6 +3649,102 @@ pc2.querySelectorAll('.aitem[data-inv]').forEach(item=>{
     if(idx>=0)showInvoiceOptionsModal(idx);
   };
 });
+}
+
+// ===== INVOICE TRACKER FUNCTIONS =====
+let trackerEnt='self'; // 'all', 'self', or 'ltd'
+
+function setTrackerEnt(t){
+  trackerEnt=t;
+  document.getElementById('tEA').className='ebtn'+(t==='all'?' act':'');
+  document.getElementById('tES').className='ebtn'+(t==='self'?' act':'');
+  document.getElementById('tEL').className='ebtn'+(t==='ltd'?' act':'');
+  refTracker();
+}
+
+function refTracker(){
+  const cont=document.getElementById('trackerContent');
+  if(!cont)return;
+
+  // Helper to get entity type from invoice
+  function getInvEntity(inv){
+    return inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  }
+
+  // Filter invoices by entity
+  let allInvs=[...S.invoices];
+  if(trackerEnt!=='all'){
+    allInvs=allInvs.filter(inv=>getInvEntity(inv)===trackerEnt);
+  }
+
+  // Sort newest to oldest (by date, then by invoice number)
+  allInvs.sort((a,b)=>{
+    const dateCompare=b.date.localeCompare(a.date);
+    if(dateCompare!==0)return dateCompare;
+    return b.num.localeCompare(a.num);
+  });
+
+  // Split into Unpaid and Paid
+  const unpaidInvs=allInvs.filter(inv=>inv.paidStatus!=='paid');
+  const paidInvs=allInvs.filter(inv=>inv.paidStatus==='paid');
+
+  // Render invoice item
+  function renderTrackerInv(inv){
+    const entType=getInvEntity(inv);
+    const entLabel=entType==='ltd'?'Ltd':'Self';
+    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc'||inv.commRate==='N/A';
+    const typeLabel=isAdhoc?'Ad Hoc':'Contract';
+    let prcClass='';
+    const prcName=inv.practice||'Ad Hoc';
+    if(isAdhoc)prcClass='prc-adhoc';
+    else if(inv.practice&&inv.practice.toLowerCase().includes('bupa'))prcClass='prc-bupa';
+    else if(inv.practice&&inv.practice.toLowerCase().includes('grove'))prcClass='prc-grove';
+    const idx=S.invoices.findIndex(i=>i.num===inv.num&&getInvEntity(i)===entType);
+    const isPaid=inv.paidStatus==='paid';
+    const overdueInfo=isInvoiceOverdue(inv);
+    let statusClass,statusLabel,statusBadgeClass;
+    if(isPaid){
+      statusClass='inv-paid';statusLabel='Paid';statusBadgeClass='paid';
+    }else if(overdueInfo.overdue){
+      statusClass='inv-overdue';statusLabel='Overdue '+overdueInfo.days+'d';statusBadgeClass='overdue';
+    }else{
+      statusClass='inv-unpaid';statusLabel='Unpaid';statusBadgeClass='unpaid';
+    }
+    return '<div class="aitem '+prcClass+' '+statusClass+'" data-inv="'+inv.num+'" data-idx="'+idx+'">'+
+      '<div class="ie-left"><div class="ie-num">#'+inv.num+'</div><div class="ie-ent '+entType+'">'+entLabel+'</div></div>'+
+      '<div class="ie-mid"><div class="ie-prc">'+prcName+'</div><div class="ie-per">'+inv.period+' <span class="ie-type '+(isAdhoc?'adhoc':'contract')+'">'+typeLabel+'</span></div></div>'+
+      '<div class="ie-amt '+statusBadgeClass+'"><span class="ie-bal">'+fc(inv.amount)+'</span><span class="ie-status">'+statusLabel+'</span></div>'+
+      '</div>';
+  }
+
+  let html='';
+
+  // ===== UNPAID SECTION =====
+  if(unpaidInvs.length){
+    html+='<div class="inv-section-hdr unpaid-hdr">Unpaid <span class="sec-count">'+unpaidInvs.length+' invoice'+(unpaidInvs.length!==1?'s':'')+'</span></div>';
+    html+='<div class="alist">'+unpaidInvs.map(renderTrackerInv).join('')+'</div>';
+  }
+
+  // ===== PAID SECTION =====
+  if(paidInvs.length){
+    html+='<div class="inv-section-hdr paid-hdr">Paid <span class="sec-count">'+paidInvs.length+' invoice'+(paidInvs.length!==1?'s':'')+'</span></div>';
+    html+='<div class="alist">'+paidInvs.map(renderTrackerInv).join('')+'</div>';
+  }
+
+  // Empty state
+  if(!unpaidInvs.length&&!paidInvs.length){
+    html+='<div class="empty"><div class="emo">📋</div><p>No invoices tracked yet</p></div>';
+  }
+
+  cont.innerHTML=html;
+
+  // Add click handlers for invoice items
+  cont.querySelectorAll('.aitem[data-inv]').forEach(item=>{
+    item.onclick=function(e){
+      const idx=parseInt(this.dataset.idx);
+      if(idx>=0)showInvoiceOptionsModal(idx);
+    };
+  });
 }
 
 // ===== INVOICE OPTIONS MODAL =====
