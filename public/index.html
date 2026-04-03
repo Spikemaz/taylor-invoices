@@ -366,7 +366,7 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-btn" id="navHome" onclick="goHome()" title="Home">&#127968;</button>
 <button class="hdr-btn" id="navArchive" onclick="showScreen('archive')" title="Archive">&#128274;</button>
 <button class="hdr-btn" id="navInvoice" onclick="showScreen('invoices')" title="Invoices">&#128196;</button>
-<button class="hdr-btn" id="navTracker" onclick="showScreen('tracker')" title="Invoice Tracker">&#128203;</button>
+<button class="hdr-btn" id="navTracker" onclick="showScreen('tracker')" title="Tracking">&#128203;</button>
 <button class="hdr-btn" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
 <button class="hdr-btn" id="navSettings" onclick="showScreen('settings')" title="Settings">&#9881;</button>
 </div>
@@ -2222,7 +2222,7 @@ if(n==='home')animateHomeFromZero();if(n==='settings')refreshSettings();if(n==='
 function goBack(){const p=S.hist.pop();if(!p)return;const c=document.getElementById('scr-'+S.scr),pr=document.getElementById('scr-'+p);if(c)c.classList.remove('act');if(pr)pr.classList.add('act');S.scr=p;upHdr(p);updateNavHighlight(p);if(p==='home')animateHomeFromZero();if(p==='archive')refArc();if(p==='invoices')refInv();if(p==='tracker')refTracker();}
 function goHome(){document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('act')});document.getElementById('scr-home').classList.add('act');S.hist=[];S.scr='home';S.viewEnt='all';S.viewMonth=null;var eA=document.getElementById('eA'),eS=document.getElementById('eS'),eL=document.getElementById('eL');if(eA)eA.classList.add('act');if(eS)eS.classList.remove('act');if(eL)eL.classList.remove('act');document.getElementById('hdrE').textContent='All';upHdr('home');updateNavHighlight('home');animateHomeFromZero();}
 function upHdr(s){const b=document.getElementById('backBtn'),t=document.getElementById('hdrT'),e=document.getElementById('hdrE');
-const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',tracker:'Invoice Tracker',analytics:'Analytics',settings:'Settings'};
+const titles={home:'Books IQ™',practice:S.prac&&S.practices[S.prac]?S.practices[S.prac].short:'Practice',adhoc:'Ad Hoc',archive:'Archive',invoices:'Invoices',tracker:'Tracking',analytics:'Analytics',settings:'Settings'};
 t.innerHTML=s==='home'?'Books IQ<span class="tm">™</span>':(titles[s]||'Books IQ™');
 // For archive/invoices screen, respect entity filter
 if(s==='archive'&&arcEntFilter==='all'){e.textContent='All';}
@@ -3554,101 +3554,14 @@ const awaitingHeader=document.getElementById('awaitingApprovalHeader');
 const hasAwaitingApproval=mc.innerHTML.trim()!==''||ac.innerHTML.trim()!=='';
 if(awaitingHeader)awaitingHeader.style.display=hasAwaitingApproval?'block':'none';
 
-// ===== SECTION 2 & 3: UNPAID & PAID INVOICES =====
+// Clear pInv - Unpaid/Paid invoices now shown in Tracking tab only
 const pc2=document.getElementById('pInv');
+pc2.innerHTML='';
 
-// Filter invoices by selected month - use PERIOD (work month) not generation date
-// This ensures invoices show in the month the work was done, not when generated
-const periodMonthYear=monthNames[viewMonth]+' '+viewYear;
-let filteredInvs=S.invoices.filter(inv=>{
-  // Primary: Match by period (e.g., "February 2026")
-  if(inv.period&&inv.period.includes(periodMonthYear))return true;
-  // Check for date range periods like "01/02/2026 - 28/02/2026" or single date "11/02/2026"
-  if(inv.period){
-    const periodMatch=inv.period.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if(periodMatch){
-      const pMonth=parseInt(periodMatch[2])-1;
-      const pYear=parseInt(periodMatch[3]);
-      if(pMonth===viewMonth&&pYear===viewYear)return true;
-    }
-  }
-  // Fallback: Match by generation date if no period or period doesn't match standard format
-  const monthPrefix=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
-  if(!inv.period&&inv.date&&inv.date.startsWith(monthPrefix))return true;
-  return false;
-});
-
-// Filter by entity
-if(S.iEnt!=='all'){
-  filteredInvs=filteredInvs.filter(inv=>getInvEntity(inv)===S.iEnt);
+// Empty state if no entries awaiting approval
+if(!hasAwaitingApproval){
+  pc2.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries awaiting invoice for this month</p></div>';
 }
-if(invPracFilter!=='all'){
-  filteredInvs=filteredInvs.filter(inv=>{
-    const prac=(inv.practice||'').toLowerCase();
-    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc'||inv.commRate==='N/A';
-    if(invPracFilter==='adhoc')return isAdhoc;
-    if(invPracFilter==='bupa')return prac.includes('bupa');
-    if(invPracFilter==='grove')return prac.includes('grove');
-    return true;
-  });
-}
-
-// Split into Unpaid and Paid
-const unpaidInvs=filteredInvs.filter(inv=>inv.paidStatus!=='paid').sort((a,b)=>b.date.localeCompare(a.date));
-const paidInvs=filteredInvs.filter(inv=>inv.paidStatus==='paid').sort((a,b)=>b.date.localeCompare(a.date));
-
-let invHtml='';
-
-// ===== UNPAID SECTION =====
-if(unpaidInvs.length){
-  invHtml+='<div class="inv-section-hdr unpaid-hdr">Unpaid <span class="sec-count">'+unpaidInvs.length+' invoice'+(unpaidInvs.length!==1?'s':'')+'</span></div>';
-  invHtml+='<div class="inv-section-content">';
-  if(S.iEnt==='all'){
-    const unpaidSelf=unpaidInvs.filter(inv=>getInvEntity(inv)==='self');
-    const unpaidLtd=unpaidInvs.filter(inv=>getInvEntity(inv)==='ltd');
-    invHtml+=renderEntityGroup(unpaidSelf,'self','Self-Employed');
-    invHtml+=renderEntityGroup(unpaidLtd,'ltd','Ltd Company');
-  }else{
-    invHtml+='<div class="alist">'+unpaidInvs.map(renderInv).join('')+'</div>';
-  }
-  invHtml+='</div>';
-}
-
-// ===== PAID SECTION =====
-if(paidInvs.length){
-  invHtml+='<div class="inv-section-hdr paid-hdr">Paid <span class="sec-count">'+paidInvs.length+' invoice'+(paidInvs.length!==1?'s':'')+'</span></div>';
-  invHtml+='<div class="inv-section-content">';
-  if(S.iEnt==='all'){
-    const paidSelf=paidInvs.filter(inv=>getInvEntity(inv)==='self');
-    const paidLtd=paidInvs.filter(inv=>getInvEntity(inv)==='ltd');
-    invHtml+=renderEntityGroup(paidSelf,'self','Self-Employed');
-    invHtml+=renderEntityGroup(paidLtd,'ltd','Ltd Company');
-  }else{
-    invHtml+='<div class="alist">'+paidInvs.map(renderInv).join('')+'</div>';
-  }
-  invHtml+='</div>';
-}
-
-// Empty state if no invoices
-if(!unpaidInvs.length&&!paidInvs.length&&!hasAwaitingApproval){
-  invHtml+='<div class="empty"><div class="emo">📋</div><p>No invoices for this month</p></div>';
-}
-
-pc2.innerHTML=invHtml;
-
-// Add click handlers for collapsible entity groups
-pc2.querySelectorAll('.ent-group-hdr').forEach(el=>{
-  el.onclick=function(e){e.stopPropagation();this.parentElement.classList.toggle('collapsed');};
-});
-
-// Add click handlers for invoice items
-pc2.querySelectorAll('.aitem[data-inv]').forEach(item=>{
-  item.onclick=function(e){
-    if(e.target.closest('.ent-group-hdr'))return;
-    const idx=parseInt(this.dataset.idx);
-    if(idx>=0)showInvoiceOptionsModal(idx);
-  };
-});
 }
 
 // ===== INVOICE TRACKER FUNCTIONS =====
