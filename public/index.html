@@ -5818,7 +5818,8 @@ function refreshAnalytics(){
           const ptsPerHour=p.ptsPerHour||2;
           const estPts=paidH*ptsPerHour;
           projPts+=estPts;
-          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          const svcPrices=Object.values(p.svcs||{}).map(s=>(typeof s==='object'&&s.p)?s.p:(typeof s==='number'?s:0));
+          const avgPrice=svcPrices.length>0?svcPrices.reduce((a,b)=>a+b,0)/svcPrices.length:70;
           projNet+=estPts*avgPrice*p.comm;
         }
       });
@@ -5957,25 +5958,25 @@ function refreshAnalytics(){
   // Show total breakdown: Paid + Unpaid + Uninvoiced = Total Earnings
   _h+='<div style="font-size:11px;color:var(--txt2);margin-bottom:8px">Total earnings breakdown for tax year</div>';
 
-  // Three columns: Paid, Unpaid, Uninvoiced
-  _h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px">';
+  // Three columns: Paid, Unpaid, Uninvoiced - responsive for mobile
+  _h+='<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:12px">';
   // Paid
-  _h+='<div style="padding:10px;background:rgba(34,197,94,0.1);border-radius:var(--rs);border:1px solid var(--ok)">';
-  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--ok);font-weight:600"><span style="width:6px;height:6px;background:var(--ok);border-radius:50%"></span>PAID</div>';
-  _h+='<div style="font-size:18px;font-weight:700;color:var(--ok)">'+fc(paidTotal)+'</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2)">'+paidInvoices.length+' inv</div>';
+  _h+='<div style="padding:8px 6px;background:rgba(34,197,94,0.1);border-radius:var(--rs);border:1px solid var(--ok);min-width:0;overflow:hidden">';
+  _h+='<div style="font-size:9px;color:var(--ok);font-weight:600;white-space:nowrap">PAID</div>';
+  _h+='<div style="font-size:15px;font-weight:700;color:var(--ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fc(paidTotal)+'</div>';
+  _h+='<div style="font-size:9px;color:var(--txt2)">'+paidInvoices.length+' inv</div>';
   _h+='</div>';
   // Unpaid
-  _h+='<div style="padding:10px;background:rgba(239,68,68,0.1);border-radius:var(--rs);border:1px solid var(--err)">';
-  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--err);font-weight:600"><span style="width:6px;height:6px;background:var(--err);border-radius:50%"></span>UNPAID</div>';
-  _h+='<div style="font-size:18px;font-weight:700;color:var(--err)">'+fc(unpaidTotal)+'</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2)">'+unpaidInvoices.length+' inv</div>';
+  _h+='<div style="padding:8px 6px;background:rgba(239,68,68,0.1);border-radius:var(--rs);border:1px solid var(--err);min-width:0;overflow:hidden">';
+  _h+='<div style="font-size:9px;color:var(--err);font-weight:600;white-space:nowrap">UNPAID</div>';
+  _h+='<div style="font-size:15px;font-weight:700;color:var(--err);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fc(unpaidTotal)+'</div>';
+  _h+='<div style="font-size:9px;color:var(--txt2)">'+unpaidInvoices.length+' inv</div>';
   _h+='</div>';
   // Uninvoiced
-  _h+='<div style="padding:10px;background:rgba(245,158,11,0.1);border-radius:var(--rs);border:1px solid var(--warn)">';
-  _h+='<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--warn);font-weight:600"><span style="width:6px;height:6px;background:var(--warn);border-radius:50%"></span>NOT INVOICED</div>';
-  _h+='<div style="font-size:18px;font-weight:700;color:var(--warn)">'+fc(uninvoicedTotal)+'</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2)">'+uninvoicedEntries.length+' entries</div>';
+  _h+='<div style="padding:8px 6px;background:rgba(245,158,11,0.1);border-radius:var(--rs);border:1px solid var(--warn);min-width:0;overflow:hidden">';
+  _h+='<div style="font-size:9px;color:var(--warn);font-weight:600;white-space:nowrap">NOT INV</div>';
+  _h+='<div style="font-size:15px;font-weight:700;color:var(--warn);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fc(uninvoicedTotal)+'</div>';
+  _h+='<div style="font-size:9px;color:var(--txt2)">'+uninvoicedEntries.length+' entries</div>';
   _h+='</div>';
   _h+='</div>';
 
@@ -6082,45 +6083,51 @@ function refreshAnalytics(){
   const lastMonthAvgPP=lastMonthPtsSameRange>0?lastMonthNetSameRange/lastMonthPtsSameRange:0;
   const thisMonthAvgPP=monthPatients>0?monthNet/monthPatients:0;
 
-  // This month projected - use ACTUAL for past days, PROJECTED for future days
-  // This ensures missed days don't inflate the projection
+  // Calculate expected vs actual for PAST WORKING DAYS only
+  // This shows if you're on track based on days already worked
   const todayStr=now.toISOString().split('T')[0];
   const daysInThisMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  let projectedMonthPts=0,projectedMonthNet=0;
+
+  // Track: expected (based on schedule) vs actual (based on entries) for past days only
+  let expectedPtsToDate=0,expectedNetToDate=0;  // What you SHOULD have earned by now
+  let expectedPtsFullMonth=0,expectedNetFullMonth=0;  // Full month target
+
   for(let day=1;day<=daysInThisMonth;day++){
     const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const isPastDay=dateStr<todayStr;
+    const isPastOrToday=dateStr<=todayStr;
 
-    if(isPastDay){
-      // For past days, use ACTUAL data (missed days = 0)
-      const dayEntries=currentMonthEntries.filter(e=>e.date===dateStr);
-      dayEntries.forEach(e=>{
-        projectedMonthPts+=e.pts||0;
-        const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
-        const isAdhoc=e.pType==='adhoc';
-        projectedMonthNet+=isAdhoc?gross:gross*(e.comm||0);
-      });
-    }else{
-      // For today and future, use projected data from schedule
-      const dayPractices = getPracticesForDate(dateStr);
-      dayPractices.forEach(prac => {
-        const p=S.practices[prac.pId];
-        if(p){
-          const paidH = prac.hours || 7;
-          const ptsPerHour=p.ptsPerHour||2;
-          const estPts=paidH*ptsPerHour;
-          projectedMonthPts+=estPts;
-          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
-          projectedMonthNet+=estPts*avgPrice*p.comm;
+    // Get scheduled practices for this day
+    const dayPractices = getPracticesForDate(dateStr);
+    dayPractices.forEach(prac => {
+      const p=S.practices[prac.pId];
+      if(p){
+        const paidH = prac.hours || 7;
+        const ptsPerHour=p.ptsPerHour||2;
+        const estPts=paidH*ptsPerHour;
+        const svcPrices=Object.values(p.svcs||{}).map(s=>(typeof s==='object'&&s.p)?s.p:(typeof s==='number'?s:0));
+        const avgPrice=svcPrices.length>0?svcPrices.reduce((a,b)=>a+b,0)/svcPrices.length:70;
+        const estNet=estPts*avgPrice*p.comm;
+
+        // Add to full month target
+        expectedPtsFullMonth+=estPts;
+        expectedNetFullMonth+=estNet;
+
+        // Add to "to date" target if day is past or today
+        if(isPastOrToday){
+          expectedPtsToDate+=estPts;
+          expectedNetToDate+=estNet;
         }
-      });
-    }
+      }
+    });
   }
 
-  const ptsProgress=projectedMonthPts>0?Math.round((monthPatients/projectedMonthPts)*100):0;
-  const netProgress=projectedMonthNet>0?Math.round((monthNet/projectedMonthNet)*100):0;
-  const ptsVsLast=lastMonthPts>0?monthPatients-lastMonthPts:monthPatients;
-  const netVsLast=lastMonthNet>0?monthNet-lastMonthNet:monthNet;
+  // Progress is actual vs expected TO DATE (not full month)
+  const ptsProgressToDate=expectedPtsToDate>0?Math.round((monthPatients/expectedPtsToDate)*100):0;
+  const netProgressToDate=expectedNetToDate>0?Math.round((monthNet/expectedNetToDate)*100):0;
+
+  // Full month progress (for projected end-of-month)
+  const ptsProgressFullMonth=expectedPtsFullMonth>0?Math.round((monthPatients/expectedPtsFullMonth)*100):0;
+  const netProgressFullMonth=expectedNetFullMonth>0?Math.round((monthNet/expectedNetFullMonth)*100):0;
 
   _h+='<div class="analytics-card">';
   _h+='<h3 class="analytics-title">Patient Metrics ('+taxYearLabel+')</h3>';
@@ -6156,67 +6163,207 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // This Month vs Last Month comparison (same date range: 1st to today)
-  const dateRangeLabel='1st-'+todayDay+ordinalSuffix(todayDay);
+  // Calculate WORKING DAYS completed this month vs last month (not calendar days)
+  // This is more meaningful than comparing calendar date ranges
+  let thisMonthWorkDaysCompleted=0,lastMonthWorkDaysCompleted=0;
+  let thisMonthScheduledDays=0,lastMonthScheduledDays=0;
 
-  // Calculate change based on same date range
-  const ptsVsLastSameRange=monthPatients-lastMonthPtsSameRange;
-  const netVsLastSameRange=monthNet-lastMonthNetSameRange;
+  // Count completed working days this month (days with entries or past scheduled days)
+  for(let day=1;day<=todayDay;day++){
+    const dateStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dayPractices=getPracticesForDate(dateStr);
+    if(dayPractices.length>0){
+      thisMonthScheduledDays++;
+      const hasEntry=currentMonthEntries.some(e=>e.date===dateStr);
+      if(hasEntry)thisMonthWorkDaysCompleted++;
+    }
+  }
 
-  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">SAME PERIOD COMPARISON</div>';
-  _h+='<div style="font-size:10px;color:var(--txt2);margin-bottom:8px">Comparing '+dateRangeLabel+' of each month</div>';
-  _h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;margin-bottom:16px;align-items:center">';
+  // Count working days from last month (full month)
+  const lastMonthDays=new Date(lastMonthYear,lastMonthNum,0).getDate();
+  for(let day=1;day<=lastMonthDays;day++){
+    const dateStr=lastMonthYear+'-'+String(lastMonthNum).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const dayPractices=getPracticesForDate(dateStr);
+    if(dayPractices.length>0){
+      lastMonthScheduledDays++;
+      const hasEntry=lastMonthEntries.some(e=>e.date===dateStr);
+      if(hasEntry)lastMonthWorkDaysCompleted++;
+    }
+  }
 
-  // Last month (same range)
+  // Month comparison - full months with averages
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:4px">MONTH COMPARISON</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-bottom:8px">'+thisMonthName+' (to date) vs '+lastMonthName+' (full month)</div>';
+  _h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">';
+
+  // Last month (full)
   _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs)">';
-  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' 1-'+todayDay+'</div>';
-  _h+='<div style="font-size:16px;font-weight:600">'+lastMonthPtsSameRange+' pts</div>';
-  _h+='<div style="font-size:13px;color:var(--pri)">'+fc(lastMonthNetSameRange)+'</div>';
+  _h+='<div style="font-size:11px;color:var(--txt2)">'+lastMonthName+' Total</div>';
+  _h+='<div style="font-size:16px;font-weight:600">'+lastMonthPts+' pts</div>';
+  _h+='<div style="font-size:13px;color:var(--pri)">'+fc(lastMonthNet)+'</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-top:4px">'+lastMonthWorkDaysCompleted+'/'+lastMonthScheduledDays+' work days</div>';
   _h+='</div>';
 
-  // Arrow with change
-  const changeColor=ptsVsLastSameRange>=0?'var(--ok)':'var(--err)';
-  _h+='<div style="text-align:center">';
-  _h+='<div style="font-size:20px;color:var(--txt2)">&rarr;</div>';
-  _h+='<div style="font-size:11px;color:'+changeColor+'">'+(ptsVsLastSameRange>=0?'+':'')+ptsVsLastSameRange+' pts</div>';
-  _h+='</div>';
-
-  // This month
+  // This month (to date)
   _h+='<div style="padding:10px;background:var(--pri);border-radius:var(--rs);color:#fff">';
-  _h+='<div style="font-size:11px;opacity:0.85">'+thisMonthName+' 1-'+todayDay+'</div>';
+  _h+='<div style="font-size:11px;opacity:0.85">'+thisMonthName+' So Far</div>';
   _h+='<div style="font-size:16px;font-weight:600">'+monthPatients+' pts</div>';
   _h+='<div style="font-size:13px">'+fc(monthNet)+'</div>';
+  _h+='<div style="font-size:10px;opacity:0.85;margin-top:4px">'+thisMonthWorkDaysCompleted+'/'+thisMonthScheduledDays+' work days</div>';
   _h+='</div>';
   _h+='</div>';
 
-  // Progress vs Target
-  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">PROGRESS vs TARGET ('+thisMonthName+')</div>';
-  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+  // Progress vs Target - TWO sections: To Date and Full Month
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">PROGRESS TO DATE ('+thisMonthName+')</div>';
+  _h+='<div style="font-size:10px;color:var(--txt2);margin-bottom:8px">Actual vs expected for work days up to today</div>';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs);margin-bottom:12px">';
 
-  // Patients progress
-  const ptsColor=ptsProgress>=100?'var(--ok)':ptsProgress>=80?'var(--warn)':'var(--err)';
+  // Patients progress (to date)
+  const ptsColorToDate=ptsProgressToDate>=100?'var(--ok)':ptsProgressToDate>=80?'var(--warn)':'var(--err)';
+  const ptsVarianceToDate=monthPatients-expectedPtsToDate;
   _h+='<div style="margin-bottom:12px">';
   _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
   _h+='<span>Patients</span>';
-  _h+='<span style="color:'+ptsColor+'">'+monthPatients+' / '+Math.round(projectedMonthPts)+' ('+ptsProgress+'%)</span>';
+  _h+='<span style="color:'+ptsColorToDate+'">'+monthPatients+' / '+Math.round(expectedPtsToDate)+' ('+(ptsVarianceToDate>=0?'+':'')+ptsVarianceToDate+')</span>';
   _h+='</div>';
   _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
-  _h+='<div style="height:100%;width:'+Math.min(ptsProgress,100)+'%;background:'+ptsColor+';border-radius:4px"></div>';
+  _h+='<div style="height:100%;width:'+Math.min(ptsProgressToDate,100)+'%;background:'+ptsColorToDate+';border-radius:4px"></div>';
   _h+='</div>';
   _h+='</div>';
 
-  // Earnings progress
-  const netColor=netProgress>=100?'var(--ok)':netProgress>=80?'var(--warn)':'var(--err)';
+  // Earnings progress (to date)
+  const netColorToDate=netProgressToDate>=100?'var(--ok)':netProgressToDate>=80?'var(--warn)':'var(--err)';
+  const netVarianceToDate=monthNet-expectedNetToDate;
   _h+='<div>';
   _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
   _h+='<span>Earnings</span>';
-  _h+='<span style="color:'+netColor+'">'+fc(monthNet)+' / '+fc(projectedMonthNet)+' ('+netProgress+'%)</span>';
+  _h+='<span style="color:'+netColorToDate+'">'+fc(monthNet)+' / '+fc(expectedNetToDate)+' ('+(netVarianceToDate>=0?'+':'')+fc(netVarianceToDate)+')</span>';
   _h+='</div>';
   _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
-  _h+='<div style="height:100%;width:'+Math.min(netProgress,100)+'%;background:'+netColor+';border-radius:4px"></div>';
+  _h+='<div style="height:100%;width:'+Math.min(netProgressToDate,100)+'%;background:'+netColorToDate+';border-radius:4px"></div>';
   _h+='</div>';
   _h+='</div>';
   _h+='</div>';
+
+  // Full Month Target
+  _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">FULL MONTH TARGET</div>';
+  _h+='<div style="padding:12px;background:var(--bg);border-radius:var(--rs)">';
+
+  // Patients full month
+  const ptsColorFullMonth=ptsProgressFullMonth>=100?'var(--ok)':ptsProgressFullMonth>=50?'var(--warn)':'var(--txt2)';
+  _h+='<div style="margin-bottom:12px">';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
+  _h+='<span>Patients Target</span>';
+  _h+='<span style="color:'+ptsColorFullMonth+'">'+monthPatients+' / '+Math.round(expectedPtsFullMonth)+' ('+ptsProgressFullMonth+'%)</span>';
+  _h+='</div>';
+  _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(ptsProgressFullMonth,100)+'%;background:'+ptsColorFullMonth+';border-radius:4px"></div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // Earnings full month
+  const netColorFullMonth=netProgressFullMonth>=100?'var(--ok)':netProgressFullMonth>=50?'var(--warn)':'var(--txt2)';
+  _h+='<div>';
+  _h+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">';
+  _h+='<span>Earnings Target</span>';
+  _h+='<span style="color:'+netColorFullMonth+'">'+fc(monthNet)+' / '+fc(expectedNetFullMonth)+' ('+netProgressFullMonth+'%)</span>';
+  _h+='</div>';
+  _h+='<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
+  _h+='<div style="height:100%;width:'+Math.min(netProgressFullMonth,100)+'%;background:'+netColorFullMonth+';border-radius:4px"></div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+  _h+='</div>';
+
+  // ============= EARNINGS RATE ANALYSIS =============
+  // Calculate earnings per hour and per day across practices
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Earnings Rate Analysis</h3>';
+
+  // Calculate rates per practice for current month
+  let practiceRates=[];
+  Object.keys(S.practices||{}).forEach(pId=>{
+    const p=S.practices[pId];
+    if(!p)return;
+    const pracEntries=currentMonthEntries.filter(e=>e.pId===pId);
+    if(pracEntries.length===0)return;
+
+    let totalPts=0,totalNet=0,totalHours=0,workDays=0;
+    const workedDates=new Set();
+    pracEntries.forEach(e=>{
+      totalPts+=e.pts||0;
+      const g=(e.pts*e.uPrice)+(e.aoAmt||0);
+      totalNet+=g*(e.comm||0);
+      if(!workedDates.has(e.date)){
+        workedDates.add(e.date);
+        workDays++;
+        // Get hours for this date
+        const hours=getHoursForPracticeOnDate(e.date,pId);
+        totalHours+=hours;
+      }
+    });
+
+    const perHour=totalHours>0?totalNet/totalHours:0;
+    const perPatient=totalPts>0?totalNet/totalPts:0;
+    const perDay=workDays>0?totalNet/workDays:0;
+    const ptsPerDay=workDays>0?totalPts/workDays:0;
+
+    practiceRates.push({
+      id:pId,
+      name:p.short||p.name,
+      color:p.color||'pri',
+      totalNet,totalPts,totalHours,workDays,
+      perHour,perPatient,perDay,ptsPerDay
+    });
+  });
+
+  // Sort by earnings per hour (best first)
+  practiceRates.sort((a,b)=>b.perHour-a.perHour);
+
+  if(practiceRates.length>0){
+    // Overall rates
+    const totalNetAll=practiceRates.reduce((s,p)=>s+p.totalNet,0);
+    const totalHoursAll=practiceRates.reduce((s,p)=>s+p.totalHours,0);
+    const totalPtsAll=practiceRates.reduce((s,p)=>s+p.totalPts,0);
+    const totalDaysAll=practiceRates.reduce((s,p)=>s+p.workDays,0);
+    const overallPerHour=totalHoursAll>0?totalNetAll/totalHoursAll:0;
+    const overallPerDay=totalDaysAll>0?totalNetAll/totalDaysAll:0;
+    const overallPerPatient=totalPtsAll>0?totalNetAll/totalPtsAll:0;
+
+    _h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">';
+    _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs);text-align:center">';
+    _h+='<div style="font-size:10px;color:var(--txt2)">Per Hour</div>';
+    _h+='<div style="font-size:16px;font-weight:700;color:var(--pri)">'+fc(overallPerHour)+'</div>';
+    _h+='</div>';
+    _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs);text-align:center">';
+    _h+='<div style="font-size:10px;color:var(--txt2)">Per Day</div>';
+    _h+='<div style="font-size:16px;font-weight:700;color:var(--pri)">'+fc(overallPerDay)+'</div>';
+    _h+='</div>';
+    _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs);text-align:center">';
+    _h+='<div style="font-size:10px;color:var(--txt2)">Per Patient</div>';
+    _h+='<div style="font-size:16px;font-weight:700;color:var(--pri)">'+fc(overallPerPatient)+'</div>';
+    _h+='</div>';
+    _h+='</div>';
+
+    // Per practice breakdown
+    _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">BY PRACTICE ('+thisMonthName+')</div>';
+    practiceRates.forEach(pr=>{
+      _h+='<div style="padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:6px;border-left:3px solid var(--'+pr.color+')">';
+      _h+='<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+      _h+='<span style="font-weight:600">'+pr.name+'</span>';
+      _h+='<span style="font-size:12px;color:var(--txt2)">'+pr.workDays+' days, '+pr.totalHours+'h worked</span>';
+      _h+='</div>';
+      _h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px">';
+      _h+='<div><span style="color:var(--txt2)">£/hr:</span> <strong>'+fc(pr.perHour)+'</strong></div>';
+      _h+='<div><span style="color:var(--txt2)">£/day:</span> <strong>'+fc(pr.perDay)+'</strong></div>';
+      _h+='<div><span style="color:var(--txt2)">£/pt:</span> <strong>'+fc(pr.perPatient)+'</strong></div>';
+      _h+='</div>';
+      _h+='<div style="font-size:10px;color:var(--txt2);margin-top:4px">'+pr.totalPts+' patients | '+fc(pr.totalNet)+' net earnings</div>';
+      _h+='</div>';
+    });
+  }else{
+    _h+='<div style="padding:20px;text-align:center;color:var(--txt2)">No work logged this month yet</div>';
+  }
   _h+='</div>';
 
   // Projections vs Actuals Section
@@ -6509,7 +6656,8 @@ function refreshAnalytics(){
           const estPts=paidH*ptsPerHour;
           projectedPts+=estPts;
           // Estimate net based on average service prices and commission
-          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          const svcPrices=Object.values(p.svcs||{}).map(s=>(typeof s==='object'&&s.p)?s.p:(typeof s==='number'?s:0));
+          const avgPrice=svcPrices.length>0?svcPrices.reduce((a,b)=>a+b,0)/svcPrices.length:70;
           projectedNet+=estPts*avgPrice*p.comm;
           if(day<=7)totalWeeklyHours+=paidH;
         }
@@ -6722,7 +6870,8 @@ function refreshAnalytics(){
           const paidH = prac.hours || 7;
           const ptsPerHour=p.ptsPerHour||2;
           const estPts=paidH*ptsPerHour;
-          const avgPrice=Object.values(p.svcs||{}).reduce((s,pr)=>s+pr,0)/Math.max(1,Object.keys(p.svcs||{}).length)||70;
+          const svcPrices=Object.values(p.svcs||{}).map(s=>(typeof s==='object'&&s.p)?s.p:(typeof s==='number'?s:0));
+          const avgPrice=svcPrices.length>0?svcPrices.reduce((a,b)=>a+b,0)/svcPrices.length:70;
           projectedTaxYearNet+=estPts*avgPrice*(p.comm||0);
         }
       });
