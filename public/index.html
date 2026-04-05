@@ -3579,13 +3579,15 @@ else{
       const dates=entries.map(e=>e.date);const dateRange=dates[0]===dates[dates.length-1]?fdd(dates[0]):fdd(dates[0])+' - '+fdd(dates[dates.length-1]);
       ahHtml+='<div class="icard prc-adhoc"><div class="ih"><div><div class="ip">'+g.name+'</div><div class="iper">'+entries.length+' entr'+(entries.length===1?'y':'ies')+' · '+dateRange+'</div></div></div>';
       ahHtml+='<div class="is"><div class="ist">Entries<strong>'+entries.length+'</strong></div><div class="ist">Patients<strong>'+totalPts+'</strong></div><div class="ist">Gross<strong>'+fc(totalGross)+'</strong></div></div>';
-      ahHtml+='<div class="ia">';
+      ahHtml+='<div class="ia" style="flex-wrap:wrap;gap:6px">';
       if(entries.length===1){
         ahHtml+='<button class="ibtn pv" data-action="ahpreview" data-eid="'+entries[0].id+'">Preview</button>';
         ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenerate" data-eid="'+entries[0].id+'">Generate PDF</button>';
+        ahHtml+='<button class="ibtn" data-action="ahedit" data-eid="'+entries[0].id+'" style="background:var(--bg);color:var(--txt);border:1px solid var(--bdr)">Edit/Delete</button>';
       }else{
         ahHtml+='<button class="ibtn pv" data-action="ahselect" data-pid="'+pId+'">Select Entries</button>';
         ahHtml+='<button class="ibtn gn prc-adhoc" data-action="ahgenall" data-pid="'+pId+'">Generate Invoice</button>';
+        ahHtml+='<button class="ibtn" data-action="ahmanage" data-pid="'+pId+'" style="background:var(--bg);color:var(--txt);border:1px solid var(--bdr)">Manage</button>';
       }
       ahHtml+='</div></div>';
     });
@@ -4627,6 +4629,84 @@ var gb=document.getElementById('_pvGen');if(gb)gb.onclick=function(){closeMod2()
 }
 
 function previewAhInv(id){const e=S.entries.find(x=>x.id===id);if(!e)return;showToast('Ad hoc preview — coming soon');}
+
+// Show modal to edit/delete a single ad-hoc entry
+function showAhEntryModal(id){
+  const e=S.entries.find(x=>x.id===id);
+  if(!e)return;
+
+  let _h='<div class="mod-hdr"><h3>Ad Hoc Entry</h3></div>';
+  _h+='<div style="margin-bottom:16px">';
+  _h+='<div style="font-size:16px;font-weight:600;color:var(--txt)">'+e.pName+'</div>';
+  _h+='<div style="font-size:13px;color:var(--txt2)">'+fdd(e.date)+'</div>';
+  _h+='<div style="font-size:13px;color:var(--txt2)">'+e.pts+' patients · '+fc(e.gross)+'</div>';
+  _h+='</div>';
+
+  _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_ahEdit">Edit Entry</button>';
+  _h+='<button class="btn" style="width:100%;margin-bottom:16px;background:var(--err);color:#fff" id="_ahDel">Delete Entry</button>';
+  _h+='<button class="btn btn-s" style="width:100%" onclick="closeMod2()">Cancel</button>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.getElementById('_ahEdit').onclick=()=>{closeMod2();editEntry(id);};
+    document.getElementById('_ahDel').onclick=()=>{
+      if(confirm('Delete this entry? This cannot be undone.')){
+        delEntry(id);
+        closeMod2();
+        refInv();
+      }
+    };
+  },50);
+}
+
+// Show modal to manage multiple ad-hoc entries for a practice
+function showAhManageModal(pId){
+  const n=new Date();
+  const y=invViewMonth?invViewMonth.year:n.getFullYear();
+  const m=invViewMonth?invViewMonth.month:n.getMonth();
+  const entries=getMonth(y,m).filter(e=>e.pId===pId&&e.pType==='adhoc'&&e.invSt==='pending'&&(S.iEnt==='all'||e.entity===S.iEnt));
+
+  if(!entries.length){showToast('No entries found');return;}
+
+  const pracName=entries[0].pName||'Ad Hoc';
+
+  let _h='<div class="mod-hdr"><h3>Manage '+pracName+' Entries</h3></div>';
+  _h+='<div style="max-height:300px;overflow-y:auto;margin-bottom:16px">';
+
+  entries.forEach(e=>{
+    _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg);border-radius:var(--rs);margin-bottom:6px">';
+    _h+='<div style="flex:1">';
+    _h+='<div style="font-size:13px;font-weight:500">'+fdd(e.date)+'</div>';
+    _h+='<div style="font-size:12px;color:var(--txt2)">'+e.pts+' pts · '+fc(e.gross)+'</div>';
+    _h+='</div>';
+    _h+='<div style="display:flex;gap:6px">';
+    _h+='<button class="ah-edit-btn" data-id="'+e.id+'" style="background:var(--card);border:1px solid var(--bdr);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">Edit</button>';
+    _h+='<button class="ah-del-btn" data-id="'+e.id+'" style="background:var(--err);color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">Delete</button>';
+    _h+='</div>';
+    _h+='</div>';
+  });
+
+  _h+='</div>';
+  _h+='<button class="btn btn-s" style="width:100%" onclick="closeMod2()">Done</button>';
+
+  showModal(_h);
+
+  setTimeout(()=>{
+    document.querySelectorAll('.ah-edit-btn').forEach(btn=>{
+      btn.onclick=()=>{closeMod2();editEntry(btn.dataset.id);};
+    });
+    document.querySelectorAll('.ah-del-btn').forEach(btn=>{
+      btn.onclick=()=>{
+        if(confirm('Delete this entry?')){
+          delEntry(btn.dataset.id);
+          closeMod2();
+          refInv();
+        }
+      };
+    });
+  },50);
+}
 
 // Show entry selection modal for contract practice invoice
 function showCpSelect(pid){
@@ -8837,6 +8917,10 @@ try{
   if(action==='ahselect'){showAhSelect(btn.getAttribute('data-pid'));}
   // Route generate all through entry selection modal
   if(action==='ahgenall'){showAhSelect(btn.getAttribute('data-pid'));}
+  // Edit/Delete single ad-hoc entry
+  if(action==='ahedit'){showAhEntryModal(btn.getAttribute('data-eid'));}
+  // Manage multiple ad-hoc entries for a practice
+  if(action==='ahmanage'){showAhManageModal(btn.getAttribute('data-pid'));}
   if(action==='redownload'){await redownloadInvoice(parseInt(btn.getAttribute('data-idx')));}
   if(action==='delinv'){deleteInvoice(parseInt(btn.getAttribute('data-idx')));}
 }finally{
