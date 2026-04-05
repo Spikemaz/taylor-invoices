@@ -5844,10 +5844,29 @@ let bestDaysPracFilter='all';
 
 function setBestDaysCount(count){
   bestDaysCount=count;
+  // Update button styles
+  const btn5=document.getElementById('bdCount5');
+  const btn10=document.getElementById('bdCount10');
+  if(btn5)btn5.style.cssText='flex:1;padding:8px;border:2px solid '+(count===5?'var(--pri)':'var(--bdr)')+';background:'+(count===5?'var(--pri-bg)':'var(--card)')+';color:'+(count===5?'var(--pri-dk)':'var(--txt)')+';border-radius:8px;font-size:13px;font-weight:600;cursor:pointer';
+  if(btn10)btn10.style.cssText='flex:1;padding:8px;border:2px solid '+(count===10?'var(--pri)':'var(--bdr)')+';background:'+(count===10?'var(--pri-bg)':'var(--card)')+';color:'+(count===10?'var(--pri-dk)':'var(--txt)')+';border-radius:8px;font-size:13px;font-weight:600;cursor:pointer';
   renderBestDays();
 }
 function setBestDaysPrac(prac){
   bestDaysPracFilter=prac;
+  // Update button styles
+  const filters=[
+    {id:'bdPracAll',key:'all',color:'pri'},
+    {id:'bdPracBupa',key:'bupa',color:'bupa'},
+    {id:'bdPracGrove',key:'grove',color:'grove'},
+    {id:'bdPracAdhoc',key:'adhoc',color:'adhoc'}
+  ];
+  filters.forEach(f=>{
+    const btn=document.getElementById(f.id);
+    if(!btn)return;
+    const isActive=prac===f.key;
+    const c=f.color;
+    btn.style.cssText='padding:6px 12px;border:2px solid '+(isActive?'var(--'+c+')':'var(--bdr)')+';background:'+(isActive?'var(--'+c+'-lt)':'var(--card)')+';color:'+(isActive?'var(--'+c+')':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer';
+  });
   renderBestDays();
 }
 function renderBestDays(){
@@ -7671,10 +7690,10 @@ function refreshAnalytics(){
 
     // Practice filter - styled buttons
     _h+='<div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap">';
-    _h+='<button onclick="setBestDaysPrac(\'all\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='all'?'var(--pri)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='all'?'var(--pri-bg)':'var(--card)')+';color:'+(bestDaysPracFilter==='all'?'var(--pri-dk)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">All</button>';
-    _h+='<button onclick="setBestDaysPrac(\'bupa\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='bupa'?'var(--bupa-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Bupa</button>';
-    _h+='<button onclick="setBestDaysPrac(\'grove\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='grove'?'var(--grove-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Grove</button>';
-    _h+='<button onclick="setBestDaysPrac(\'adhoc\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Ad Hoc</button>';
+    _h+='<button id="bdPracAll" onclick="setBestDaysPrac(\'all\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='all'?'var(--pri)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='all'?'var(--pri-bg)':'var(--card)')+';color:'+(bestDaysPracFilter==='all'?'var(--pri-dk)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">All</button>';
+    _h+='<button id="bdPracBupa" onclick="setBestDaysPrac(\'bupa\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='bupa'?'var(--bupa-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Bupa</button>';
+    _h+='<button id="bdPracGrove" onclick="setBestDaysPrac(\'grove\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='grove'?'var(--grove-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Grove</button>';
+    _h+='<button id="bdPracAdhoc" onclick="setBestDaysPrac(\'adhoc\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Ad Hoc</button>';
     _h+='</div>';
 
     // Container for dynamic content
