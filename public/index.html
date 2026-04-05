@@ -522,6 +522,20 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="ebtn" onclick="setTrackerEnt('self')" id="tES">Self-Employed</button>
 <button class="ebtn" onclick="setTrackerEnt('ltd')" id="tEL">Ltd Company</button>
 </div>
+<div class="month-nav">
+<button class="month-nav-btn" id="tMonthPrev" onclick="navTrackerMonth(-1)">‹</button>
+<div style="text-align:center">
+<div class="month-nav-title" id="tMonthTitle">April 2026</div>
+<div class="month-nav-sub" id="tMonthSub">Current Month</div>
+</div>
+<button class="month-nav-btn" id="tMonthNext" onclick="navTrackerMonth(1)">›</button>
+</div>
+</div>
+<div class="frow" id="tFilt">
+<button class="fc act" onclick="filtTracker('all')">All</button>
+<button class="fc prc-bupa" onclick="filtTracker('bupa')">Bupa</button>
+<button class="fc prc-grove" onclick="filtTracker('grove')">Grove</button>
+<button class="fc prc-adhoc" onclick="filtTracker('adhoc')">Ad Hoc</button>
 </div>
 <div id="trackerContent"></div>
 </div>
@@ -2970,17 +2984,42 @@ function navArcMonth(delta){
   refArc();
 }
 
+function jumpToArcMonth(y,m){
+  arcViewMonth={year:y,month:m};
+  updateArcMonthUI();
+  refArc();
+}
+
 function updateArcMonthUI(){
   const now=new Date();
   const viewYear=arcViewMonth?arcViewMonth.year:now.getFullYear();
   const viewMonth=arcViewMonth?arcViewMonth.month:now.getMonth();
   const isCurrentMonth=viewYear===now.getFullYear()&&viewMonth===now.getMonth();
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const title=document.getElementById('aMonthTitle');
   const sub=document.getElementById('aMonthSub');
   const next=document.getElementById('aMonthNext');
   if(title)title.textContent=monthNames[viewMonth]+' '+viewYear;
-  if(sub)sub.textContent=isCurrentMonth?'Current Month':'';
+  if(sub){
+    // Find months with entry data for quick jump
+    const monthsWithData=new Set();
+    (S.entries||[]).forEach(e=>{
+      if(e.date)monthsWithData.add(e.date.substring(0,7));
+    });
+    const uniqueMonths=[...monthsWithData].sort().slice(-6);
+    let subHtml='';
+    if(uniqueMonths.length>1){
+      uniqueMonths.forEach(key=>{
+        const [y,m]=key.split('-').map(Number);
+        const isActive=y===viewYear&&(m-1)===viewMonth;
+        subHtml+='<span onclick="jumpToArcMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;text-transform:uppercase;font-weight:600;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)')+'">'+shortMonths[m-1]+'</span>';
+      });
+    }else{
+      subHtml=isCurrentMonth?'Current Month':'';
+    }
+    sub.innerHTML=subHtml;
+  }
   if(next)next.disabled=isCurrentMonth;
 }
 
@@ -3469,7 +3508,7 @@ if(iMonthSub){
     uniqueMonths.forEach(key=>{
       const [y,m]=key.split('-').map(Number);
       const isActive=y===viewYear&&(m-1)===viewMonth;
-      subHtml+='<span onclick="jumpToInvMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;'+(isActive?'background:var(--pri);color:#fff':'color:var(--txt2)')+'">'+shortMonths[m-1]+'</span>';
+      subHtml+='<span onclick="jumpToInvMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;text-transform:uppercase;font-weight:600;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)')+'">'+shortMonths[m-1]+'</span>';
     });
   }else{
     subHtml=isCurrentMonth?'Current Month':'';
@@ -3612,6 +3651,8 @@ if(!hasAwaitingApproval){
 
 // ===== INVOICE TRACKER FUNCTIONS =====
 let trackerEnt='all'; // 'all', 'self', or 'ltd'
+let trackerPracFilter='all'; // 'all', 'bupa', 'grove', 'adhoc'
+let trackerViewMonth=null; // {year, month} or null for current
 
 function setTrackerEnt(t){
   trackerEnt=t;
@@ -3621,27 +3662,121 @@ function setTrackerEnt(t){
   refTracker();
 }
 
+function filtTracker(f){
+  trackerPracFilter=f;
+  document.querySelectorAll('#tFilt .fc').forEach(c=>{
+    const txt=c.textContent.toLowerCase().replace(/\s+/g,'');
+    c.classList.toggle('act',txt===f||(f==='all'&&txt==='all'));
+  });
+  refTracker();
+}
+
+function navTrackerMonth(d){
+  const n=new Date();
+  if(!trackerViewMonth){
+    trackerViewMonth={year:n.getFullYear(),month:n.getMonth()};
+  }
+  trackerViewMonth.month+=d;
+  if(trackerViewMonth.month>11){trackerViewMonth.month=0;trackerViewMonth.year++;}
+  if(trackerViewMonth.month<0){trackerViewMonth.month=11;trackerViewMonth.year--;}
+  // Don't go past current month
+  if(trackerViewMonth.year>n.getFullYear()||(trackerViewMonth.year===n.getFullYear()&&trackerViewMonth.month>n.getMonth())){
+    trackerViewMonth={year:n.getFullYear(),month:n.getMonth()};
+  }
+  refTracker();
+}
+
+function jumpToTrackerMonth(y,m){
+  trackerViewMonth={year:y,month:m};
+  refTracker();
+}
+
 function refTracker(){
   const cont=document.getElementById('trackerContent');
   if(!cont)return;
+
+  const n=new Date();
+  const viewYear=trackerViewMonth?trackerViewMonth.year:n.getFullYear();
+  const viewMonth=trackerViewMonth?trackerViewMonth.month:n.getMonth();
+  const isCurrentMonth=viewYear===n.getFullYear()&&viewMonth===n.getMonth();
+
+  // Update month navigator
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const tMonthTitle=document.getElementById('tMonthTitle');
+  const tMonthSub=document.getElementById('tMonthSub');
+  const tMonthNext=document.getElementById('tMonthNext');
+
+  if(tMonthTitle)tMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
+  if(tMonthSub){
+    // Find months with invoice data for quick jump
+    const monthsWithData=new Set();
+    (S.invoices||[]).forEach(inv=>{
+      const periodMatch=inv.period?.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/);
+      if(periodMatch){
+        const mIdx=monthNames.indexOf(periodMatch[1]);
+        monthsWithData.add(periodMatch[2]+'-'+String(mIdx+1).padStart(2,'0'));
+      }else if(inv.date){
+        monthsWithData.add(inv.date.substring(0,7));
+      }
+    });
+    const uniqueMonths=[...monthsWithData].sort().slice(-6);
+    let subHtml='';
+    if(uniqueMonths.length>1){
+      uniqueMonths.forEach(key=>{
+        const [y,m]=key.split('-').map(Number);
+        const isActive=y===viewYear&&(m-1)===viewMonth;
+        subHtml+='<span onclick="jumpToTrackerMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;text-transform:uppercase;font-weight:600;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)')+'">'+shortMonths[m-1]+'</span>';
+      });
+    }else{
+      subHtml=isCurrentMonth?'Current Month':'';
+    }
+    tMonthSub.innerHTML=subHtml;
+  }
+  if(tMonthNext)tMonthNext.disabled=isCurrentMonth;
 
   // Helper to get entity type from invoice
   function getInvEntity(inv){
     return inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   }
 
-  // Filter invoices by entity
-  let allInvs=[...S.invoices];
-  if(trackerEnt!=='all'){
-    allInvs=allInvs.filter(inv=>getInvEntity(inv)===trackerEnt);
+  // Helper to check if invoice is for the selected month
+  function isInvInMonth(inv){
+    // Check period first (e.g. "March 2026")
+    const periodMatch=inv.period?.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/);
+    if(periodMatch){
+      const mIdx=monthNames.indexOf(periodMatch[1]);
+      return parseInt(periodMatch[2])===viewYear&&mIdx===viewMonth;
+    }
+    // Fall back to invoice date
+    if(inv.date){
+      const d=new Date(inv.date);
+      return d.getFullYear()===viewYear&&d.getMonth()===viewMonth;
+    }
+    return false;
   }
 
-  // Sort newest to oldest (by date, then by invoice number)
-  allInvs.sort((a,b)=>{
-    const dateCompare=b.date.localeCompare(a.date);
-    if(dateCompare!==0)return dateCompare;
-    return b.num.localeCompare(a.num);
+  // Helper to check practice filter
+  function matchesPracFilter(inv){
+    if(trackerPracFilter==='all')return true;
+    const isAdhoc=inv.isAdhoc||inv.pType==='adhoc'||inv.type==='adhoc'||inv.commRate==='N/A';
+    if(trackerPracFilter==='adhoc')return isAdhoc;
+    const prac=(inv.practice||'').toLowerCase();
+    if(trackerPracFilter==='bupa')return prac.includes('bupa');
+    if(trackerPracFilter==='grove')return prac.includes('grove');
+    return false;
+  }
+
+  // Filter invoices by entity, month, and practice
+  let allInvs=[...S.invoices].filter(inv=>{
+    if(trackerEnt!=='all'&&getInvEntity(inv)!==trackerEnt)return false;
+    if(!isInvInMonth(inv))return false;
+    if(!matchesPracFilter(inv))return false;
+    return true;
   });
+
+  // Sort by invoice number (newest first)
+  allInvs.sort((a,b)=>b.num.localeCompare(a.num));
 
   // Split into Unpaid and Paid
   const unpaidInvs=allInvs.filter(inv=>inv.paidStatus!=='paid');
