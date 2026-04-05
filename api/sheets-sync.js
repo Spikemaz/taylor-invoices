@@ -62,7 +62,7 @@ function getSheetId(entity) {
 // The Trash tab stores deleted invoice data so Apps Script can process it.
 const ENTRY_COLUMNS = ['id', 'date', 'pId', 'pName', 'pType', 'svc', 'pts', 'uPrice', 'aoType', 'aoAmt', 'aoPatients', 'gross', 'comm', 'commAmt', 'entity', 'invSt', 'invNo', 'adhocAddr', 'color', 'createdAt'];
 const INVOICE_COLUMNS = ['num', 'date', 'practice', 'practiceName', 'practiceAddr', 'period', 'entity', 'entName', 'entAddr', 'entPhone', 'bankName', 'bankAccName', 'bankAcc', 'bankSort', 'amount', 'gross', 'commRate', 'svcs', 'addons', 'airTotal', 'logoType', 'payTerms', 'footerMsg', 'companyNo', 'isAdhoc', 'driveLink', 'paidStatus', 'paidDate', 'createdAt'];
-const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'email', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'createdAt'];
+const PRACTICE_COLUMNS = ['id', 'short', 'name', 'type', 'addr', 'email', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'paymentDueDay', 'createdAt'];
 const SETTINGS_COLUMNS = ['key', 'value', 'updatedAt'];
 const LOG_COLUMNS = ['timestamp', 'action', 'dataType', 'recordId', 'changes', 'previousData', 'newData'];
 const TRASH_COLUMNS = ['deletedAt', 'dataType', 'originalData'];
@@ -972,7 +972,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     // Clear all data from row 1 onwards (including header to fix column structure)
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A1:P100',
+      range: 'Practices!A1:Q100',
     });
 
     // Clear formatting for rows 2-100 to remove any leftover colored rows
@@ -990,7 +990,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
                   startRowIndex: 1, // Row 2 (0-indexed)
                   endRowIndex: 100,
                   startColumnIndex: 0,
-                  endColumnIndex: 16  // Columns A-P (16 columns)
+                  endColumnIndex: 17  // Columns A-Q (17 columns)
                 },
                 cell: {
                   userEnteredFormat: {
@@ -1010,7 +1010,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
     // Always write header row first with current column structure
     await sheets.spreadsheets.values.update({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A1:P1',
+      range: 'Practices!A1:Q1',
       valueInputOption: 'RAW',
       requestBody: { values: [PRACTICE_COLUMNS] }
     });
@@ -1019,7 +1019,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
       // Write data rows starting at A2
       await sheets.spreadsheets.values.update({
         spreadsheetId: targetSheetId,
-        range: `Practices!A2:P${rows.length + 1}`,
+        range: `Practices!A2:Q${rows.length + 1}`,
         valueInputOption: 'RAW',
         requestBody: { values: rows }
       });
@@ -1048,7 +1048,7 @@ async function loadPractices(sheets, sheetId, res) {
   console.log('[loadPractices] Loading from sheet:', sheetId);
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: 'Practices!A:P',
+    range: 'Practices!A:Q',
   });
 
   const rows = response.data.values || [];
@@ -1067,7 +1067,7 @@ async function loadPractices(sheets, sheetId, res) {
       // Map each header to its value in this row
       headerRow.forEach((colName, i) => {
         let val = row[i];
-        if (['comm', 'rate', 'air', 'ptsPerHour'].includes(colName)) val = parseFloat(val) || 0;
+        if (['comm', 'rate', 'air', 'ptsPerHour', 'paymentDueDay'].includes(colName)) val = parseFloat(val) || 0;
         if (colName === 'active') val = val === '' ? true : (val === 'true' || val === true);
         if ((colName === 'services' || colName === 'days' || colName === 'paidHours') && val) {
           try { val = JSON.parse(val); } catch(e) {}

@@ -3367,17 +3367,45 @@ function getWorkingDaysBetween(startDate,endDate){
 }
 
 // Helper to check if invoice is overdue
+// Uses practice-specific payment due day if set, otherwise default payment terms
 function isInvoiceOverdue(inv){
-  if(inv.paidStatus==='paid')return{overdue:false,days:0};
-  const payTerms=parseInt(S.payTerms)||10;
+  if(inv.paidStatus==='paid')return{overdue:false,days:0,dueDate:null};
+
+  // Find the practice for this invoice to get payment due day
+  const practiceId=inv.pId||Object.keys(S.practices||{}).find(k=>S.practices[k].short===inv.practice||S.practices[k].name===inv.practice);
+  const practice=practiceId?S.practices[practiceId]:null;
+  const paymentDueDay=practice&&practice.paymentDueDay?practice.paymentDueDay:0;
+
   const invDate=new Date(inv.date);
   const todayDate=new Date();
   todayDate.setHours(0,0,0,0);
+
+  // If practice has a specific payment due day (e.g. 15 = 15th of month)
+  if(paymentDueDay>0){
+    // Calculate the due date based on the payment day of the following month
+    // e.g. Invoice Jan 20, paymentDueDay=15 -> Due Feb 15
+    let dueMonth=invDate.getMonth()+1;
+    let dueYear=invDate.getFullYear();
+    if(dueMonth>11){dueMonth=0;dueYear++;}
+    const dueDate=new Date(dueYear,dueMonth,Math.min(paymentDueDay,new Date(dueYear,dueMonth+1,0).getDate()));
+    dueDate.setHours(0,0,0,0);
+
+    const daysDiff=Math.floor((todayDate-dueDate)/(1000*60*60*24));
+    if(daysDiff>0){
+      return{overdue:true,days:daysDiff,dueDate:dueDate};
+    }
+    // Calculate days remaining until due
+    const daysRemaining=Math.floor((dueDate-todayDate)/(1000*60*60*24));
+    return{overdue:false,days:0,daysRemaining:daysRemaining,dueDate:dueDate};
+  }
+
+  // Default: use standard payment terms (working days)
+  const payTerms=parseInt(S.payTerms)||10;
   const workingDays=getWorkingDaysBetween(invDate,todayDate);
   if(workingDays>payTerms){
-    return{overdue:true,days:workingDays-payTerms};
+    return{overdue:true,days:workingDays-payTerms,dueDate:null};
   }
-  return{overdue:false,days:0};
+  return{overdue:false,days:0,dueDate:null};
 }
 
 function resetInvFilters(){
@@ -3712,10 +3740,14 @@ function showInvoiceOptionsModal(idx){
   }
   _h+='</div>';
 
-  // Action buttons - ordered: Edit, Email, Download, View
+  // Action buttons - ordered: Edit, Email/Chase, Download, View
   _h+='<button class="btn btn-p" style="width:100%;margin-bottom:8px" id="_invEdit">Edit Invoice</button>';
   if(inv.driveLink){
     _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="_invEmail"><span style="font-size:16px">✉</span> Email Invoice</button>';
+  }
+  // Add chase button for overdue invoices
+  if(overdueInfo.overdue){
+    _h+='<button class="btn" style="width:100%;margin-bottom:8px;background:var(--err);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px" id="_invChase"><span style="font-size:16px">⚠</span> Send Chase Email</button>';
   }
   _h+='<button class="btn btn-s" style="width:100%;margin-bottom:8px" id="_invRedownload">Download PDF</button>';
   if(inv.driveLink){
@@ -3742,6 +3774,11 @@ function showInvoiceOptionsModal(idx){
     };
     if(inv.driveLink){
       document.getElementById('_invEmail').onclick=()=>emailInvoice(idx);
+    }
+    // Chase email button handler
+    const chaseBtn=document.getElementById('_invChase');
+    if(chaseBtn){
+      chaseBtn.onclick=()=>{closeMod2();sendChaseEmail(idx);};
     }
     document.getElementById('_invEdit').onclick=()=>{closeMod2();showEditInvoiceModal(idx);};
     document.getElementById('_invRedownload').onclick=()=>{closeMod2();redownloadInvoice(idx);};
@@ -3820,6 +3857,76 @@ function emailInvoice(idx){
   document.body.removeChild(a);
 
   showToast('Opening email...');
+}
+
+// ===== CHASE EMAIL FOR OVERDUE INVOICES =====
+function sendChaseEmail(idx){
+  const inv=S.invoices[idx];
+  if(!inv)return;
+
+  const overdueInfo=isInvoiceOverdue(inv);
+  if(!overdueInfo.overdue){
+    showToast('Invoice is not overdue');
+    return;
+  }
+
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entDetails=S.ents[entType];
+
+  // Get practice email if configured
+  const practiceId=inv.pId||Object.keys(S.practices||{}).find(k=>S.practices[k].short===inv.practice||S.practices[k].name===inv.practice);
+  const practice=practiceId?S.practices[practiceId]:null;
+  const toEmail=practice&&practice.email?practice.email:'';
+
+  // Calculate interest (statutory interest rate in UK is 8% + Bank of England base rate)
+  // Current base rate ~5.25%, so ~13.25% annual. Per day = 0.036%
+  // For simplicity, use 8% annual (statutory minimum) = 0.022% per day
+  const dailyInterestRate=0.00022; // 8% annual / 365 days
+  const daysOverdue=overdueInfo.days;
+  const originalAmount=inv.amount||0;
+  const interestAmount=originalAmount*dailyInterestRate*daysOverdue;
+  const gracePeriodDays=5; // 5 working days before interest applies
+  const interestAfterGrace=originalAmount*dailyInterestRate*(daysOverdue+gracePeriodDays);
+  const newTotalAfterGrace=originalAmount+interestAfterGrace;
+
+  // Build email subject and body
+  const subject='OVERDUE: Invoice '+inv.num+' - Payment Required Urgently';
+  let body='Dear Sir/Madam,\n\n';
+  body+='I am writing regarding Invoice #'+inv.num+' dated '+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+' for '+inv.period+'.\n\n';
+  body+='This invoice is now '+daysOverdue+' day'+(daysOverdue!==1?'s':'')+' overdue.\n\n';
+  body+='OUTSTANDING AMOUNT: '+fc(originalAmount)+'\n\n';
+  body+='Under the Late Payment of Commercial Debts (Interest) Act 1998, I am entitled to claim statutory interest on overdue invoices. ';
+  body+='The current statutory interest rate is 8% per annum above the Bank of England base rate.\n\n';
+  body+='If payment is not received within 5 working days, the following interest will be added:\n';
+  body+='- Current accrued interest: '+fc(interestAmount)+'\n';
+  body+='- Interest after 5 working days: '+fc(interestAfterGrace)+'\n';
+  body+='- NEW TOTAL DUE: '+fc(newTotalAfterGrace)+'\n\n';
+  body+='Please arrange payment immediately to avoid additional charges.\n\n';
+  body+='Payment Details:\n';
+  body+='Bank: '+(entDetails.bank||'Lloyds Bank')+'\n';
+  body+='Account Name: '+(entDetails.bName||entDetails.name)+'\n';
+  body+='Account Number: '+entDetails.acc+'\n';
+  body+='Sort Code: '+entDetails.sort+'\n';
+  body+='Reference: Invoice '+inv.num+'\n\n';
+  if(inv.driveLink){
+    body+='Original Invoice: '+inv.driveLink+'\n\n';
+  }
+  body+='Please confirm payment once made.\n\n';
+  body+='Kind regards,\n';
+  body+=(entDetails.name||'Taylor Muir');
+
+  // Create mailto link
+  const mailtoLink='mailto:'+toEmail+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+
+  // Open mailto link
+  const a=document.createElement('a');
+  a.href=mailtoLink;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  showToast('Opening chase email...');
 }
 
 // ===== TOGGLE INVOICE PAID STATUS =====
@@ -5138,6 +5245,7 @@ _h+='</div><input type="hidden" id="ePColor" value="'+currentColor+'"></div>';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="'+((p.comm||0)*100).toFixed(0)+'" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" value="'+daysStr+'" placeholder="e.g. 1,5"></div></div>';
 _h+='<div class="fg"><label class="fl">Current days: '+(p.days||[]).map(function(d){return dayNames[d]}).join(', ')+'</label></div>';
+_h+='<div class="fg"><label class="fl">Payment Due Day (1-31, e.g. 15 = 15th of month)</label><input class="fi" id="ePPayDay" type="number" value="'+(p.paymentDueDay||0)+'" min="0" max="31" placeholder="0 = use default terms"><div style="font-size:10px;color:var(--txt3);margin-top:2px">Enter 0 to use standard payment terms, or a specific day (e.g. 15 for 15th of each month)</div></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price, comma separated)</label><input class="fi" id="ePSvcs" value="'+svcsStr+'"></div>';
 _h+='<div class="brow"><button class="btn" style="background:var(--err);color:#fff" id="_epDel">Delete</button><button class="btn btn-s" id="_epCancel">Cancel</button><button class="btn btn-p" id="_epSave">Save</button></div>';
 showModal(_h);
@@ -5180,6 +5288,7 @@ _h+='</div><input type="hidden" id="ePColor" value="bupa"></div>';
 _h+='<div id="ePContractFields">';
 _h+='<div style="display:flex;gap:10px"><div class="fg" style="flex:1"><label class="fl">Profit Share %</label><input class="fi" id="ePComm" type="number" value="35" min="0" max="100"></div>';
 _h+='<div class="fg" style="flex:1"><label class="fl">Days (0=Sun..6=Sat)</label><input class="fi" id="ePDays" placeholder="e.g. 1,3,5"></div></div>';
+_h+='<div class="fg"><label class="fl">Payment Due Day (1-31)</label><input class="fi" id="ePPayDay" type="number" value="0" min="0" max="31" placeholder="0 = use default terms"><div style="font-size:10px;color:var(--txt3);margin-top:2px">Enter 0 to use standard terms, or day of month (e.g. 15)</div></div>';
 _h+='<div class="fg"><label class="fl">Services (Name:Price)</label><input class="fi" id="ePSvcs" placeholder="e.g. Hygiene:70, Perio:160"></div>';
 _h+='</div>';
 // Ad Hoc-only fields
@@ -5240,6 +5349,8 @@ p.addr=addr;
 p.email=email;
 p.color=color;
 p.comm=(parseFloat(document.getElementById('ePComm').value)||35)/100;
+var payDayEl=document.getElementById('ePPayDay');
+p.paymentDueDay=payDayEl?parseInt(payDayEl.value)||0:0;
 var daysVal=document.getElementById('ePDays').value.trim();
 p.days=daysVal?daysVal.split(',').map(function(d){return parseInt(d.trim())}).filter(function(d){return !isNaN(d)&&d>=0&&d<=6}):[];
 var svcsVal=document.getElementById('ePSvcs').value.trim();
@@ -6023,40 +6134,49 @@ function refreshAnalytics(){
   _h+='</div>';
   _h+='</div>';
 
-  // Invoice aging - show days remaining until payment due (based on payment terms)
+  // Invoice aging - show days remaining until payment due (based on practice-specific payment days or default terms)
   if(unpaidInvoices.length>0){
     _h+='<div style="font-size:12px;font-weight:600;color:var(--txt2);margin:12px 0 8px">UNPAID INVOICE AGING</div>';
-    // Parse payment terms to get days (default 5 working days ≈ 7 calendar days)
-    const payTermsDays = parseInt(S.payTerms) || 5;
-    const dueDaysCalendar = Math.ceil(payTermsDays * 7 / 5); // Convert working days to calendar days
 
-    unpaidInvoices.sort((a,b)=>a.date.localeCompare(b.date)).forEach(inv=>{
-      const invDate=new Date(inv.date);
-      const dueDate=new Date(invDate.getTime() + dueDaysCalendar * 24 * 60 * 60 * 1000);
-      const daysRemaining=Math.floor((dueDate-now)/(1000*60*60*24));
-      const isOverdue=daysRemaining<0;
-      const agingColor=isOverdue?'var(--err)':daysRemaining<=3?'var(--warn)':'var(--ok)';
-      let agingLabel;
+    unpaidInvoices.sort((a,b)=>a.date.localeCompare(b.date)).forEach((inv,idx)=>{
+      const overdueInfo=isInvoiceOverdue(inv);
+      const isOverdue=overdueInfo.overdue;
+      let daysRemaining=overdueInfo.daysRemaining||0;
+      let agingColor,agingLabel;
+
       if(isOverdue){
-        const daysOverdue=Math.abs(daysRemaining);
-        agingLabel=daysOverdue===1?'1 day overdue':daysOverdue+' days overdue';
-      }else if(daysRemaining===0){
+        agingColor='var(--err)';
+        agingLabel=overdueInfo.days===1?'1 day overdue':overdueInfo.days+' days overdue';
+      }else if(daysRemaining<=0){
+        agingColor='var(--warn)';
         agingLabel='Due today';
       }else if(daysRemaining===1){
+        agingColor='var(--warn)';
         agingLabel='Due tomorrow';
+      }else if(daysRemaining<=3){
+        agingColor='var(--warn)';
+        agingLabel=daysRemaining+' days left';
       }else{
+        agingColor='var(--ok)';
         agingLabel=daysRemaining+' days left';
       }
+
       const invEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'Ltd':'Self';
       const invEntityColor=invEntity==='Ltd'?'var(--pri)':'#0057a8';
       _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+agingColor+'">';
-      _h+='<div>';
+      _h+='<div style="flex:1;min-width:0">';
       _h+='<div style="font-size:12px;font-weight:500"><span style="display:inline-block;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:600;color:#fff;background:'+invEntityColor+';margin-right:4px">'+invEntity+'</span>#'+inv.num+' - '+(inv.practice||inv.practiceName||'Unknown')+'</div>';
       _h+='<div style="font-size:10px;color:var(--txt2)">Issued: '+new Date(inv.date).toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</div>';
       _h+='</div>';
+      _h+='<div style="display:flex;align-items:center;gap:8px">';
       _h+='<div style="text-align:right">';
       _h+='<div style="font-size:14px;font-weight:600;color:var(--err)">'+fc(inv.amount||0)+'</div>';
       _h+='<div style="font-size:10px;color:'+agingColor+';font-weight:500">'+agingLabel+'</div>';
+      _h+='</div>';
+      // Add chase button for overdue invoices
+      if(isOverdue){
+        _h+='<button onclick="sendChaseEmail('+idx+')" style="background:var(--err);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Chase</button>';
+      }
       _h+='</div>';
       _h+='</div>';
     });
@@ -7319,11 +7439,15 @@ function refreshAnalytics(){
   if(overdueInvoices.length>0){
     _h+='<div class="analytics-card" style="border-left:3px solid var(--warn)">';
     _h+='<h3 class="analytics-title" style="color:var(--warn)">Overdue Invoices ('+overdueInvoices.length+')</h3>';
-    overdueInvoices.forEach(inv=>{
+    overdueInvoices.forEach((inv,i)=>{
       const od=isInvoiceOverdue(inv);
-      _h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr)">';
-      _h+='<div><strong>#'+inv.num+'</strong> - '+inv.practice+'<br><span style="font-size:12px;color:var(--txt2)">'+inv.period+'</span></div>';
+      const invIdx=S.invoices.findIndex(x=>x.num===inv.num);
+      _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<div style="flex:1"><strong>#'+inv.num+'</strong> - '+inv.practice+'<br><span style="font-size:12px;color:var(--txt2)">'+inv.period+'</span></div>';
+      _h+='<div style="display:flex;align-items:center;gap:8px">';
       _h+='<div style="text-align:right"><strong style="color:var(--warn)">'+fc(inv.amount)+'</strong><br><span style="font-size:12px;color:var(--warn)">'+od.days+' day'+(od.days!==1?'s':'')+' overdue</span></div>';
+      _h+='<button class="chase-btn" data-idx="'+invIdx+'" style="background:var(--err);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">Chase</button>';
+      _h+='</div>';
       _h+='</div>';
     });
     _h+='</div>';
@@ -7331,6 +7455,15 @@ function refreshAnalytics(){
 
   _h+='</div>';
   container.innerHTML=_h;
+
+  // Add click handlers for chase buttons
+  container.querySelectorAll('.chase-btn').forEach(btn=>{
+    btn.onclick=function(e){
+      e.stopPropagation();
+      const idx=parseInt(this.dataset.idx);
+      if(idx>=0)sendChaseEmail(idx);
+    };
+  });
 
   // Destroy existing charts
   if(analyticsCharts.monthly)analyticsCharts.monthly.destroy();
