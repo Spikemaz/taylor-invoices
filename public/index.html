@@ -631,7 +631,7 @@ bupa:{id:'bupa',name:'Bupa Dental Care',short:'Bupa',addr:'39 Buckingham Road\nA
 svcs:{Private:{p:93,d:'per patient hygiene'},Denplan:{p:93,d:'per patient Denplan'},'Bupa Smile Plan':{p:93,d:'per patient Smile Plan'},'Bupa UKI 20%':{p:74.40,d:'per patient UKI (-20%)'}},
 paidHours:{1:7,5:7},ptsPerHour:2,paymentDueDay:15},
 grove:{id:'grove',name:'The Grove Dental Practice',short:'Grove',addr:'170 Tring Rd\nAylesbury\nHP20 1JL',days:[4],comm:.40,type:'contract',color:'grove',
-svcs:{Hygiene:{p:70,d:'per patient hygiene'},Perio:{p:160,d:'per patient periodontal'}},
+svcs:{Hygiene:{p:70,d:'per patient hygiene'},Denplan:{p:70,d:'per patient Denplan'},Perio:{p:160,d:'per patient periodontal'}},
 paidHours:{4:7},ptsPerHour:2,paymentDueDay:10}
 },
 ahPrac:[
@@ -1475,7 +1475,7 @@ async function loadPracticesFromCloud() {
       // Default services per practice
       const defaultSvcs = {
         bupa: {Private:{p:93,d:'per patient hygiene'},Denplan:{p:93,d:'per patient Denplan'},'Bupa Smile Plan':{p:93,d:'per patient Smile Plan'},'Bupa UKI 20%':{p:74.40,d:'per patient UKI (-20%)'}},
-        grove: {Hygiene:{p:70,d:'per patient hygiene'},Perio:{p:160,d:'per patient periodontal'}}
+        grove: {Hygiene:{p:70,d:'per patient hygiene'},Denplan:{p:70,d:'per patient Denplan'},Perio:{p:160,d:'per patient periodontal'}}
       };
 
       // Merge: cloud data takes priority, but keep local values if cloud is empty/corrupted
@@ -1524,7 +1524,10 @@ async function syncSettingsToCloud() {
     ahPrac: S.ahPrac,
     defComm: S.defComm,
     invoiceFooter: S.invoiceFooter,
-    customHolidays: S.customHolidays || []
+    customHolidays: S.customHolidays || [],
+    scheduleExceptions: S.scheduleExceptions || [],
+    workSchedule: S.workSchedule || {},
+    scheduleHours: S.scheduleHours || {}
   };
   // Sync Ltd settings
   const ltdSettings = {
@@ -1535,7 +1538,10 @@ async function syncSettingsToCloud() {
     ahPrac: S.ahPrac,
     defComm: S.defComm,
     invoiceFooter: S.invoiceFooter,
-    customHolidays: S.customHolidays || []
+    customHolidays: S.customHolidays || [],
+    scheduleExceptions: S.scheduleExceptions || [],
+    workSchedule: S.workSchedule || {},
+    scheduleHours: S.scheduleHours || {}
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
   try {
@@ -2223,6 +2229,18 @@ async function loadSettingsFromCloudFn() {
     if (selfResult.settings.customHolidays) {
       S.customHolidays = selfResult.settings.customHolidays;
       console.log('[Settings Loaded] customHolidays=', S.customHolidays.length, 'dates');
+    }
+    if (selfResult.settings.scheduleExceptions) {
+      S.scheduleExceptions = selfResult.settings.scheduleExceptions;
+      console.log('[Settings Loaded] scheduleExceptions=', S.scheduleExceptions.length, 'items');
+    }
+    if (selfResult.settings.workSchedule) {
+      S.workSchedule = selfResult.settings.workSchedule;
+      console.log('[Settings Loaded] workSchedule loaded');
+    }
+    if (selfResult.settings.scheduleHours) {
+      S.scheduleHours = selfResult.settings.scheduleHours;
+      console.log('[Settings Loaded] scheduleHours loaded');
     }
     console.log('[Settings Loaded] entities=', Object.keys(S.ents || {}), 'defComm=', S.defComm, 'invoiceFooter=', !!S.invoiceFooter);
   }
@@ -7424,62 +7442,42 @@ function refreshAnalytics(){
       continue;
     }
 
-    // Get exceptions for this month
-    const monthExc=getMonthExceptions(projYear,projMonth);
-    const offDates=monthExc.filter(e=>e.type==='off').map(e=>e.date);
-    const extraShifts=monthExc.filter(e=>e.type==='extra');
+    // Calculate day-by-day using getPracticesForDate() and isHoliday() for consistency
+    const daysInProjMonth=new Date(projYear,projMonth+1,0).getDate();
+    const processedDates=new Set();
 
-    Object.keys(S.practices||{}).forEach(pId=>{
-      const p=S.practices[pId];
-      if(p&&p.days){
-        const ptsPerHour=p.ptsPerHour||2;
-        const comm=p.comm||0;
-        let avgPrice=70;
-        if(p.svcs&&Object.keys(p.svcs).length>0){
-          const prices=Object.values(p.svcs).map(s=>s.p||70);
-          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
-        }
-        p.days.forEach(dow=>{
-          // Count work days for this DOW, minus any days off
-          let daysInMonth=countDaysInMonth(projYear,projMonth,dow);
-          // Subtract off days that fall on this DOW
-          offDates.forEach(offDate=>{
-            const d=new Date(offDate);
-            if(d.getDay()===dow)daysInMonth--;
-          });
-          if(daysInMonth<0)daysInMonth=0;
-          const paidH=(p.paidHours&&(p.paidHours[dow]||p.paidHours[String(dow)]))||7;
-          const dayPts=paidH*ptsPerHour;
-          projWorkDays+=daysInMonth;
-          projPts+=daysInMonth*dayPts;
-          const dayGross=dayPts*avgPrice;
-          projGross+=daysInMonth*dayGross;
-          projNet+=daysInMonth*dayGross*comm;
+    for(let day=1;day<=daysInProjMonth;day++){
+      const dateStr=projYear+'-'+String(projMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const dateObj=new Date(projYear,projMonth,day);
+
+      // Skip holidays (bank holidays + custom) - practices are closed
+      if(isHoliday(dateObj))continue;
+
+      // Use getPracticesForDate to get scheduled practices (handles split days, exceptions)
+      const dayPractices=getPracticesForDate(dateStr);
+
+      if(dayPractices.length>0&&!processedDates.has(dateStr)){
+        processedDates.add(dateStr);
+        projWorkDays++;
+
+        dayPractices.forEach(prac=>{
+          const p=S.practices[prac.pId];
+          if(p){
+            const paidH=prac.hours||7;
+            const ptsPerHour=p.ptsPerHour||2;
+            const estPts=paidH*ptsPerHour;
+            projPts+=estPts;
+
+            // Calculate average price from services
+            const svcPrices=Object.values(p.svcs||{}).map(s=>(typeof s==='object'&&s.p)?s.p:(typeof s==='number'?s:0));
+            const avgPrice=svcPrices.length>0?svcPrices.reduce((a,b)=>a+b,0)/svcPrices.length:70;
+            const dayGross=estPts*avgPrice;
+            projGross+=dayGross;
+            projNet+=dayGross*(p.comm||0);
+          }
         });
       }
-    });
-
-    // Add extra shifts
-    extraShifts.forEach(exc=>{
-      const p=S.practices[exc.pId];
-      if(p){
-        const ptsPerHour=p.ptsPerHour||2;
-        const comm=p.comm||0;
-        let avgPrice=70;
-        if(p.svcs&&Object.keys(p.svcs).length>0){
-          const prices=Object.values(p.svcs).map(s=>s.p||70);
-          avgPrice=prices.reduce((a,b)=>a+b,0)/prices.length;
-        }
-        // Use average paid hours for this practice
-        const avgPaidH=p.paidHours?Object.values(p.paidHours).reduce((a,b)=>a+b,0)/Object.values(p.paidHours).length:7;
-        const dayPts=avgPaidH*ptsPerHour;
-        projWorkDays+=1;
-        projPts+=dayPts;
-        const dayGross=dayPts*avgPrice;
-        projGross+=dayGross;
-        projNet+=dayGross*comm;
-      }
-    });
+    }
 
     projections.push({month:projMonthName,workDays:projWorkDays,pts:Math.round(projPts),gross:projGross,net:projNet,isCurrentMonth:m===0,monthOffset:m});
   }
