@@ -2303,16 +2303,23 @@ const hMonthTitle=document.getElementById('hMonthTitle');
 const hMonthPills=document.getElementById('hMonthPills');
 const hMonthNext=document.getElementById('hMonthNext');
 if(hMonthTitle)hMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
-// Render month pills (show 3 months: current viewed month and 2 before)
+// Render month pills (show months with data, matching other tabs' style)
 if(hMonthPills){
+  // Find months with entry data for quick jump
+  const monthsWithData=new Set();
+  (S.entries||[]).forEach(e=>{
+    if(e.date)monthsWithData.add(e.date.substring(0,7));
+  });
+  const uniqueMonths=[...monthsWithData].sort().slice(-6);
   let pillsHtml='';
-  for(let i=-2;i<=0;i++){
-    let pMonth=viewMonth+i;
-    let pYear=viewYear;
-    if(pMonth<0){pMonth+=12;pYear--;}
-    const isActive=pMonth===viewMonth&&pYear===viewYear;
-    const pillStyle='display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;margin:0 2px;cursor:pointer;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)');
-    pillsHtml+='<span style="'+pillStyle+'" onclick="jumpToHomeMonth('+pYear+','+pMonth+')">'+shortMonths[pMonth]+'</span>';
+  if(uniqueMonths.length>1){
+    uniqueMonths.forEach(key=>{
+      const [y,m]=key.split('-').map(Number);
+      const isActive=y===viewYear&&(m-1)===viewMonth;
+      pillsHtml+='<span onclick="jumpToHomeMonth('+y+','+(m-1)+')" style="cursor:pointer;padding:2px 6px;border-radius:10px;font-size:10px;margin:0 2px;text-transform:uppercase;font-weight:600;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)')+'">'+shortMonths[m-1]+'</span>';
+    });
+  }else{
+    pillsHtml=isCurrentMonth?'Current Month':'';
   }
   hMonthPills.innerHTML=pillsHtml;
 }
