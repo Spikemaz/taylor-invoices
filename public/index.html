@@ -1437,31 +1437,17 @@ async function loadPracticesFromCloud() {
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
     console.log('[Practices] S.practices AFTER load:', JSON.stringify(Object.keys(S.practices)), Object.keys(S.practices).length, 'practices');
 
-    // Track if any practices had corrupted data that was fixed
-    let hadCorruptedData = false;
-    contractPractices.forEach(p => {
-      const svcsKeys = Object.keys(p.services || {});
-      if (svcsKeys.length > 0 && svcsKeys.every(k => /^\d+$/.test(k))) {
-        hadCorruptedData = true;
-      }
-    });
-
-    // If cloud had no contract practices but we have defaults, push them to cloud
+    // If cloud had no contract practices but we have defaults, log it (don't auto-sync to avoid errors)
     if (contractPractices.length === 0 && Object.keys(S.practices).length > 0) {
-      console.log('[Practices] Cloud has no contract practices but we have defaults - syncing to cloud...');
-      syncPracticesToCloud();
-    } else if (hadCorruptedData) {
-      console.log('[Practices] Corrupted service data detected - syncing fixed data to cloud...');
-      syncPracticesToCloud();
+      console.log('[Practices] Cloud has no contract practices but we have local defaults - using defaults');
     }
 
     save();
     // Rebuild day map with cloud data
     buildDayMap();
   } else if (Object.keys(S.practices).length > 0) {
-    // Cloud load failed but we have local defaults - sync them to cloud
-    console.log('[Practices] Cloud load failed but we have local defaults - syncing to cloud...');
-    syncPracticesToCloud();
+    // Cloud load failed but we have local defaults - just use them
+    console.log('[Practices] Cloud load failed but we have local defaults - using defaults');
   }
   console.log('[Practices] === END loadPracticesFromCloud ===');
   return result;
