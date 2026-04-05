@@ -745,11 +745,33 @@ function loadSettings(){
             if (saved.addr) S.practices[k].addr = saved.addr;
             if (saved.email !== undefined) S.practices[k].email = saved.email;
             if (saved.days) S.practices[k].days = saved.days;
-            if (saved.svcs) S.practices[k].svcs = saved.svcs;
+            // Only load svcs if they have valid service names (not numeric) and valid prices
+            if (saved.svcs && Object.keys(saved.svcs).length > 0) {
+              const hasValidKeys = !Object.keys(saved.svcs).every(key => /^\d+$/.test(key));
+              const hasValidPrices = Object.values(saved.svcs).some(sv => {
+                const price = (typeof sv === 'object' && sv.p) ? sv.p : (typeof sv === 'number' ? sv : 0);
+                return price > 0;
+              });
+              if (hasValidKeys && hasValidPrices) {
+                S.practices[k].svcs = saved.svcs;
+              } else {
+                console.warn('[loadSettings] Skipping corrupted svcs for', k);
+              }
+            }
           }
         } else if (d.practices[k] && d.practices[k].short && d.practices[k].name) {
           const saved = d.practices[k];
-          S.practices[k] = { id: k, name: saved.name, short: saved.short, addr: saved.addr || '', email: saved.email || '', days: saved.days || [], comm: saved.comm || 0.35, type: 'contract', color: saved.color || 'grove', svcs: saved.svcs || { Hygiene: { p: 70, d: 'per patient' } } };
+          // Validate svcs before using
+          let validSvcs = { Hygiene: { p: 70, d: 'per patient' } };
+          if (saved.svcs && Object.keys(saved.svcs).length > 0) {
+            const hasValidKeys = !Object.keys(saved.svcs).every(key => /^\d+$/.test(key));
+            const hasValidPrices = Object.values(saved.svcs).some(sv => {
+              const price = (typeof sv === 'object' && sv.p) ? sv.p : (typeof sv === 'number' ? sv : 0);
+              return price > 0;
+            });
+            if (hasValidKeys && hasValidPrices) validSvcs = saved.svcs;
+          }
+          S.practices[k] = { id: k, name: saved.name, short: saved.short, addr: saved.addr || '', email: saved.email || '', days: saved.days || [], comm: saved.comm || 0.35, type: 'contract', color: saved.color || 'grove', svcs: validSvcs };
         }
       });
     }
@@ -1433,6 +1455,17 @@ async function loadPracticesFromCloud() {
       if (isCorruptedSvcs) {
         console.warn('[Practice] Corrupted svcs detected for', p.id, '- keys are numeric:', Object.keys(p.svcs));
         p.svcs = null; // Force fallback to defaults
+      }
+      // Also validate that services have valid prices (not just empty objects or missing p values)
+      if (p.svcs && Object.keys(p.svcs).length > 0) {
+        const hasValidPrices = Object.values(p.svcs).some(sv => {
+          const price = (typeof sv === 'object' && sv.p) ? sv.p : (typeof sv === 'number' ? sv : 0);
+          return price > 0;
+        });
+        if (!hasValidPrices) {
+          console.warn('[Practice] svcs have no valid prices for', p.id, '- forcing defaults');
+          p.svcs = null;
+        }
       }
 
       // Default services per practice
