@@ -969,10 +969,10 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 
   // Helper to sync to a single sheet and apply colors
   async function syncToSheet(targetSheetId) {
-    // Clear all data and formatting from row 2 onwards
+    // Clear all data from row 1 onwards (including header to fix column structure)
     await sheets.spreadsheets.values.clear({
       spreadsheetId: targetSheetId,
-      range: 'Practices!A2:O100',
+      range: 'Practices!A1:P100',
     });
 
     // Clear formatting for rows 2-100 to remove any leftover colored rows
@@ -990,7 +990,7 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
                   startRowIndex: 1, // Row 2 (0-indexed)
                   endRowIndex: 100,
                   startColumnIndex: 0,
-                  endColumnIndex: 15  // Columns A-O (15 columns)
+                  endColumnIndex: 16  // Columns A-P (16 columns)
                 },
                 cell: {
                   userEnteredFormat: {
@@ -1007,11 +1007,19 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
       console.log('Could not clear formatting:', e.message);
     }
 
+    // Always write header row first with current column structure
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: targetSheetId,
+      range: 'Practices!A1:P1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [PRACTICE_COLUMNS] }
+    });
+
     if (rows.length > 0) {
-      // Use update with explicit range starting at A2 to avoid header issues
+      // Write data rows starting at A2
       await sheets.spreadsheets.values.update({
         spreadsheetId: targetSheetId,
-        range: `Practices!A2:O${rows.length + 1}`,
+        range: `Practices!A2:P${rows.length + 1}`,
         valueInputOption: 'RAW',
         requestBody: { values: rows }
       });
@@ -1047,23 +1055,29 @@ async function loadPractices(sheets, sheetId, res) {
   console.log('[loadPractices] Raw rows count:', rows.length);
   console.log('[loadPractices] Raw rows (first 5):', JSON.stringify(rows.slice(0, 5)));
 
+  // Get header row to determine column positions dynamically
+  // This handles column order changes gracefully
+  const headerRow = rows[0] || [];
+  console.log('[loadPractices] Header row:', headerRow);
+
   const practices = rows
     .filter(row => row[0] && row[0] !== 'id')
     .map(row => {
       const obj = {};
-      PRACTICE_COLUMNS.forEach((col, i) => {
+      // Map each header to its value in this row
+      headerRow.forEach((colName, i) => {
         let val = row[i];
-        if (['comm', 'rate', 'air', 'ptsPerHour'].includes(col)) val = parseFloat(val) || 0;
-        if (col === 'active') val = val === '' ? true : (val === 'true' || val === true);
-        if ((col === 'services' || col === 'days' || col === 'paidHours') && val) {
+        if (['comm', 'rate', 'air', 'ptsPerHour'].includes(colName)) val = parseFloat(val) || 0;
+        if (colName === 'active') val = val === '' ? true : (val === 'true' || val === true);
+        if ((colName === 'services' || colName === 'days' || colName === 'paidHours') && val) {
           try { val = JSON.parse(val); } catch(e) {}
         }
-        obj[col] = val !== undefined ? val : '';
+        obj[colName] = val !== undefined ? val : '';
       });
       return obj;
     });
 
-  console.log('[loadPractices] Parsed practices:', practices.map(p => ({ id: p.id, type: p.type, name: p.name })));
+  console.log('[loadPractices] Parsed practices:', practices.map(p => ({ id: p.id, type: p.type, name: p.name, services: typeof p.services })));
   return res.status(200).json({ success: true, practices, count: practices.length });
 }
 
