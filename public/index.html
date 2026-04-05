@@ -1503,8 +1503,9 @@ async function loadPracticesFromCloud() {
       };
 
       // Merge: cloud data takes priority, but keep local values if cloud is empty/corrupted
+      // For svcs: prefer defaults over stale localStorage to pick up new services
       p.days = Array.isArray(p.days) && p.days.length > 0 ? p.days : (existing?.days || []);
-      p.svcs = (p.svcs && Object.keys(p.svcs).length > 0) ? p.svcs : (existing?.svcs || defaultSvcs[p.id] || { Hygiene: { p: 70, d: 'per patient' } });
+      p.svcs = (p.svcs && Object.keys(p.svcs).length > 0) ? p.svcs : (defaultSvcs[p.id] || existing?.svcs || { Hygiene: { p: 70, d: 'per patient' } });
       p.comm = p.comm || existing?.comm || 0.35;
       p.short = p.short || existing?.short || p.name || p.id;
       // Parse paidHours if it's a string
