@@ -658,13 +658,15 @@ const fc=v=>'£'+Math.abs(v).toFixed(2);
 const fw=v=>'£'+Math.floor(Math.abs(v));
 const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
-const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
-const fdnDay=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
+// Parse YYYY-MM-DD as local date to avoid timezone issues (new Date("YYYY-MM-DD") parses as UTC)
+const parseLocalDate=d=>{const p=d.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));};
+const fdn=d=>{const dt=parseLocalDate(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
+const fdnDay=d=>{const dt=parseLocalDate(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
 const pad=n=>{const num=parseInt(n)||1;return String(num).padStart(5,'0');};
 const getSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return s[(v-20)%10]||s[v]||s[0];};
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const ordinalSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return (s[(v-20)%10]||s[v]||s[0]);};
-const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
+const getMonth=(y,m)=>S.entries.filter(e=>{const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
 
 // Parse invoice period to extract year/month for Drive folder
@@ -983,7 +985,8 @@ function getDefaultScheduleForDow(dow) {
 
 // Get all practices for a date (handles override or falls back to day-of-week default)
 function getPracticesForDate(dateStr) {
-  const d = new Date(dateStr);
+  // Use parseLocalDate helper to avoid timezone issues
+  const d = parseLocalDate(dateStr);
   const dow = d.getDay();
 
   // Check for date-specific override
@@ -1007,7 +1010,7 @@ function getHoursForPracticeOnDate(dateStr, practiceId) {
   if (found) return found.hours || 7;
 
   // Fall back to practice default for this day of week
-  const dow = new Date(dateStr).getDay();
+  const dow = parseLocalDate(dateStr).getDay();
   const p = S.practices[practiceId];
   if (p && p.paidHours) {
     return p.paidHours[dow] || p.paidHours[String(dow)] || 7;
@@ -1075,7 +1078,7 @@ function syncScheduleFromEntry(entry) {
   let hours = 7; // default
   const p = entry.pType === 'adhoc' ? S.ahPrac.find(x => x.id === practiceId) : S.practices[practiceId];
   if (p) {
-    const dow = new Date(dateStr).getDay();
+    const dow = parseLocalDate(dateStr).getDay();
     const ptsPerHour = p.ptsPerHour || 2;
     // Estimate hours from patients if we have that data
     if (entry.pts && ptsPerHour > 0) {
@@ -2497,7 +2500,7 @@ document.getElementById('logForm').style.display='none';initDt();
 }
 function upPracMSum(pId,comm,animate=false){
 const now=new Date();const y=now.getFullYear();const m=now.getMonth();
-const monthEntries=S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
+const monthEntries=S.entries.filter(e=>{const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
 let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
 const net=gross*comm;
 const gEl=document.getElementById('pracMGross');
@@ -4289,7 +4292,7 @@ function showEditInvoiceModal(idx){
   }else{
     entries.sort((a,b)=>a.date.localeCompare(b.date));
     entries.forEach((e,i)=>{
-      const dayName=new Date(e.date).toLocaleDateString('en-GB',{weekday:'short'});
+      const dayName=parseLocalDate(e.date).toLocaleDateString('en-GB',{weekday:'short'});
       const aoText=e.aoType?' + '+e.aoType:'';
       _h+='<div class="inv-entry-item" data-entryid="'+e.id+'" style="background:var(--card);border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer">';
       _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
@@ -6283,7 +6286,7 @@ function refreshAnalytics(){
 
   // Filter entries for current tax year
   const taxYearEntries=allEntries.filter(e=>{
-    const d=new Date(e.date);
+    const d=parseLocalDate(e.date);
     return d>=taxYearStart&&d<=taxYearEnd;
   });
 
@@ -6329,7 +6332,7 @@ function refreshAnalytics(){
   let earliestDate=null;
   allEntries.forEach(e=>{
     if(e.date){
-      const d=new Date(e.date);
+      const d=parseLocalDate(e.date);
       if(!earliestDate||d<earliestDate)earliestDate=d;
     }
   });
@@ -7728,7 +7731,7 @@ function refreshAnalytics(){
   const entryMonths=new Set();
   allEntries.forEach(e=>{
     if(e.date){
-      const d=new Date(e.date);
+      const d=parseLocalDate(e.date);
       entryMonths.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
     }
   });
@@ -7742,7 +7745,7 @@ function refreshAnalytics(){
     // Get entries for this month
     const monthEntries=allEntries.filter(e=>{
       if(!e.date)return false;
-      const d=new Date(e.date);
+      const d=parseLocalDate(e.date);
       return d.getFullYear()===yr&&(d.getMonth()+1)===mo;
     });
 
@@ -8173,7 +8176,7 @@ function showMonthDetailModal(mKey,type){
     _h+='<div style="max-height:200px;overflow-y:auto;border:1px solid var(--bdr);border-radius:var(--rs)">';
     sortedDates.forEach(date=>{
       const day=byDate[date];
-      const d=new Date(date);
+      const d=parseLocalDate(date);
       const dateLabel=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
       const firstColor=day.entries[0]&&day.entries[0].color?'var(--'+day.entries[0].color+')':'var(--pri)';
@@ -8200,7 +8203,7 @@ function showDayEntriesDetail(dateStr){
   const entries=S.entries.filter(e=>e.date===dateStr);
   if(entries.length===0)return;
 
-  const d=new Date(dateStr);
+  const d=parseLocalDate(dateStr);
   const dateLabel=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   let totalPts=0,totalNet=0;
@@ -8370,7 +8373,7 @@ function navScheduleCal(direction){
 
 // Edit a specific day on the schedule calendar - supports split days
 function editScheduleDay(dateStr){
-  const d=new Date(dateStr);
+  const d=parseLocalDate(dateStr);
   const dow=d.getDay();
   const dayName=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
@@ -8474,7 +8477,7 @@ function addSchedPrac(dateStr){
   const current = collectScheduleFromModal(dateStr);
 
   // Get default hours for this practice
-  const dow = new Date(dateStr).getDay();
+  const dow = parseLocalDate(dateStr).getDay();
   const p = S.practices[pId] || (S.ahPrac||[]).find(x=>x.id===pId);
   let hours = 4; // Default to 4 for split days
   if(p && p.paidHours){
@@ -8560,8 +8563,7 @@ function updateScheduleHoursVisibility(dateStr){
   div.style.display=isWorkDay?'block':'none';
   // Set default hours from practice if available
   if(isWorkDay&&inp){
-    const d=new Date(dateStr);
-    const dow=d.getDay();
+    const dow=parseLocalDate(dateStr).getDay();
     const p=S.practices[pId];
     if(p&&p.paidHours){
       inp.value=p.paidHours[dow]||p.paidHours[String(dow)]||7;
