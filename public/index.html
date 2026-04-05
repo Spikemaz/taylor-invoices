@@ -518,8 +518,8 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="scr" id="scr-tracker">
 <div class="entbox">
 <div class="esw">
-<button class="ebtn" onclick="setTrackerEnt('all')" id="tEA">All</button>
-<button class="ebtn act" onclick="setTrackerEnt('self')" id="tES">Self-Employed</button>
+<button class="ebtn act" onclick="setTrackerEnt('all')" id="tEA">All</button>
+<button class="ebtn" onclick="setTrackerEnt('self')" id="tES">Self-Employed</button>
 <button class="ebtn" onclick="setTrackerEnt('ltd')" id="tEL">Ltd Company</button>
 </div>
 </div>
@@ -834,7 +834,7 @@ async function retryPending() {
     // Validate delete_invoice - if invoice doesn't exist locally, we already deleted it
     if (d.action === 'delete_invoice' && invoiceNum) {
       const invEnt = d.entity || 'self';
-      const localInv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===invEnt));
+      const localInv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'||i.entity==='Ltd'?'ltd':'self')===invEnt));
       if (!localInv) {
         console.log('Removing pending delete - invoice already deleted locally:', invoiceNum);
         removed++;
@@ -1585,7 +1585,7 @@ async function regenerateInvoicePDF(invoiceNum, entity) {
   console.log('[Regenerate Invoice]', invoiceNum, entity);
   try {
     // Find the invoice (matching entity)
-    const inv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===(entity||'self')));
+    const inv = S.invoices.find(i => i.num === invoiceNum && ((i.logoType==='ltd'||i.entity==='Ltd Company'||i.entity==='Ltd'?'ltd':'self')===(entity||'self')));
     if (!inv) {
       console.error('Invoice not found:', invoiceNum, entity);
       showToast('Invoice not found', 'err');
@@ -1859,8 +1859,8 @@ function mergeInvoices(cloudInvoices, entity) {
     if (ci.entity && ci.entity !== entity) return;
     const normalized = normalizeInvoice(ci);
     // Match by both num AND entity
-    const ciEntity = ci.logoType==='ltd'||ci.entity==='Ltd Company'?'ltd':'self';
-    const localIdx = S.invoices.findIndex(i => i.num === ci.num && ((i.logoType==='ltd'||i.entity==='Ltd Company'?'ltd':'self')===ciEntity));
+    const ciEntity = ci.logoType==='ltd'||ci.entity==='Ltd Company'||ci.entity==='Ltd'?'ltd':'self';
+    const localIdx = S.invoices.findIndex(i => i.num === ci.num && ((i.logoType==='ltd'||i.entity==='Ltd Company'||i.entity==='Ltd'?'ltd':'self')===ciEntity));
     if (localIdx === -1) {
       // New from cloud
       S.invoices.push(normalized);
@@ -3226,7 +3226,7 @@ async function saveEntry(id){
   if(entityChanged){
     // If entry has an invoice, move entire invoice with all its entries
     if(hadInvoice){
-      const invIdx=S.invoices.findIndex(inv=>inv.num===invoiceNum&&((inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self')===oldEntity));
+      const invIdx=S.invoices.findIndex(inv=>inv.num===invoiceNum&&((inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self')===oldEntity));
       if(invIdx>=0){
         closeMod2();
         // Store entry changes to apply after invoice move
@@ -3491,7 +3491,7 @@ function getPrcClass(pid,pType){
 
 // Helper to get entity type from invoice
 function getInvEntity(inv){
-  return inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  return inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
 }
 
 // Helper to render a single invoice
@@ -3611,7 +3611,7 @@ if(!hasAwaitingApproval){
 }
 
 // ===== INVOICE TRACKER FUNCTIONS =====
-let trackerEnt='self'; // 'all', 'self', or 'ltd'
+let trackerEnt='all'; // 'all', 'self', or 'ltd'
 
 function setTrackerEnt(t){
   trackerEnt=t;
@@ -3627,7 +3627,7 @@ function refTracker(){
 
   // Helper to get entity type from invoice
   function getInvEntity(inv){
-    return inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+    return inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   }
 
   // Filter invoices by entity
@@ -3710,7 +3710,7 @@ function refTracker(){
 function showInvoiceOptionsModal(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
   const isPaid=inv.paidStatus==='paid';
   const overdueInfo=isInvoiceOverdue(inv);
@@ -3820,7 +3820,7 @@ function emailInvoice(idx){
   const inv=S.invoices[idx];
   if(!inv||!inv.driveLink)return;
 
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const entDetails=S.ents[entType];
 
   // Get practice email if configured
@@ -3872,7 +3872,7 @@ function sendChaseEmail(idx){
     return;
   }
 
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const entDetails=S.ents[entType];
 
   // Get practice email if configured
@@ -3936,7 +3936,7 @@ async function toggleInvoicePaidStatus(idx,selectedDate){
   const inv=S.invoices[idx];
   if(!inv)return;
 
-  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const wasPaid=inv.paidStatus==='paid';
 
   // Toggle status
@@ -3983,7 +3983,8 @@ async function toggleInvoicePaidStatus(idx,selectedDate){
 function showEditInvoiceModal(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  // Handle both 'Ltd Company' and 'Ltd' entity strings
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const entLabel=entType==='ltd'?'Ltd Company':'Self-Employed';
 
   // Get all entries for this invoice (matching entity)
@@ -4235,7 +4236,7 @@ async function regenerateInvoiceAfterEdit(invoiceIdx,newNum,newDate){
   const inv=S.invoices[invoiceIdx];
   if(!inv)return;
 
-  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const oldNum=inv.num;
   const entries=S.entries.filter(e=>e.invNo===oldNum&&(e.entity||'self')===entity);
 
@@ -4249,7 +4250,7 @@ async function regenerateInvoiceAfterEdit(invoiceIdx,newNum,newDate){
   // Handle invoice number change
   if(newNum&&newNum!==oldNum){
     // Check if new number already exists within the SAME entity (different entities can have same numbers)
-    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'?'ltd':'self')===entity));
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'||i.entity==='Ltd'?'ltd':'self')===entity));
     if(existingInv){
       showToast('Invoice #'+newNum+' already exists for this entity','err');
       showEditInvoiceModal(invoiceIdx);
@@ -4389,7 +4390,7 @@ async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
   const inv=S.invoices[invoiceIdx];
   if(!inv)return;
 
-  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const oldNum=inv.num;
   const entries=S.entries.filter(e=>e.invNo===oldNum&&(e.entity||'self')===entity);
 
@@ -4398,7 +4399,7 @@ async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
 
   // Check if new number already exists within the SAME entity
   if(newNum!==oldNum){
-    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'?'ltd':'self')===entity));
+    const existingInv=S.invoices.find(i=>i.num===newNum&&i!==inv&&(i.logoType===entity||(i.entity==='Ltd Company'||i.entity==='Ltd'?'ltd':'self')===entity));
     if(existingInv){
       showToast('Invoice #'+newNum+' already exists for this entity','err');
       return;
@@ -4434,7 +4435,7 @@ async function saveInvoiceMetadataOnly(invoiceIdx,newNum,newDate){
 function showDeleteInvoiceConfirmModal(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
-  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entType=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
 
   let _h='<div class="mod-hdr" style="background:#dc2626"><h3>Delete Invoice #'+inv.num+'?</h3></div>';
   _h+='<p style="font-size:14px;color:var(--txt2);margin-bottom:16px">This will permanently delete:</p>';
@@ -4463,7 +4464,7 @@ function showDeleteInvoiceConfirmModal(idx){
 async function deleteInvoiceWithDrive(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
-  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
 
   closeMod2();
   showToast('Deleting invoice...');
@@ -4500,7 +4501,7 @@ async function deleteInvoiceWithDrive(idx){
 function changeInvoiceEntityConfirm(idx){
   const inv=S.invoices[idx];
   if(!inv)return;
-  const oldEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+  const oldEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
   const newEntity=oldEntity==='ltd'?'self':'ltd';
   const newLabel=newEntity==='ltd'?'Ltd Company':'Self-Employed';
   const affectedEntries=S.entries.filter(e=>e.invNo===inv.num&&(e.entity||'self')===oldEntity);
@@ -6111,7 +6112,7 @@ function refreshAnalytics(){
 
   // Entity breakdown for invoices
   const selfInvoices=allInvoices.filter(inv=>inv.logoType==='self'||inv.entity==='Self-Employed');
-  const ltdInvoices=allInvoices.filter(inv=>inv.logoType==='ltd'||inv.entity==='Ltd Company');
+  const ltdInvoices=allInvoices.filter(inv=>inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd');
   const selfPaid=selfInvoices.filter(inv=>inv.paidStatus==='paid').reduce((s,inv)=>s+(inv.amount||0),0);
   const selfUnpaid=selfInvoices.filter(inv=>inv.paidStatus!=='paid').reduce((s,inv)=>s+(inv.amount||0),0);
   const ltdPaid=ltdInvoices.filter(inv=>inv.paidStatus==='paid').reduce((s,inv)=>s+(inv.amount||0),0);
@@ -6241,7 +6242,7 @@ function refreshAnalytics(){
         agingLabel=daysRemaining+' days left';
       }
 
-      const invEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'Ltd':'Self';
+      const invEntity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'Ltd':'Self';
       const invEntityColor=invEntity==='Ltd'?'var(--pri)':'#0057a8';
       _h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:var(--rs);margin-bottom:4px;border-left:3px solid '+agingColor+'">';
       _h+='<div style="flex:1;min-width:0">';
@@ -8833,7 +8834,7 @@ showToast('\u2713 Invoice #'+inv.num+' re-downloaded');
 
 async function deleteInvoice(idx){
 var inv=S.invoices[idx];if(!inv)return;
-var entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'?'ltd':'self';
+var entity=inv.logoType==='ltd'||inv.entity==='Ltd Company'||inv.entity==='Ltd'?'ltd':'self';
 // Unmark entries and collect for cloud update (match entity too)
 var entriesToUpdate=S.entries.filter(function(e){return e.invNo===inv.num&&(e.entity||'self')===entity;});
 entriesToUpdate.forEach(function(e){e.invSt='pending';e.invNo=null;});
