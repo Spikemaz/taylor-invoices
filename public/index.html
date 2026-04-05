@@ -6944,58 +6944,67 @@ function renderProfitabilityTable() {
 
   let html = '';
 
-  // Header row
-  html += '<div style="display:grid;grid-template-columns:minmax(90px,1fr) repeat(5,minmax(45px,60px));gap:4px;padding:8px 4px;border-bottom:2px solid var(--bdr);font-size:9px;font-weight:600;color:var(--txt2);text-transform:uppercase">';
-  html += '<div>Service</div>';
-  html += '<div style="text-align:right">Net/Appt</div>';
-  html += '<div style="text-align:right">Net/Min</div>';
-  html += '<div style="text-align:right">Net/Hr</div>';
-  html += '<div style="text-align:right">Net/8Hr</div>';
-  html += '<div style="text-align:center">Rating</div>';
-  html += '</div>';
-
-  services.forEach(svc => {
+  // Mobile-friendly card layout
+  services.forEach((svc, idx) => {
     const color = getPracticeColor(svc.practiceId);
     const ratingColor = svc.efficiencyRating >= 90 ? 'var(--ok)' : svc.efficiencyRating >= 70 ? 'var(--warn)' : svc.efficiencyRating >= 50 ? 'var(--txt2)' : 'var(--err)';
     const hasDuration = svc.durationMins > 0;
 
-    html += '<div style="display:grid;grid-template-columns:minmax(90px,1fr) repeat(5,minmax(45px,60px));gap:4px;padding:10px 4px;border-bottom:1px solid var(--bdr);font-size:11px;align-items:center' + (svc.isDraft ? ';opacity:0.8;font-style:italic' : '') + '">';
+    html += '<div style="padding:12px;margin-bottom:8px;background:var(--bg);border-radius:var(--rs);border-left:4px solid ' + color + (svc.isDraft ? ';opacity:0.85' : '') + '">';
 
-    // Service name with practice color indicator
-    html += '<div style="display:flex;align-items:center;gap:6px;min-width:0">';
-    html += '<span style="width:3px;min-width:3px;height:28px;border-radius:2px;background:' + color + '"></span>';
-    html += '<div style="min-width:0;overflow:hidden">';
-    html += '<div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + svc.name + (svc.isDraft ? ' *' : '') + '</div>';
-    html += '<div style="font-size:9px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + svc.practiceName;
+    // Header row: Service name + Net/Appt
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:600;font-size:14px' + (svc.isDraft ? ';font-style:italic' : '') + '">' + svc.name + (svc.isDraft ? ' *' : '') + '</div>';
+    html += '<div style="font-size:11px;color:var(--txt2)">' + svc.practiceName;
     if (hasDuration) {
-      html += ' | ' + svc.durationMins + 'min';
-    } else {
-      html += ' | <span onclick="showSetDurationModal(\'' + svc.practiceId + '\',\'' + svc.name.replace(/'/g, "\\'") + '\')" style="color:var(--warn);cursor:pointer;text-decoration:underline">Set time</span>';
+      html += ' | ' + svc.durationMins + ' min';
     }
     html += '</div>';
     html += '</div>';
+    html += '<div style="text-align:right">';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--pri)">' + fc(svc.netPerAppt) + '</div>';
+    html += '<div style="font-size:10px;color:var(--txt2)">per appt</div>';
+    html += '</div>';
     html += '</div>';
 
-    // Metrics
-    html += '<div style="text-align:right;font-weight:600;color:var(--pri)">' + fc(svc.netPerAppt) + '</div>';
-
     if (hasDuration) {
-      html += '<div style="text-align:right">' + fc(svc.netPerMin) + '</div>';
-      html += '<div style="text-align:right">' + fc(svc.netPerHour) + '</div>';
-      html += '<div style="text-align:right;font-weight:600">' + fc(svc.netPer8HrDay) + '</div>';
+      // Metrics grid - 2x2 for mobile
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
 
-      // Rating bar
-      html += '<div style="text-align:center">';
-      html += '<div style="display:inline-block;width:32px;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden">';
+      html += '<div style="background:var(--card);padding:8px;border-radius:6px;text-align:center">';
+      html += '<div style="font-size:10px;color:var(--txt2)">Per Minute</div>';
+      html += '<div style="font-size:14px;font-weight:600">' + fc(svc.netPerMin) + '</div>';
+      html += '</div>';
+
+      html += '<div style="background:var(--card);padding:8px;border-radius:6px;text-align:center">';
+      html += '<div style="font-size:10px;color:var(--txt2)">Per Hour</div>';
+      html += '<div style="font-size:14px;font-weight:600">' + fc(svc.netPerHour) + '</div>';
+      html += '</div>';
+
+      html += '<div style="background:var(--card);padding:8px;border-radius:6px;text-align:center">';
+      html += '<div style="font-size:10px;color:var(--txt2)">Per 8hr Day</div>';
+      html += '<div style="font-size:14px;font-weight:700;color:var(--pri)">' + fc(svc.netPer8HrDay) + '</div>';
+      html += '</div>';
+
+      // Efficiency rating
+      html += '<div style="background:var(--card);padding:8px;border-radius:6px;text-align:center">';
+      html += '<div style="font-size:10px;color:var(--txt2)">Efficiency</div>';
+      html += '<div style="display:flex;align-items:center;justify-content:center;gap:6px">';
+      html += '<div style="width:40px;height:6px;background:var(--bdr);border-radius:3px;overflow:hidden">';
       html += '<div style="width:' + svc.efficiencyRating + '%;height:100%;background:' + ratingColor + '"></div>';
       html += '</div>';
-      html += '<div style="font-size:8px;color:' + ratingColor + ';margin-top:1px">' + svc.efficiencyRating + '%</div>';
+      html += '<span style="font-size:12px;font-weight:600;color:' + ratingColor + '">' + svc.efficiencyRating + '%</span>';
+      html += '</div>';
+      html += '</div>';
+
       html += '</div>';
     } else {
-      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
-      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
-      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
-      html += '<div style="text-align:center;font-size:8px;color:var(--warn)">Set time</div>';
+      // No duration set - show prompt
+      html += '<div onclick="showSetDurationModal(\'' + svc.practiceId + '\',\'' + svc.name.replace(/'/g, "\\'") + '\')" style="background:rgba(245,158,11,0.1);border:1px dashed var(--warn);padding:12px;border-radius:6px;text-align:center;cursor:pointer">';
+      html += '<div style="font-size:12px;color:var(--warn);font-weight:500">Tap to set appointment duration</div>';
+      html += '<div style="font-size:11px;color:var(--txt2);margin-top:4px">Required to calculate time-based earnings</div>';
+      html += '</div>';
     }
 
     html += '</div>';
