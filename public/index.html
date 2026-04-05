@@ -658,6 +658,7 @@ const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const fdn=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
 const fdnDay=d=>{const dt=new Date(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
 const pad=n=>{const num=parseInt(n)||1;return String(num).padStart(5,'0');};
+const getSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return s[(v-20)%10]||s[v]||s[0];};
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const ordinalSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return (s[(v-20)%10]||s[v]||s[0]);};
 const getMonth=(y,m)=>S.entries.filter(e=>{const d=new Date(e.date);return d.getFullYear()===y&&d.getMonth()===m});
@@ -5761,6 +5762,86 @@ if(sel&&row){
   row.style.display=sel.value!=='home'?'block':'none';
 }
 }
+// Best Days state
+let bestDaysCount=5;
+let bestDaysPracFilter='all';
+
+function setBestDaysCount(count){
+  bestDaysCount=count;
+  renderBestDays();
+}
+function setBestDaysPrac(prac){
+  bestDaysPracFilter=prac;
+  renderBestDays();
+}
+function renderBestDays(){
+  const container=document.getElementById('bestDaysContainer');
+  if(!container)return;
+
+  // Get all entries and filter by practice
+  let entries=(S.entries||[]).filter(e=>{
+    if(bestDaysPracFilter==='all')return true;
+    if(bestDaysPracFilter==='adhoc')return e.pType==='adhoc';
+    return e.pId===bestDaysPracFilter;
+  });
+
+  // Build day totals with service breakdown
+  const dayTotals={};
+  entries.forEach(e=>{
+    if(!e.date)return;
+    const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
+    const isAdhoc=e.pType==='adhoc';
+    const net=isAdhoc?gross:gross*(e.comm||0);
+    if(!dayTotals[e.date]){
+      dayTotals[e.date]={date:e.date,net:0,pts:0,entries:[],color:null,services:{}};
+    }
+    dayTotals[e.date].net+=net;
+    dayTotals[e.date].pts+=e.pts||0;
+    dayTotals[e.date].entries.push(e);
+    // Track services
+    const svcKey=e.svc||'Other';
+    if(!dayTotals[e.date].services[svcKey])dayTotals[e.date].services[svcKey]=0;
+    dayTotals[e.date].services[svcKey]+=(e.pts||0);
+    if(!dayTotals[e.date].color&&e.color)dayTotals[e.date].color=e.color;
+  });
+
+  const sortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net);
+  const displayDays=sortedDays.slice(0,bestDaysCount);
+
+  let _h='';
+  if(displayDays.length===0){
+    _h='<div style="padding:16px;text-align:center;color:var(--txt2)">No entries found for this filter</div>';
+  }else{
+    displayDays.forEach((day,i)=>{
+      const d=new Date(day.date);
+      const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+      const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
+      const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
+
+      // Calculate service percentages
+      const totalPts=day.pts||1;
+      const svcBreakdown=Object.entries(day.services)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([svc,pts])=>{
+          const pct=Math.round((pts/totalPts)*100);
+          return svc+' '+pct+'%';
+        }).join(', ');
+
+      _h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bdr)">';
+      _h+='<div style="flex:1;min-width:0">';
+      _h+='<div style="display:flex;align-items:center;gap:8px">';
+      _h+='<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:'+dayColor+';color:#fff;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0">'+(i+1)+'</span>';
+      _h+='<span style="font-weight:600;font-size:13px">'+dateStr+'</span>';
+      _h+='</div>';
+      _h+='<div style="font-size:11px;color:var(--txt2);margin:4px 0 0 30px">'+practices+' - '+day.pts+' patients</div>';
+      _h+='<div style="font-size:10px;color:var(--txt3);margin:2px 0 0 30px;font-style:italic">'+svcBreakdown+'</div>';
+      _h+='</div>';
+      _h+='<strong style="color:'+dayColor+';font-size:15px;white-space:nowrap">'+fc(day.net)+'</strong>';
+      _h+='</div>';
+    });
+  }
+  container.innerHTML=_h;
+}
 function toggleBestDays(){
 var extra=document.getElementById('bestDaysExtra');
 var btn=document.getElementById('toggleBestDays');
@@ -7490,71 +7571,28 @@ function refreshAnalytics(){
     _h+='</div>';
   }
 
-  // Best Performing Days - expandable top 5/10
-  if(allEntries.length>=5){
-    const dayTotals={};
-    allEntries.forEach(e=>{
-      if(!e.date)return;
-      const gross=(e.pts*e.uPrice)+(e.aoAmt||0);
-      const isAdhoc=e.pType==='adhoc';
-      const net=isAdhoc?gross:gross*(e.comm||0);
-      if(!dayTotals[e.date]){
-        dayTotals[e.date]={date:e.date,net:0,pts:0,entries:[],color:null};
-      }
-      dayTotals[e.date].net+=net;
-      dayTotals[e.date].pts+=e.pts||0;
-      dayTotals[e.date].entries.push(e);
-      // Use the color of the practice with most patients that day
-      if(!dayTotals[e.date].color&&e.color)dayTotals[e.date].color=e.color;
-    });
-    const allSortedDays=Object.values(dayTotals).sort((a,b)=>b.net-a.net);
-    const initialCount=5;
-    const expandedCount=Math.min(10,allSortedDays.length);
-    if(allSortedDays.length>0){
-      _h+='<div class="analytics-card" id="bestDaysCard">';
-      _h+='<div style="display:flex;justify-content:space-between;align-items:center">';
-      _h+='<h3 class="analytics-title" style="margin:0">Top '+initialCount+' Best Days</h3>';
-      if(allSortedDays.length>initialCount){
-        _h+='<button class="btn btn-s" style="padding:4px 10px;font-size:11px" id="toggleBestDays" onclick="toggleBestDays()">Show '+expandedCount+'</button>';
-      }
-      _h+='</div>';
-      _h+='<div id="bestDaysList">';
-      allSortedDays.slice(0,initialCount).forEach((day,i)=>{
-        const d=new Date(day.date);
-        const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-        const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
-        const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
-        _h+='<div class="best-day-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
-        _h+='<div>';
-        _h+='<span style="display:inline-block;width:20px;height:20px;background:'+dayColor+';color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+1)+'</span>';
-        _h+='<span style="font-weight:500">'+dateStr+'</span>';
-        _h+='<div style="font-size:12px;color:var(--txt2);margin-left:28px">'+practices+' - '+day.pts+' patients</div>';
-        _h+='</div>';
-        _h+='<strong style="color:'+dayColor+'">'+fc(day.net)+'</strong>';
-        _h+='</div>';
-      });
-      // Hidden extra items
-      if(allSortedDays.length>initialCount){
-        _h+='<div id="bestDaysExtra" style="display:none">';
-        allSortedDays.slice(initialCount,expandedCount).forEach((day,i)=>{
-          const d=new Date(day.date);
-          const dateStr=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-          const practices=[...new Set(day.entries.map(e=>e.pName))].join(', ');
-          const dayColor=day.color?'var(--'+day.color+')':'var(--pri)';
-          _h+='<div class="best-day-item" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)">';
-          _h+='<div>';
-          _h+='<span style="display:inline-block;width:20px;height:20px;background:'+dayColor+';color:#fff;border-radius:50%;text-align:center;line-height:20px;font-size:11px;font-weight:600;margin-right:8px">'+(i+initialCount+1)+'</span>';
-          _h+='<span style="font-weight:500">'+dateStr+'</span>';
-          _h+='<div style="font-size:12px;color:var(--txt2);margin-left:28px">'+practices+' - '+day.pts+' patients</div>';
-          _h+='</div>';
-          _h+='<strong style="color:'+dayColor+'">'+fc(day.net)+'</strong>';
-          _h+='</div>';
-        });
-        _h+='</div>';
-      }
-      _h+='</div>';
-      _h+='</div>';
-    }
+  // Best Performing Days - with practice filter and service breakdown
+  if(allEntries.length>=3){
+    _h+='<div class="analytics-card" id="bestDaysCard">';
+    _h+='<h3 class="analytics-title" style="margin-bottom:8px">Top Best Days</h3>';
+
+    // Count selector - styled buttons
+    _h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
+    _h+='<button onclick="setBestDaysCount(5)" id="bdCount5" style="flex:1;padding:8px;border:2px solid '+(bestDaysCount===5?'var(--pri)':'var(--bdr)')+';background:'+(bestDaysCount===5?'var(--pri-bg)':'var(--card)')+';color:'+(bestDaysCount===5?'var(--pri-dk)':'var(--txt)')+';border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Top 5</button>';
+    _h+='<button onclick="setBestDaysCount(10)" id="bdCount10" style="flex:1;padding:8px;border:2px solid '+(bestDaysCount===10?'var(--pri)':'var(--bdr)')+';background:'+(bestDaysCount===10?'var(--pri-bg)':'var(--card)')+';color:'+(bestDaysCount===10?'var(--pri-dk)':'var(--txt)')+';border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Top 10</button>';
+    _h+='</div>';
+
+    // Practice filter - styled buttons
+    _h+='<div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap">';
+    _h+='<button onclick="setBestDaysPrac(\'all\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='all'?'var(--pri)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='all'?'var(--pri-bg)':'var(--card)')+';color:'+(bestDaysPracFilter==='all'?'var(--pri-dk)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">All</button>';
+    _h+='<button onclick="setBestDaysPrac(\'bupa\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='bupa'?'var(--bupa-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='bupa'?'var(--bupa)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Bupa</button>';
+    _h+='<button onclick="setBestDaysPrac(\'grove\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='grove'?'var(--grove-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='grove'?'var(--grove)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Grove</button>';
+    _h+='<button onclick="setBestDaysPrac(\'adhoc\')" style="padding:6px 12px;border:2px solid '+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--bdr)')+';background:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc-lt)':'var(--card)')+';color:'+(bestDaysPracFilter==='adhoc'?'var(--adhoc)':'var(--txt2)')+';border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Ad Hoc</button>';
+    _h+='</div>';
+
+    // Container for dynamic content
+    _h+='<div id="bestDaysContainer"></div>';
+    _h+='</div>';
   }
 
   // Key Performance Indicators - focused on Taylor's take-home
@@ -7737,6 +7775,9 @@ function refreshAnalytics(){
 
   _h+='</div>';
   container.innerHTML=_h;
+
+  // Render Best Days section
+  renderBestDays();
 
   // Add click handlers for chase buttons
   container.querySelectorAll('.chase-btn').forEach(btn=>{
@@ -8713,7 +8754,8 @@ var psec=document.getElementById('pracSettings');
 if(psec){psec.innerHTML='';Object.keys(S.practices).forEach(function(k){
 var p=S.practices[k];
 var row=document.createElement('div');row.className='srow';
-row.innerHTML='<span class="la">'+(p.short||k)+'</span><span class="va">'+((p.comm||0)*100).toFixed(0)+'% \u00b7 '+(p.days||[]).map(function(d){return dn[d]}).join('/')+'</span>';
+var dueInfo=p.paymentDueDay>0?' \u00b7 Due '+p.paymentDueDay+getSuffix(p.paymentDueDay):'';
+row.innerHTML='<span class="la">'+(p.short||k)+'</span><span class="va">'+((p.comm||0)*100).toFixed(0)+'% \u00b7 '+(p.days||[]).map(function(d){return dn[d]}).join('/')+dueInfo+'</span>';
 row.onclick=function(){editPrac(k)};
 psec.appendChild(row);
 });}
