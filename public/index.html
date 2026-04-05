@@ -659,14 +659,14 @@ const fw=v=>'£'+Math.floor(Math.abs(v));
 const pc=s=>{const n=parseFloat(s.replace(/[^0-9.-]/g,''));return isNaN(n)?0:n};
 const fdd=d=>{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 // Parse YYYY-MM-DD as local date to avoid timezone issues (new Date("YYYY-MM-DD") parses as UTC)
-const parseLocalDate=d=>{const p=d.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));};
+const parseLocalDate=d=>{if(!d)return new Date(0);const p=d.split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));};
 const fdn=d=>{const dt=parseLocalDate(d);return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
 const fdnDay=d=>{const dt=parseLocalDate(d);return dt.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short',year:'numeric'})};
 const pad=n=>{const num=parseInt(n)||1;return String(num).padStart(5,'0');};
 const getSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return s[(v-20)%10]||s[v]||s[0];};
 const mKey=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
 const ordinalSuffix=n=>{const s=['th','st','nd','rd'];const v=n%100;return (s[(v-20)%10]||s[v]||s[0]);};
-const getMonth=(y,m)=>S.entries.filter(e=>{const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m});
+const getMonth=(y,m)=>S.entries.filter(e=>{if(!e.date)return false;const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m});
 const today=()=>new Date().toISOString().split('T')[0];
 
 // Parse invoice period to extract year/month for Drive folder
@@ -2500,7 +2500,7 @@ document.getElementById('logForm').style.display='none';initDt();
 }
 function upPracMSum(pId,comm,animate=false){
 const now=new Date();const y=now.getFullYear();const m=now.getMonth();
-const monthEntries=S.entries.filter(e=>{const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
+const monthEntries=S.entries.filter(e=>{if(!e.date)return false;const d=parseLocalDate(e.date);return d.getFullYear()===y&&d.getMonth()===m&&e.pId===pId&&e.entity===S.ent;});
 let gross=0;monthEntries.forEach(e=>{gross+=(e.gross||0);});
 const net=gross*comm;
 const gEl=document.getElementById('pracMGross');
