@@ -3451,7 +3451,11 @@ const UK_BANK_HOLIDAYS=[
 
 // Check if a date is a UK bank holiday
 function isUKBankHoliday(date){
-  const dateStr=date.toISOString().split('T')[0];
+  // Use local date components to avoid timezone issues with toISOString()
+  const y=date.getFullYear();
+  const m=String(date.getMonth()+1).padStart(2,'0');
+  const d=String(date.getDate()).padStart(2,'0');
+  const dateStr=y+'-'+m+'-'+d;
   return UK_BANK_HOLIDAYS.includes(dateStr);
 }
 
