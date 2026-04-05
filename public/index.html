@@ -626,10 +626,10 @@ const S={scr:'home',hist:[],prac:null,svc:null,ent:'self',iEnt:'self',entries:[]
 practices:{
 bupa:{id:'bupa',name:'Bupa Dental Care',short:'Bupa',addr:'39 Buckingham Road\nAylesbury\nBuckinghamshire\nHP19 9PT',days:[1,5],comm:.35,type:'contract',color:'bupa',
 svcs:{Private:{p:93,d:'per patient hygiene'},Denplan:{p:93,d:'per patient Denplan'},'Bupa Smile Plan':{p:93,d:'per patient Smile Plan'},'Bupa UKI 20%':{p:74.40,d:'per patient UKI (-20%)'}},
-paidHours:{1:7,5:7},ptsPerHour:2},
+paidHours:{1:7,5:7},ptsPerHour:2,paymentDueDay:15},
 grove:{id:'grove',name:'The Grove Dental Practice',short:'Grove',addr:'170 Tring Rd\nAylesbury\nHP20 1JL',days:[4],comm:.40,type:'contract',color:'grove',
 svcs:{Hygiene:{p:70,d:'per patient hygiene'},Perio:{p:160,d:'per patient periodontal'}},
-paidHours:{4:7},ptsPerHour:2}
+paidHours:{4:7},ptsPerHour:2,paymentDueDay:10}
 },
 ahPrac:[
 {id:'haddenham',name:'Haddenham Dental',addr:'Banks Cottage\nBanks Road\nHaddenham\nBuckinghamshire\nHP17 8EE',rate:25,air:9,active:true},
@@ -3393,13 +3393,42 @@ function jumpToInvMonth(year,month){
   refInv();
 }
 
-// Helper to calculate working days between dates
-function getWorkingDaysBetween(startDate,endDate){
+// UK Bank Holidays for 2024-2027 (add more years as needed)
+// Format: 'YYYY-MM-DD'
+const UK_BANK_HOLIDAYS=[
+  // 2024
+  '2024-01-01','2024-03-29','2024-04-01','2024-05-06','2024-05-27','2024-08-26','2024-12-25','2024-12-26',
+  // 2025
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
+  // 2026
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28',
+  // 2027
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28'
+];
+
+// Check if a date is a UK bank holiday
+function isUKBankHoliday(date){
+  const dateStr=date.toISOString().split('T')[0];
+  return UK_BANK_HOLIDAYS.includes(dateStr);
+}
+
+// Check if a date is a working day (not weekend, not bank holiday)
+function isWorkingDay(date){
+  const day=date.getDay();
+  if(day===0||day===6)return false; // Weekend
+  if(isUKBankHoliday(date))return false; // Bank holiday
+  return true;
+}
+
+// Get working days between two dates (excluding weekends and bank holidays)
+function getWorkingDaysBetween(start,end){
   let count=0;
-  const cur=new Date(startDate);
+  const cur=new Date(start);
+  cur.setHours(0,0,0,0);
+  const endDate=new Date(end);
+  endDate.setHours(0,0,0,0);
   while(cur<=endDate){
-    const day=cur.getDay();
-    if(day!==0&&day!==6)count++;
+    if(isWorkingDay(cur))count++;
     cur.setDate(cur.getDate()+1);
   }
   return count;
@@ -3411,9 +3440,19 @@ function isInvoiceOverdue(inv){
   if(inv.paidStatus==='paid')return{overdue:false,days:0,dueDate:null};
 
   // Find the practice for this invoice to get payment due day
-  const practiceId=inv.pId||Object.keys(S.practices||{}).find(k=>S.practices[k].short===inv.practice||S.practices[k].name===inv.practice);
+  // Try multiple matching strategies: pId, short name, full name, partial match
+  let practiceId=inv.pId;
+  if(!practiceId&&inv.practice){
+    const pracName=(inv.practice||'').toLowerCase().trim();
+    practiceId=Object.keys(S.practices||{}).find(k=>{
+      const p=S.practices[k];
+      const short=(p.short||'').toLowerCase().trim();
+      const name=(p.name||'').toLowerCase().trim();
+      return short===pracName||name===pracName||pracName.includes(short)||short.includes(pracName);
+    });
+  }
   const practice=practiceId?S.practices[practiceId]:null;
-  const paymentDueDay=practice&&practice.paymentDueDay?practice.paymentDueDay:0;
+  const paymentDueDay=practice&&practice.paymentDueDay?parseInt(practice.paymentDueDay):0;
 
   const invDate=new Date(inv.date);
   const todayDate=new Date();
@@ -3421,12 +3460,26 @@ function isInvoiceOverdue(inv){
 
   // If practice has a specific payment due day (e.g. 15 = 15th of month)
   if(paymentDueDay>0){
-    // Calculate the due date based on the payment day of the following month
-    // e.g. Invoice Jan 20, paymentDueDay=15 -> Due Feb 15
-    let dueMonth=invDate.getMonth()+1;
-    let dueYear=invDate.getFullYear();
+    // Calculate the due date based on the payment day of the month AFTER the invoice period
+    // e.g. Invoice for March 2026, paymentDueDay=15 -> Due April 15, 2026
+    // Use period if available, otherwise invoice date
+    let periodMonth=invDate.getMonth();
+    let periodYear=invDate.getFullYear();
+
+    // Parse period like "March 2026" to get the invoice's billing period
+    const periodMatch=inv.period?.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/);
+    if(periodMatch){
+      const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+      periodMonth=monthNames.indexOf(periodMatch[1]);
+      periodYear=parseInt(periodMatch[2]);
+    }
+
+    // Due date is paymentDueDay of the following month
+    let dueMonth=periodMonth+1;
+    let dueYear=periodYear;
     if(dueMonth>11){dueMonth=0;dueYear++;}
-    const dueDate=new Date(dueYear,dueMonth,Math.min(paymentDueDay,new Date(dueYear,dueMonth+1,0).getDate()));
+    const lastDayOfDueMonth=new Date(dueYear,dueMonth+1,0).getDate();
+    const dueDate=new Date(dueYear,dueMonth,Math.min(paymentDueDay,lastDayOfDueMonth));
     dueDate.setHours(0,0,0,0);
 
     const daysDiff=Math.floor((todayDate-dueDate)/(1000*60*60*24));
@@ -3444,7 +3497,9 @@ function isInvoiceOverdue(inv){
   if(workingDays>payTerms){
     return{overdue:true,days:workingDays-payTerms,dueDate:null};
   }
-  return{overdue:false,days:0,dueDate:null};
+  // Calculate working days remaining until due
+  const workingDaysRemaining=payTerms-workingDays;
+  return{overdue:false,days:0,daysRemaining:workingDaysRemaining,dueDate:null};
 }
 
 function resetInvFilters(){
@@ -5955,7 +6010,11 @@ function calculateProjections(practiceId,year,month){
   const daysInMonth=new Date(year,month+1,0).getDate();
   for(let day=1;day<=daysInMonth;day++){
     const dateStr=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const dow=new Date(year,month,day).getDay();
+    const dateObj=new Date(year,month,day);
+    const dow=dateObj.getDay();
+
+    // Skip bank holidays - dental practices are closed
+    if(isUKBankHoliday(dateObj))continue;
 
     // Use new split-day aware helper to get practices for this date
     const dayPractices = getPracticesForDate(dateStr);
@@ -6145,10 +6204,13 @@ function refreshAnalytics(){
     const daysInMonth=new Date(projYear,projMonth+1,0).getDate();
     let projNet=0,projPts=0;
 
-    // Calculate from schedule (supports split days)
+    // Calculate from schedule (supports split days, excludes bank holidays)
     for(let day=1;day<=daysInMonth;day++){
       const dateStr=projYear+'-'+String(projMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      const dow=new Date(projYear,projMonth,day).getDay();
+      const dateObj=new Date(projYear,projMonth,day);
+
+      // Skip bank holidays - dental practices are closed
+      if(isUKBankHoliday(dateObj))continue;
 
       // Use split-day helper
       const dayPractices = getPracticesForDate(dateStr);
@@ -6962,20 +7024,24 @@ function refreshAnalytics(){
   // Now supports split days with multiple practices per day
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const dow=new Date(calYear,calMonth,day).getDay();
+    const dateObj=new Date(calYear,calMonth,day);
+    const dow=dateObj.getDay();
     const isPast=dateStr<todayStr;
     const isToday=dateStr===todayStr;
 
+    // Skip bank holidays - practices are closed
+    const isBankHoliday=isUKBankHoliday(dateObj);
+
     // Get scheduled practices using new split-day helper
     const dayPractices = getPracticesForDate(dateStr);
-    const isWorkDay = dayPractices.length > 0;
+    const isWorkDay = dayPractices.length > 0 && !isBankHoliday;
 
     // Get actual entries for this date
     const dayEntries=allEntries.filter(e=>e.date===dateStr);
     const hasEntry=dayEntries.length>0;
 
-    // Calculate full month projected patients (for all scheduled days)
-    if(isWorkDay){
+    // Calculate full month projected patients (for all scheduled days, excluding bank holidays)
+    if(isWorkDay&&!isBankHoliday){
       dayPractices.forEach(prac => {
         const p=S.practices[prac.pId];
         if(p){
