@@ -379,14 +379,14 @@ input[type="date"].fi{min-width:100%;display:block}
 <div class="entbox" id="hBan">
 <div class="esw">
 <button class="ebtn" onclick="setEntity('all')" id="eA">All</button>
-<button class="ebtn act" onclick="setEntity('self')" id="eS">Self</button>
-<button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd</button>
+<button class="ebtn act" onclick="setEntity('self')" id="eS">Self-Employed</button>
+<button class="ebtn" onclick="setEntity('ltd')" id="eL">Ltd Company</button>
 </div>
 <div class="month-nav">
 <button class="month-nav-btn" id="hMonthPrev" onclick="navMonth(-1)">‹</button>
 <div style="text-align:center">
 <div class="month-nav-title" id="hMonthTitle">March 2026</div>
-<div class="month-nav-sub" id="hMonthSub">Current Month</div>
+<div class="month-nav-sub" id="hMonthPills"></div>
 </div>
 <button class="month-nav-btn" id="hMonthNext" onclick="navMonth(1)">›</button>
 </div>
@@ -475,10 +475,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="month-nav-btn" id="aMonthPrev" onclick="navArcMonth(-1)">‹</button>
 <div style="text-align:center">
 <div class="month-nav-title" id="aMonthTitle">March 2026</div>
-<div class="month-nav-sub" id="aMonthSub">Current Month</div>
+<div class="month-nav-sub" id="aMonthPills"></div>
 </div>
 <button class="month-nav-btn" id="aMonthNext" onclick="navArcMonth(1)">›</button>
 </div>
+<div class="msum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="arcMonthG">£0.00</span><span class="msd">/</span><span class="msv msn" id="arcMonthN">£0.00</span></span></div>
 </div>
 <div class="frow" id="aFilt">
 <button class="fc act" onclick="filtArc('all')">All</button>
@@ -497,10 +498,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="month-nav-btn" id="iMonthPrev" onclick="navInvMonth(-1)">‹</button>
 <div style="text-align:center">
 <div class="month-nav-title" id="iMonthTitle">March 2026</div>
-<div class="month-nav-sub" id="iMonthSub">Current Month</div>
+<div class="month-nav-sub" id="iMonthPills"></div>
 </div>
 <button class="month-nav-btn" id="iMonthNext" onclick="navInvMonth(1)">›</button>
 </div>
+<div class="msum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="invMonthG">£0.00</span><span class="msd">/</span><span class="msv msn" id="invMonthN">£0.00</span></span></div>
 </div>
 <div class="frow" id="iFilt">
 <button class="fc act" onclick="filtInv('all')">All</button>
@@ -526,10 +528,11 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="month-nav-btn" id="tMonthPrev" onclick="navTrackerMonth(-1)">‹</button>
 <div style="text-align:center">
 <div class="month-nav-title" id="tMonthTitle">April 2026</div>
-<div class="month-nav-sub" id="tMonthSub">Current Month</div>
+<div class="month-nav-sub" id="tMonthPills"></div>
 </div>
 <button class="month-nav-btn" id="tMonthNext" onclick="navTrackerMonth(1)">›</button>
 </div>
+<div class="msum"><span class="msl">Monthly</span><span class="ms-nums"><span class="msv msg" id="trackMonthG">£0.00</span><span class="msd">/</span><span class="msv msn" id="trackMonthN">£0.00</span></span></div>
 </div>
 <div class="frow" id="tFilt">
 <button class="fc act" onclick="filtTracker('all')">All</button>
@@ -2280,6 +2283,10 @@ if(newDate>futureLimit)return;
 S.viewMonth={year:newYear,month:newMonth};
 upHome(true);
 }
+function jumpToHomeMonth(year,month){
+S.viewMonth={year:year,month:month};
+upHome(true);
+}
 
 function upHome(animate=false){
 if(!S.practices||typeof S.practices!=='object'){console.error('S.practices is invalid');return;}
@@ -2291,11 +2298,24 @@ const isCurrentMonth=viewYear===now.getFullYear()&&viewMonth===now.getMonth();
 
 // Update month navigator UI
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const shortMonths=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const hMonthTitle=document.getElementById('hMonthTitle');
-const hMonthSub=document.getElementById('hMonthSub');
+const hMonthPills=document.getElementById('hMonthPills');
 const hMonthNext=document.getElementById('hMonthNext');
 if(hMonthTitle)hMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
-if(hMonthSub)hMonthSub.textContent=isCurrentMonth?'Current Month':'';
+// Render month pills (show 3 months: current viewed month and 2 before)
+if(hMonthPills){
+  let pillsHtml='';
+  for(let i=-2;i<=0;i++){
+    let pMonth=viewMonth+i;
+    let pYear=viewYear;
+    if(pMonth<0){pMonth+=12;pYear--;}
+    const isActive=pMonth===viewMonth&&pYear===viewYear;
+    const pillStyle='display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;margin:0 2px;cursor:pointer;'+(isActive?'background:#fff;color:var(--pri-dk)':'background:rgba(255,255,255,.2);color:rgba(255,255,255,.8)');
+    pillsHtml+='<span style="'+pillStyle+'" onclick="jumpToHomeMonth('+pYear+','+pMonth+')">'+shortMonths[pMonth]+'</span>';
+  }
+  hMonthPills.innerHTML=pillsHtml;
+}
 if(hMonthNext)hMonthNext.disabled=isCurrentMonth;
 
 const me=getMonth(viewYear,viewMonth);
@@ -2999,10 +3019,10 @@ function updateArcMonthUI(){
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const title=document.getElementById('aMonthTitle');
-  const sub=document.getElementById('aMonthSub');
+  const pills=document.getElementById('aMonthPills');
   const next=document.getElementById('aMonthNext');
   if(title)title.textContent=monthNames[viewMonth]+' '+viewYear;
-  if(sub){
+  if(pills){
     // Find months with entry data for quick jump
     const monthsWithData=new Set();
     (S.entries||[]).forEach(e=>{
@@ -3019,7 +3039,7 @@ function updateArcMonthUI(){
     }else{
       subHtml=isCurrentMonth?'Current Month':'';
     }
-    sub.innerHTML=subHtml;
+    pills.innerHTML=subHtml;
   }
   if(next)next.disabled=isCurrentMonth;
 }
@@ -3131,6 +3151,21 @@ function refArc(){
   html+='</div>';
 
   c.innerHTML=html;
+
+  // Calculate and display monthly totals based on filters
+  const monthStart=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+  let monthEntries=[...S.entries].filter(e=>e.date&&e.date.startsWith(monthStart));
+  if(arcFilter!=='all')monthEntries=monthEntries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
+  if(arcEntFilter!=='all')monthEntries=monthEntries.filter(e=>(e.entity||'self')===arcEntFilter);
+  let monthGross=0,monthNet=0;
+  monthEntries.forEach(e=>{
+    monthGross+=e.gross||0;
+    monthNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
+  });
+  const arcGEl=document.getElementById('arcMonthG');
+  const arcNEl=document.getElementById('arcMonthN');
+  if(arcGEl)arcGEl.textContent=fc(monthGross);
+  if(arcNEl)arcNEl.textContent=fc(monthNet);
 }
 
 function editEntry(id){var e=S.entries.find(function(x){return x.id===id});if(!e)return;
@@ -3533,10 +3568,10 @@ const isCurrentMonth=viewYear===n.getFullYear()&&viewMonth===n.getMonth();
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const iMonthTitle=document.getElementById('iMonthTitle');
-const iMonthSub=document.getElementById('iMonthSub');
+const iMonthPills=document.getElementById('iMonthPills');
 const iMonthNext=document.getElementById('iMonthNext');
 if(iMonthTitle)iMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
-if(iMonthSub){
+if(iMonthPills){
   // Find months with data for quick jump
   const monthsWithData=[];
   const allDates=new Set([
@@ -3569,7 +3604,7 @@ if(iMonthSub){
   }else{
     subHtml=isCurrentMonth?'Current Month':'';
   }
-  iMonthSub.innerHTML=subHtml;
+  iMonthPills.innerHTML=subHtml;
 }
 if(iMonthNext)iMonthNext.disabled=isCurrentMonth;
 
@@ -3703,6 +3738,21 @@ pc2.innerHTML='';
 if(!hasAwaitingApproval){
   pc2.innerHTML='<div class="empty"><div class="emo">📋</div><p>No entries awaiting invoice for this month</p></div>';
 }
+
+// Calculate and display monthly totals based on filters
+const monthKey=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+let invMonthEntries=[...S.entries].filter(e=>e.date&&e.date.startsWith(monthKey));
+if(invPracFilter!=='all')invMonthEntries=invMonthEntries.filter(e=>invPracFilter==='adhoc'?e.pType==='adhoc':e.pId===invPracFilter);
+if(S.iEnt!=='all')invMonthEntries=invMonthEntries.filter(e=>(e.entity||'self')===S.iEnt);
+let invMonthGross=0,invMonthNet=0;
+invMonthEntries.forEach(e=>{
+  invMonthGross+=e.gross||0;
+  invMonthNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
+});
+const invGEl=document.getElementById('invMonthG');
+const invNEl=document.getElementById('invMonthN');
+if(invGEl)invGEl.textContent=fc(invMonthGross);
+if(invNEl)invNEl.textContent=fc(invMonthNet);
 }
 
 // ===== INVOICE TRACKER FUNCTIONS =====
@@ -3760,11 +3810,11 @@ function refTracker(){
   const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const shortMonths=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const tMonthTitle=document.getElementById('tMonthTitle');
-  const tMonthSub=document.getElementById('tMonthSub');
+  const tMonthPills=document.getElementById('tMonthPills');
   const tMonthNext=document.getElementById('tMonthNext');
 
   if(tMonthTitle)tMonthTitle.textContent=monthNames[viewMonth]+' '+viewYear;
-  if(tMonthSub){
+  if(tMonthPills){
     // Find months with invoice data for quick jump
     const monthsWithData=new Set();
     (S.invoices||[]).forEach(inv=>{
@@ -3787,7 +3837,7 @@ function refTracker(){
     }else{
       subHtml=isCurrentMonth?'Current Month':'';
     }
-    tMonthSub.innerHTML=subHtml;
+    tMonthPills.innerHTML=subHtml;
   }
   if(tMonthNext)tMonthNext.disabled=isCurrentMonth;
 
@@ -3895,6 +3945,21 @@ function refTracker(){
       if(idx>=0)showInvoiceOptionsModal(idx);
     };
   });
+
+  // Calculate and display monthly totals based on filters
+  const trackMonthKey=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+  let trackMonthEntries=[...S.entries].filter(e=>e.date&&e.date.startsWith(trackMonthKey));
+  if(trackerPracFilter!=='all')trackMonthEntries=trackMonthEntries.filter(e=>trackerPracFilter==='adhoc'?e.pType==='adhoc':e.pId===trackerPracFilter);
+  if(trackerEnt!=='all')trackMonthEntries=trackMonthEntries.filter(e=>(e.entity||'self')===trackerEnt);
+  let trackMonthGross=0,trackMonthNet=0;
+  trackMonthEntries.forEach(e=>{
+    trackMonthGross+=e.gross||0;
+    trackMonthNet+=(e.pType==='contract')?(e.gross*(e.comm||0)):(e.gross||0);
+  });
+  const trackGEl=document.getElementById('trackMonthG');
+  const trackNEl=document.getElementById('trackMonthN');
+  if(trackGEl)trackGEl.textContent=fc(trackMonthGross);
+  if(trackNEl)trackNEl.textContent=fc(trackMonthNet);
 }
 
 // ===== INVOICE OPTIONS MODAL =====
@@ -6993,10 +7058,14 @@ function refreshAnalytics(){
   // Calendar days - show actual entries vs scheduled (supports split days)
   for(let day=1;day<=daysInCalMonth;day++){
     const dateStr=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const dow=new Date(calYear,calMonth,day).getDay();
+    const dateObj=new Date(calYear,calMonth,day);
+    const dow=dateObj.getDay();
     const isToday=dateStr===todayStr;
     const isPast=dateStr<todayStr;
     const isFuture=dateStr>todayStr;
+
+    // Check if this is a bank holiday
+    const isBankHol=isUKBankHoliday(dateObj);
 
     // Get scheduled practices using new split-day helper
     const scheduledPractices = getPracticesForDate(dateStr);
@@ -7012,9 +7081,10 @@ function refreshAnalytics(){
     const hasMultipleEntryPractices = entryPractices.length > 1;
 
     // Determine display - use entries if available, otherwise schedule
+    // Bank holidays are NOT work days even if scheduled
     const displayPractices = hasEntry ? entryPractices.map(pId => ({pId})) : scheduledPractices;
-    const isWorkDay = displayPractices.length > 0;
-    const isSplitDisplay = displayPractices.length > 1;
+    const isWorkDay = displayPractices.length > 0 && !isBankHol;
+    const isSplitDisplay = displayPractices.length > 1 && !isBankHol;
 
     // Get colors for display
     const getColor = (pId) => {
@@ -7026,8 +7096,12 @@ function refreshAnalytics(){
     let opacity=isFuture&&!hasEntry?'0.7':'1';
 
     // Build background - split gradient for multi-practice days
+    // Bank holidays shown with striped grey pattern
     let bgStyle = '';
-    if(isSplitDisplay){
+    if(isBankHol){
+      bgStyle = 'background:repeating-linear-gradient(45deg,#e5e7eb,#e5e7eb 3px,#d1d5db 3px,#d1d5db 6px)';
+      opacity = '0.6';
+    } else if(isSplitDisplay){
       const colors = displayPractices.map(p => getColor(p.pId));
       bgStyle = 'background:linear-gradient(135deg,'+colors[0]+' 50%,'+colors[1]+' 50%)';
     } else if(isWorkDay){
@@ -7037,10 +7111,12 @@ function refreshAnalytics(){
     }
 
     _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;'+bgStyle+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px;opacity:'+opacity+'">';
-    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px;color:'+(isWorkDay?'#fff':'var(--txt2)')+'">'+day+'</div>';
+    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px;color:'+(isBankHol?'var(--txt3)':(isWorkDay?'#fff':'var(--txt2)'))+'">'+(isBankHol?'BH':day)+'</div>';
 
     // Show practice name(s) or patient count
-    if(hasEntry){
+    if(isBankHol){
+      _h+='<div style="font-size:7px;color:var(--txt3)">'+day+'</div>';
+    }else if(hasEntry){
       _h+='<div style="font-size:8px;margin-top:1px;opacity:0.9;color:#fff">'+actualPts+'pts</div>';
     }else if(isWorkDay){
       if(isSplitDisplay){
