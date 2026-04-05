@@ -3153,7 +3153,7 @@ function refArc(){
   c.innerHTML=html;
 
   // Calculate and display monthly totals based on filters
-  const monthStart=viewYear+'-'+String(viewMonth+1).padStart(2,'0');
+  // (monthStart already defined above)
   let monthEntries=[...S.entries].filter(e=>e.date&&e.date.startsWith(monthStart));
   if(arcFilter!=='all')monthEntries=monthEntries.filter(e=>arcFilter==='adhoc'?e.pType==='adhoc':e.pId===arcFilter);
   if(arcEntFilter!=='all')monthEntries=monthEntries.filter(e=>(e.entity||'self')===arcEntFilter);
