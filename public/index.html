@@ -1487,7 +1487,7 @@ async function loadPracticesFromCloud() {
       p.ptsPerHour = p.ptsPerHour || existing?.ptsPerHour || 2;
       // Email for invoices - keep cloud value or fall back to local
       p.email = p.email || existing?.email || '';
-      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'days=', p.days, 'paidHours=', p.paidHours, 'email=', p.email);
+      console.log('[Practice Loaded]', p.short, 'svcs=', Object.keys(p.svcs || {}), 'svcsFull=', JSON.stringify(p.svcs), 'days=', p.days, 'paidHours=', p.paidHours, 'email=', p.email);
       S.practices[p.id] = p;
     });
     console.log('[Practices] Loaded', contractPractices.length, 'contract practices (skipped', result.practices.length - contractPractices.length, 'ad hoc)');
