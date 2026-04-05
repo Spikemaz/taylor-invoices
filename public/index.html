@@ -644,6 +644,7 @@ ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street
 },
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
 scheduleExceptions:[], // [{date:'2026-03-15',type:'off',note:'Bank Holiday'},{date:'2026-03-20',type:'extra',pId:'bupa',note:'Cover shift'}]
+customHolidays:[], // User-defined holidays: ['2026-04-10', '2026-08-15'] - dates when practices are closed
 nextInvSelf:2,nextInvLtd:1,payTerms:'10 working days',invoiceFooter:'Thank you for your continued support.'
 };
 // Helper to get/set nextInv for current entity
@@ -779,6 +780,7 @@ function loadSettings(){
     if (d.workSchedule) S.workSchedule = d.workSchedule;
     if (d.scheduleHours) S.scheduleHours = d.scheduleHours;
     if (d.scheduleExceptions) S.scheduleExceptions = d.scheduleExceptions;
+    if (d.customHolidays) S.customHolidays = d.customHolidays;
 
     // Migration: Clear schedule data before Feb 2, 2025 (Taylor's first day was Feb 2nd at Bupa)
     const firstDayStr = '2025-02-02';
@@ -808,7 +810,7 @@ function save() {
       pData[k] = { name: p.name, short: p.short, addr: p.addr, email: p.email || '', comm: p.comm, days: p.days, svcs: p.svcs, color: p.color || 'grove', type: p.type || 'contract', paidHours: p.paidHours || {}, ptsPerHour: p.ptsPerHour || 2 };
     });
     localStorage.setItem('tm_inv_settings', JSON.stringify({
-      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, workSchedule: S.workSchedule || {}, scheduleHours: S.scheduleHours || {}, scheduleExceptions: S.scheduleExceptions || []
+      ent: S.ent, dayMap: S.dayMap, ahPrac: S.ahPrac, practices: pData, ents: S.ents, payTerms: S.payTerms, nextInvSelf: S.nextInvSelf, nextInvLtd: S.nextInvLtd, defComm: S.defComm, invoiceFooter: S.invoiceFooter, workSchedule: S.workSchedule || {}, scheduleHours: S.scheduleHours || {}, scheduleExceptions: S.scheduleExceptions || [], customHolidays: S.customHolidays || []
     }));
     localStorage.setItem('tm_inv_pending', JSON.stringify(pendingOps));
   } catch(e) { console.error('Save error:', e); }
@@ -1521,7 +1523,8 @@ async function syncSettingsToCloud() {
     dayMap: S.dayMap,
     ahPrac: S.ahPrac,
     defComm: S.defComm,
-    invoiceFooter: S.invoiceFooter
+    invoiceFooter: S.invoiceFooter,
+    customHolidays: S.customHolidays || []
   };
   // Sync Ltd settings
   const ltdSettings = {
@@ -1531,7 +1534,8 @@ async function syncSettingsToCloud() {
     dayMap: S.dayMap,
     ahPrac: S.ahPrac,
     defComm: S.defComm,
-    invoiceFooter: S.invoiceFooter
+    invoiceFooter: S.invoiceFooter,
+    customHolidays: S.customHolidays || []
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
   try {
@@ -2216,6 +2220,10 @@ async function loadSettingsFromCloudFn() {
     if (selfResult.settings.defComm !== undefined) S.defComm = selfResult.settings.defComm;
     if (selfResult.settings.invoiceFooter) S.invoiceFooter = selfResult.settings.invoiceFooter;
     if (selfResult.settings.nextInv) S.nextInvSelf = selfResult.settings.nextInv;
+    if (selfResult.settings.customHolidays) {
+      S.customHolidays = selfResult.settings.customHolidays;
+      console.log('[Settings Loaded] customHolidays=', S.customHolidays.length, 'dates');
+    }
     console.log('[Settings Loaded] entities=', Object.keys(S.ents || {}), 'defComm=', S.defComm, 'invoiceFooter=', !!S.invoiceFooter);
   }
   // Load entity-specific nextInv from ltd
@@ -3499,11 +3507,25 @@ function isUKBankHoliday(date){
   return UK_BANK_HOLIDAYS.includes(dateStr);
 }
 
+// Check if a date is a custom holiday (user-defined)
+function isCustomHoliday(date){
+  const y=date.getFullYear();
+  const m=String(date.getMonth()+1).padStart(2,'0');
+  const d=String(date.getDate()).padStart(2,'0');
+  const dateStr=y+'-'+m+'-'+d;
+  return (S.customHolidays||[]).includes(dateStr);
+}
+
+// Check if a date is any kind of holiday (bank or custom)
+function isHoliday(date){
+  return isUKBankHoliday(date) || isCustomHoliday(date);
+}
+
 // Check if a date is a working day (not weekend, not bank holiday)
 function isWorkingDay(date){
   const day=date.getDay();
   if(day===0||day===6)return false; // Weekend
-  if(isUKBankHoliday(date))return false; // Bank holiday
+  if(isHoliday(date))return false; // Bank holiday or custom holiday
   return true;
 }
 
@@ -6229,8 +6251,8 @@ function calculateProjections(practiceId,year,month){
     const dateObj=new Date(year,month,day);
     const dow=dateObj.getDay();
 
-    // Skip bank holidays - dental practices are closed
-    if(isUKBankHoliday(dateObj))continue;
+    // Skip holidays (bank holidays + custom) - dental practices are closed
+    if(isHoliday(dateObj))continue;
 
     // Use new split-day aware helper to get practices for this date
     const dayPractices = getPracticesForDate(dateStr);
@@ -6425,8 +6447,8 @@ function refreshAnalytics(){
       const dateStr=projYear+'-'+String(projMonth+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
       const dateObj=new Date(projYear,projMonth,day);
 
-      // Skip bank holidays - dental practices are closed
-      if(isUKBankHoliday(dateObj))continue;
+      // Skip holidays (bank holidays + custom) - dental practices are closed
+      if(isHoliday(dateObj))continue;
 
       // Use split-day helper
       const dayPractices = getPracticesForDate(dateStr);
@@ -7134,8 +7156,9 @@ function refreshAnalytics(){
     const isPast=dateStr<todayStr;
     const isFuture=dateStr>todayStr;
 
-    // Check if this is a bank holiday
-    const isBankHol=isUKBankHoliday(dateObj);
+    // Check if this is a holiday (bank holiday or custom)
+    const isBankHol=isHoliday(dateObj);
+    const isCustomHol=isCustomHoliday(dateObj);
 
     // Get scheduled practices using new split-day helper
     const scheduledPractices = getPracticesForDate(dateStr);
@@ -7181,7 +7204,8 @@ function refreshAnalytics(){
     }
 
     _h+='<div onclick="editScheduleDay(\''+dateStr+'\')" style="aspect-ratio:1;'+bgStyle+';border-radius:4px;border:'+border+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;font-size:11px;opacity:'+opacity+'">';
-    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px;color:'+(isBankHol?'var(--txt3)':(isWorkDay?'#fff':'var(--txt2)'))+'">'+(isBankHol?'BH':day)+'</div>';
+    const holLabel=isCustomHol?'OFF':(isBankHol?'BH':day);
+    _h+='<div style="font-weight:'+(isToday?'700':'500')+';font-size:12px;color:'+(isBankHol?'var(--txt3)':(isWorkDay?'#fff':'var(--txt2)'))+'">'+(holLabel)+'</div>';
 
     // Show practice name(s) or patient count
     if(isBankHol){
@@ -7256,8 +7280,8 @@ function refreshAnalytics(){
     const isPast=dateStr<todayStr;
     const isToday=dateStr===todayStr;
 
-    // Skip bank holidays - practices are closed
-    const isBankHoliday=isUKBankHoliday(dateObj);
+    // Skip holidays (bank holidays + custom) - practices are closed
+    const isBankHoliday=isHoliday(dateObj);
 
     // Get scheduled practices using new split-day helper
     const dayPractices = getPracticesForDate(dateStr);
@@ -8422,7 +8446,26 @@ function editScheduleDay(dateStr){
   const dayEntries = S.entries.filter(e => e.date === dateStr);
   const hasEntry = dayEntries.length > 0;
 
+  // Check holiday status
+  const isBankHol = isUKBankHoliday(d);
+  const isCustomHol = isCustomHoliday(d);
+
   let _h='<div class="mod-hdr"><h3>'+dayName+'</h3></div>';
+
+  // Show bank holiday notice
+  if(isBankHol){
+    _h+='<div style="padding:8px 12px;background:#fef3c7;border-radius:var(--rs);margin-bottom:12px;font-size:13px">';
+    _h+='<span style="color:#b45309;font-weight:600">UK Bank Holiday</span> - Practices closed';
+    _h+='</div>';
+  }
+
+  // Show custom holiday notice with remove option
+  if(isCustomHol){
+    _h+='<div style="padding:8px 12px;background:#fce7f3;border-radius:var(--rs);margin-bottom:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center">';
+    _h+='<span><span style="color:#be185d;font-weight:600">Custom Holiday</span> - Marked as day off</span>';
+    _h+='<button onclick="removeCustomHoliday(\''+dateStr+'\')" style="background:#be185d;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:11px;cursor:pointer">Remove</button>';
+    _h+='</div>';
+  }
 
   if(hasEntry){
     _h+='<div style="padding:8px 12px;background:var(--ok-bg);border-radius:var(--rs);margin-bottom:12px;font-size:13px">';
@@ -8481,6 +8524,13 @@ function editScheduleDay(dateStr){
   }
   _h+='</div>';
 
+  // Holiday toggle (only if not already a bank holiday)
+  if(!isBankHol && !isCustomHol){
+    _h+='<div style="margin-bottom:12px">';
+    _h+='<button class="btn btn-s" style="width:100%;font-size:12px;background:#fce7f3;color:#be185d;border:1px solid #f9a8d4" onclick="addCustomHoliday(\''+dateStr+'\')">Mark as Holiday (Practice Closed)</button>';
+    _h+='</div>';
+  }
+
   // Show if this differs from the weekly pattern
   if(hasOverride){
     _h+='<div style="padding:8px;background:var(--warn-bg);border-radius:var(--rs);font-size:12px;color:var(--warn);margin-bottom:12px">';
@@ -8493,6 +8543,34 @@ function editScheduleDay(dateStr){
   _h+='<button class="btn btn-p" onclick="saveScheduleDaySplit(\''+dateStr+'\')">Save</button>';
   _h+='</div>';
   showModal(_h);
+}
+
+// Add a custom holiday
+async function addCustomHoliday(dateStr){
+  if(!S.customHolidays)S.customHolidays=[];
+  if(!S.customHolidays.includes(dateStr)){
+    S.customHolidays.push(dateStr);
+    S.customHolidays.sort(); // Keep sorted
+    save();
+    await syncSettingsToCloud();
+    showToast('Marked as holiday','ok');
+  }
+  closeMod2();
+  refreshAnalytics();
+}
+
+// Remove a custom holiday
+async function removeCustomHoliday(dateStr){
+  if(!S.customHolidays)return;
+  const idx=S.customHolidays.indexOf(dateStr);
+  if(idx>-1){
+    S.customHolidays.splice(idx,1);
+    save();
+    await syncSettingsToCloud();
+    showToast('Holiday removed','ok');
+  }
+  closeMod2();
+  refreshAnalytics();
 }
 
 // Adjust hours for a specific practice in schedule modal
