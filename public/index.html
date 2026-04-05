@@ -2495,7 +2495,7 @@ if(p.svcs){
 // Sort services by usage (most used first)
 const svcUsage={};S.entries.filter(e=>e.pId===id).forEach(e=>{svcUsage[e.svc]=(svcUsage[e.svc]||0)+1;});
 const svcNames=Object.keys(p.svcs).sort((a,b)=>(svcUsage[b]||0)-(svcUsage[a]||0));
-svcNames.forEach(nm=>{const sv=p.svcs[nm];const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(sv.p)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
+svcNames.forEach(nm=>{const sv=p.svcs[nm];const price=(typeof sv==='object'&&sv.p)?sv.p:(typeof sv==='number'?sv:0);const b=document.createElement('button');b.className='sbtn'+(prcClass?' '+prcClass:'');b.setAttribute('data-s',nm);b.innerHTML=nm+'<span class="ph">'+fc(price)+'/pt</span>';b.onclick=()=>selSvc(nm);g.appendChild(b);});}
 document.getElementById('logForm').style.display='none';initDt();
 }
 function upPracMSum(pId,comm,animate=false){
@@ -2538,7 +2538,8 @@ if(prcClass)arcBtn.classList.add(prcClass);
 const amtd=document.querySelector('#logForm .amtd');
 if(amtd){amtd.classList.remove('prc-bupa','prc-grove','prc-adhoc');if(prcClass)amtd.classList.add(prcClass);}
 document.getElementById('logForm').style.display='block';
-document.getElementById('ptIn').value='0';document.getElementById('prIn').value=fc(sv.p);document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';
+const svcPrice=(typeof sv==='object'&&sv.p)?sv.p:(typeof sv==='number'?sv:0);
+document.getElementById('ptIn').value='0';document.getElementById('prIn').value=fc(svcPrice);document.getElementById('aoIn').value='£9.00';document.getElementById('aoPtsIn').value='0';
 document.getElementById('aoName').value='';selAddon('none');upAmt();}
 function fmtPrice(el){const v=pc(el.value);el.value=fc(v);}
 function adj(id,d){const elId=id==='pt'?'ptIn':(id==='pr'?'prIn':(id==='ao'?'aoIn':(id==='aoPts'?'aoPtsIn':id)));const el=document.getElementById(elId);if(id==='pt'||id==='aoPts'){el.value=Math.max(0,(parseInt(el.value)||0)+d);}else{el.value=fc(Math.max(0,pc(el.value)+d));}upAmt();}
@@ -2690,17 +2691,18 @@ if(p.svcs&&Object.keys(p.svcs).length>0){
   var firstSvc=null;
   Object.keys(p.svcs).forEach((svcName,i)=>{
     const svc=p.svcs[svcName];
+    const svcPrice=(typeof svc==='object'&&svc.p)?svc.p:(typeof svc==='number'?svc:0);
     const btn=document.createElement('button');
     btn.className='sbtn '+colorClass+(i===0?' sel':'');
     btn.setAttribute('data-s',svcName);
-    btn.setAttribute('data-p',svc.p);
+    btn.setAttribute('data-p',svcPrice);
     btn.onclick=function(){selAhSvc(svcName)};
-    btn.innerHTML=svcName+'<span class="ph">'+fc(svc.p)+'/pt</span>';
+    btn.innerHTML=svcName+'<span class="ph">'+fc(svcPrice)+'/pt</span>';
     sGrid.appendChild(btn);
     if(i===0)firstSvc=svcName;
   });
   // Select first service
-  if(firstSvc){ahSvc=firstSvc;document.getElementById('arvIn').value=fc(p.svcs[firstSvc].p);}
+  if(firstSvc){ahSvc=firstSvc;const fsv=p.svcs[firstSvc];const fPrice=(typeof fsv==='object'&&fsv.p)?fsv.p:(typeof fsv==='number'?fsv:0);document.getElementById('arvIn').value=fc(fPrice);}
 }else{
   // Legacy fallback: Hygiene with p.rate
   const btn=document.createElement('button');
@@ -2778,7 +2780,7 @@ if(type==='none'||(btn&&btn.classList.contains('sel'))){
   // Set default airflow rate - check svcs first for Airflow service, then legacy p.air
   if(p){
     var airPrice=0;
-    if(p.svcs&&p.svcs.Airflow)airPrice=p.svcs.Airflow.p;
+    if(p.svcs&&p.svcs.Airflow){var afSvc=p.svcs.Airflow;airPrice=(typeof afSvc==='object'&&afSvc.p)?afSvc.p:(typeof afSvc==='number'?afSvc:0);}
     else if(p.air)airPrice=p.air;
     document.getElementById('aaoIn').value=fc(airPrice);
   }
@@ -5577,7 +5579,7 @@ refInv();document.getElementById('nInv').textContent=pad(getNextInvI());
 function editPrac(id){var p=S.practices[id];if(!p)return;
 var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var daysStr=(p.days||[]).map(function(d){return d}).join(',');
-var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', '):'';
+var svcsStr=p.svcs?Object.keys(p.svcs).map(function(k){var sv=p.svcs[k];var pr=(typeof sv==='object'&&sv.p)?sv.p:(typeof sv==='number'?sv:0);return k+':'+pr}).join(', '):'';
 var currentColor=p.color||'bupa';
 var _h='<div class="mod-hdr"><h3>'+(p.short||id)+' Settings</h3></div>';
 _h+='<div class="fg"><label class="fl">Practice Name</label><input class="fi" id="ePName" value="'+(p.name||'')+'"></div>';
@@ -6049,7 +6051,7 @@ var currentColor=p.color||'adhoc';
 // Handle both old format (rate, air) and new format (svcs)
 var svcsStr='';
 if(p.svcs){
-  svcsStr=Object.keys(p.svcs).map(function(k){return k+':'+p.svcs[k].p}).join(', ');
+  svcsStr=Object.keys(p.svcs).map(function(k){var sv=p.svcs[k];var pr=(typeof sv==='object'&&sv.p)?sv.p:(typeof sv==='number'?sv:0);return k+':'+pr}).join(', ');
 }else if(p.rate){
   // Convert old format to services string
   svcsStr='Standard:'+p.rate;
