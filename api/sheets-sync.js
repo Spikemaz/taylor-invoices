@@ -1088,7 +1088,7 @@ async function loadPractices(sheets, sheetId, res) {
 // ===== SETTINGS =====
 // Settings are split: entity-specific (nextInv only) vs shared (dayMap, ahPrac, payTerms, entities, defComm, etc.)
 // Shared settings are mirrored to both sheets so both entities have access to all configurations
-const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'invoiceFooter', 'entities', 'defComm', 'customHolidays', 'scheduleExceptions', 'workSchedule', 'scheduleHours'];
+const SHARED_SETTINGS_KEYS = ['dayMap', 'ahPrac', 'payTerms', 'invoiceFooter', 'entities', 'defComm', 'customHolidays', 'scheduleExceptions', 'workSchedule', 'scheduleHours', 'draftServices', 'serviceDurations'];
 const ENTITY_SPECIFIC_KEYS = ['nextInv'];
 
 async function syncSettings(sheets, sheetId, { settings, entity }, res) {

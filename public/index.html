@@ -645,6 +645,9 @@ ltd:{name:'Hygiene and Therapy Clinical Services Ltd',addr:'71-75 Shelton Street
 dayMap:{0:'home',1:'bupa',2:'home',3:'home',4:'grove',5:'bupa',6:'home'},
 scheduleExceptions:[], // [{date:'2026-03-15',type:'off',note:'Bank Holiday'},{date:'2026-03-20',type:'extra',pId:'bupa',note:'Cover shift'}]
 customHolidays:[], // User-defined holidays: ['2026-04-10', '2026-08-15'] - dates when practices are closed
+draftServices:[], // Draft services for modeling: [{id, practiceId, practiceName, name, price, durationMins, commission, isAdhoc, notes}]
+serviceDurations:{}, // Service durations in minutes: {'bupa_Private': 30, 'grove_Hygiene': 20}
+diaryBuilder:{slots:[],totalNet:0,target:1000}, // Diary planner state
 nextInvSelf:2,nextInvLtd:1,payTerms:'10 working days',invoiceFooter:'Thank you for your continued support.'
 };
 // Helper to get/set nextInv for current entity
@@ -1527,7 +1530,9 @@ async function syncSettingsToCloud() {
     customHolidays: S.customHolidays || [],
     scheduleExceptions: S.scheduleExceptions || [],
     workSchedule: S.workSchedule || {},
-    scheduleHours: S.scheduleHours || {}
+    scheduleHours: S.scheduleHours || {},
+    draftServices: S.draftServices || [],
+    serviceDurations: S.serviceDurations || {}
   };
   // Sync Ltd settings
   const ltdSettings = {
@@ -1541,7 +1546,9 @@ async function syncSettingsToCloud() {
     customHolidays: S.customHolidays || [],
     scheduleExceptions: S.scheduleExceptions || [],
     workSchedule: S.workSchedule || {},
-    scheduleHours: S.scheduleHours || {}
+    scheduleHours: S.scheduleHours || {},
+    draftServices: S.draftServices || [],
+    serviceDurations: S.serviceDurations || {}
   };
   console.log('[Settings Sync]', 'ahPrac=', (S.ahPrac||[]).length, 'nextInvSelf=', S.nextInvSelf, 'nextInvLtd=', S.nextInvLtd);
   try {
@@ -2241,6 +2248,14 @@ async function loadSettingsFromCloudFn() {
     if (selfResult.settings.scheduleHours) {
       S.scheduleHours = selfResult.settings.scheduleHours;
       console.log('[Settings Loaded] scheduleHours loaded');
+    }
+    if (selfResult.settings.draftServices) {
+      S.draftServices = selfResult.settings.draftServices;
+      console.log('[Settings Loaded] draftServices=', S.draftServices.length, 'items');
+    }
+    if (selfResult.settings.serviceDurations) {
+      S.serviceDurations = selfResult.settings.serviceDurations;
+      console.log('[Settings Loaded] serviceDurations=', Object.keys(S.serviceDurations).length, 'services');
     }
     console.log('[Settings Loaded] entities=', Object.keys(S.ents || {}), 'defComm=', S.defComm, 'invoiceFooter=', !!S.invoiceFooter);
   }
@@ -6341,6 +6356,736 @@ function getAvgPriceForPractice(practiceId){
   return totalPts>0?totalGross/totalPts:70;
 }
 
+// ===== SERVICE PROFITABILITY ANALYZER =====
+
+// Calculate metrics for a single service
+function calcServiceMetrics(practiceId, practiceName, name, price, durationMins, commission, isDraft, isAdhoc) {
+  const grossPerAppt = price;
+  const netPerAppt = isAdhoc ? price : price * commission;
+  const netPerMin = durationMins > 0 ? netPerAppt / durationMins : 0;
+  const netPerHour = netPerMin * 60;
+  const netPer8HrDay = netPerHour * 8;
+
+  return {
+    id: practiceId + '_' + name.replace(/\s+/g, '_'),
+    practiceId: practiceId,
+    practiceName: practiceName,
+    name: name,
+    price: price,
+    durationMins: durationMins,
+    commission: commission,
+    isDraft: isDraft,
+    isAdhoc: isAdhoc,
+    grossPerAppt: grossPerAppt,
+    netPerAppt: netPerAppt,
+    netPerMin: netPerMin,
+    netPerHour: netPerHour,
+    netPer8HrDay: netPer8HrDay,
+    efficiencyRating: 0,
+    efficiencyLabel: ''
+  };
+}
+
+// Get all services (real + draft) with metrics
+function getAllServicesWithMetrics() {
+  const services = [];
+
+  // Contract practices
+  Object.keys(S.practices || {}).forEach(pId => {
+    const p = S.practices[pId];
+    if (!p || !p.svcs) return;
+
+    Object.keys(p.svcs).forEach(svcName => {
+      const sv = p.svcs[svcName];
+      const price = (typeof sv === 'object' && sv.p) ? sv.p : (typeof sv === 'number' ? sv : 0);
+      const durationKey = pId + '_' + svcName.replace(/\s+/g, '_');
+      const duration = S.serviceDurations[durationKey] || 0;
+
+      services.push(calcServiceMetrics(
+        pId,
+        p.short || p.name || pId,
+        svcName,
+        price,
+        duration,
+        p.comm || 0.35,
+        false,
+        false
+      ));
+    });
+  });
+
+  // Ad hoc practices (each practice is essentially a service)
+  (S.ahPrac || []).forEach(ap => {
+    if (!ap.active) return;
+    const durationKey = 'adhoc_' + ap.id + '_Hygiene';
+    const duration = S.serviceDurations[durationKey] || 0;
+
+    services.push(calcServiceMetrics(
+      'adhoc_' + ap.id,
+      ap.name,
+      'Hygiene',
+      ap.rate || 25,
+      duration,
+      1, // 100% commission for adhoc
+      false,
+      true
+    ));
+
+    // Add airflow if available
+    if (ap.air && ap.air > 0) {
+      const airDurationKey = 'adhoc_' + ap.id + '_Airflow';
+      const airDuration = S.serviceDurations[airDurationKey] || 0;
+      services.push(calcServiceMetrics(
+        'adhoc_' + ap.id,
+        ap.name,
+        'Airflow Add-on',
+        ap.air,
+        airDuration,
+        1,
+        false,
+        true
+      ));
+    }
+  });
+
+  // Draft services
+  (S.draftServices || []).forEach(ds => {
+    services.push(calcServiceMetrics(
+      ds.practiceId,
+      ds.practiceName,
+      ds.name,
+      ds.price,
+      ds.durationMins,
+      ds.commission,
+      true,
+      ds.isAdhoc
+    ));
+  });
+
+  // Calculate efficiency ratings
+  calcEfficiencyRatings(services);
+
+  return services;
+}
+
+// Calculate efficiency ratings relative to best (highest netPerMin = 100%)
+function calcEfficiencyRatings(services) {
+  // Only consider services with valid durations
+  const servicesWithDuration = services.filter(s => s.durationMins > 0);
+  if (servicesWithDuration.length === 0) return;
+
+  const maxNetPerMin = Math.max(...servicesWithDuration.map(s => s.netPerMin));
+  if (maxNetPerMin <= 0) return;
+
+  services.forEach(s => {
+    if (s.durationMins > 0) {
+      s.efficiencyRating = Math.round((s.netPerMin / maxNetPerMin) * 100);
+      if (s.efficiencyRating >= 90) s.efficiencyLabel = 'Best';
+      else if (s.efficiencyRating >= 70) s.efficiencyLabel = 'Good';
+      else if (s.efficiencyRating >= 50) s.efficiencyLabel = 'Fair';
+      else s.efficiencyLabel = 'Low';
+    } else {
+      s.efficiencyRating = 0;
+      s.efficiencyLabel = 'Set duration';
+    }
+  });
+}
+
+// Get practice color for display
+function getPracticeColor(practiceId) {
+  if (practiceId.startsWith('adhoc_')) return 'var(--adhoc)';
+  if (practiceId === 'bupa') return 'var(--bupa)';
+  if (practiceId === 'grove') return 'var(--grove)';
+  const p = S.practices[practiceId];
+  if (p && p.color) return 'var(--' + p.color + ')';
+  return 'var(--pri)';
+}
+
+// Duration management
+function showSetDurationModal(practiceId, serviceName, currentDuration) {
+  const durationKey = practiceId + '_' + serviceName.replace(/\s+/g, '_');
+  const duration = currentDuration || S.serviceDurations[durationKey] || 20;
+
+  let _h = '<div class="mod-hdr"><h3>Set Service Duration</h3></div>';
+  _h += '<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">How long does <strong>' + serviceName + '</strong> typically take?</p>';
+
+  _h += '<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:24px 0">';
+  _h += '<button class="btn btn-s" style="width:44px;height:44px;font-size:20px;padding:0" onclick="adjDuration(-5)">-</button>';
+  _h += '<div style="text-align:center">';
+  _h += '<div id="durationValue" style="font-size:32px;font-weight:700;color:var(--pri)">' + duration + '</div>';
+  _h += '<div style="font-size:12px;color:var(--txt2)">minutes</div>';
+  _h += '</div>';
+  _h += '<button class="btn btn-s" style="width:44px;height:44px;font-size:20px;padding:0" onclick="adjDuration(5)">+</button>';
+  _h += '</div>';
+
+  _h += '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px">';
+  [15, 20, 30, 45, 60].forEach(mins => {
+    _h += '<button class="btn btn-s" style="padding:8px 12px;font-size:12px" onclick="setDurationValue(' + mins + ')">' + mins + ' min</button>';
+  });
+  _h += '</div>';
+
+  _h += '<div class="brow">';
+  _h += '<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  _h += '<button class="btn btn-p" onclick="saveServiceDuration(\'' + practiceId + '\',\'' + serviceName.replace(/'/g, "\\'") + '\')">Save</button>';
+  _h += '</div>';
+
+  showModal(_h);
+  window._currentDuration = duration;
+}
+
+function adjDuration(delta) {
+  window._currentDuration = Math.max(5, Math.min(120, (window._currentDuration || 20) + delta));
+  document.getElementById('durationValue').textContent = window._currentDuration;
+}
+
+function setDurationValue(mins) {
+  window._currentDuration = mins;
+  document.getElementById('durationValue').textContent = mins;
+}
+
+async function saveServiceDuration(practiceId, serviceName) {
+  const durationKey = practiceId + '_' + serviceName.replace(/\s+/g, '_');
+  if (!S.serviceDurations) S.serviceDurations = {};
+  S.serviceDurations[durationKey] = window._currentDuration || 20;
+  save();
+  await syncSettingsToCloud();
+  closeMod2();
+  refreshAnalytics();
+  showToast('Duration saved');
+}
+
+// Draft services management
+function showAddDraftServiceModal(editId) {
+  const existing = editId ? (S.draftServices || []).find(d => d.id === editId) : null;
+
+  let _h = '<div class="mod-hdr"><h3>' + (existing ? 'Edit' : 'Add') + ' Draft Service</h3></div>';
+  _h += '<p style="font-size:13px;color:var(--txt2);margin-bottom:16px">Create a draft service to model potential earnings without adding it to the main system.</p>';
+
+  // Practice selector
+  _h += '<div class="fg" style="margin-bottom:12px"><label class="fl">Practice</label>';
+  _h += '<select class="fi" id="draftPractice" onchange="onDraftPracticeChange()">';
+  Object.keys(S.practices || {}).forEach(pId => {
+    const p = S.practices[pId];
+    const sel = existing && existing.practiceId === pId ? ' selected' : '';
+    _h += '<option value="' + pId + '"' + sel + '>' + (p.short || p.name) + ' (' + Math.round(p.comm * 100) + '% comm)</option>';
+  });
+  (S.ahPrac || []).forEach(ap => {
+    if (!ap.active) return;
+    const val = 'adhoc_' + ap.id;
+    const sel = existing && existing.practiceId === val ? ' selected' : '';
+    _h += '<option value="' + val + '"' + sel + '>' + ap.name + ' (Ad Hoc - 100%)</option>';
+  });
+  _h += '</select></div>';
+
+  // Service name
+  _h += '<div class="fg" style="margin-bottom:12px"><label class="fl">Service Name</label>';
+  _h += '<input class="fi" id="draftName" placeholder="e.g., Premium Whitening" value="' + (existing ? existing.name : '') + '"></div>';
+
+  // Price
+  _h += '<div class="fg" style="margin-bottom:12px"><label class="fl">Price (per appointment)</label>';
+  _h += '<input class="fi" id="draftPrice" type="number" step="0.01" placeholder="e.g., 150" value="' + (existing ? existing.price : '') + '"></div>';
+
+  // Duration
+  _h += '<div class="fg" style="margin-bottom:12px"><label class="fl">Duration (minutes)</label>';
+  _h += '<input class="fi" id="draftDuration" type="number" step="5" placeholder="e.g., 45" value="' + (existing ? existing.durationMins : '') + '"></div>';
+
+  // Notes
+  _h += '<div class="fg" style="margin-bottom:16px"><label class="fl">Notes (optional)</label>';
+  _h += '<input class="fi" id="draftNotes" placeholder="e.g., Testing for viability" value="' + (existing ? (existing.notes || '') : '') + '"></div>';
+
+  _h += '<div class="brow">';
+  _h += '<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  if (existing) {
+    _h += '<button class="btn btn-d" style="flex:0.5" onclick="deleteDraftService(\'' + editId + '\')">Delete</button>';
+  }
+  _h += '<button class="btn btn-p" onclick="saveDraftService(\'' + (editId || '') + '\')">Save</button>';
+  _h += '</div>';
+
+  showModal(_h);
+}
+
+function onDraftPracticeChange() {
+  // Could update commission display if needed
+}
+
+async function saveDraftService(editId) {
+  const practiceId = document.getElementById('draftPractice').value;
+  const name = document.getElementById('draftName').value.trim();
+  const price = parseFloat(document.getElementById('draftPrice').value) || 0;
+  const durationMins = parseInt(document.getElementById('draftDuration').value) || 0;
+  const notes = document.getElementById('draftNotes').value.trim();
+
+  if (!name) { showToast('Please enter a service name', 'err'); return; }
+  if (price <= 0) { showToast('Please enter a valid price', 'err'); return; }
+  if (durationMins <= 0) { showToast('Please enter duration in minutes', 'err'); return; }
+
+  // Get practice details
+  const isAdhoc = practiceId.startsWith('adhoc_');
+  let practiceName, commission;
+  if (isAdhoc) {
+    const apId = practiceId.replace('adhoc_', '');
+    const ap = (S.ahPrac || []).find(a => a.id === apId);
+    practiceName = ap ? ap.name : 'Ad Hoc';
+    commission = 1;
+  } else {
+    const p = S.practices[practiceId];
+    practiceName = p ? (p.short || p.name) : practiceId;
+    commission = p ? p.comm : 0.35;
+  }
+
+  const draft = {
+    id: editId || ('ds_' + Date.now()),
+    practiceId: practiceId,
+    practiceName: practiceName,
+    name: name,
+    price: price,
+    durationMins: durationMins,
+    commission: commission,
+    isAdhoc: isAdhoc,
+    notes: notes,
+    createdAt: editId ? undefined : new Date().toISOString()
+  };
+
+  if (!S.draftServices) S.draftServices = [];
+
+  if (editId) {
+    const idx = S.draftServices.findIndex(d => d.id === editId);
+    if (idx >= 0) {
+      draft.createdAt = S.draftServices[idx].createdAt;
+      S.draftServices[idx] = draft;
+    }
+  } else {
+    S.draftServices.push(draft);
+  }
+
+  save();
+  await syncSettingsToCloud();
+  closeMod2();
+  refreshAnalytics();
+  showToast(editId ? 'Draft updated' : 'Draft service added');
+}
+
+async function deleteDraftService(id) {
+  if (!confirm('Delete this draft service?')) return;
+  S.draftServices = (S.draftServices || []).filter(d => d.id !== id);
+  save();
+  await syncSettingsToCloud();
+  closeMod2();
+  refreshAnalytics();
+  showToast('Draft deleted');
+}
+
+// Diary Builder
+function initDiaryBuilder() {
+  if (!S.diaryBuilder) S.diaryBuilder = { slots: [], totalNet: 0, target: 1000 };
+  if (S.diaryBuilder.slots.length === 0) {
+    // Create 16 x 30-min slots from 09:00 to 17:00
+    const slots = [];
+    for (let i = 0; i < 16; i++) {
+      const hour = 9 + Math.floor(i / 2);
+      const min = (i % 2) * 30;
+      const startTime = String(hour).padStart(2, '0') + ':' + String(min).padStart(2, '0');
+      const endHour = min === 30 ? hour + 1 : hour;
+      const endMin = min === 30 ? 0 : 30;
+      const endTime = String(endHour).padStart(2, '0') + ':' + String(endMin).padStart(2, '0');
+      slots.push({
+        id: 'slot_' + i,
+        startTime: startTime,
+        endTime: endTime,
+        durationMins: 30,
+        service: null,
+        practiceId: null,
+        netEarning: 0
+      });
+    }
+    S.diaryBuilder.slots = slots;
+  }
+}
+
+function showDiaryServicePicker(slotIndex) {
+  const services = getAllServicesWithMetrics().filter(s => s.durationMins > 0);
+  services.sort((a, b) => b.netPerMin - a.netPerMin);
+
+  let _h = '<div class="mod-hdr"><h3>Add Service to ' + S.diaryBuilder.slots[slotIndex].startTime + '</h3></div>';
+  _h += '<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Select a service (sorted by efficiency)</p>';
+
+  _h += '<div style="max-height:50vh;overflow-y:auto">';
+  services.forEach(svc => {
+    const color = getPracticeColor(svc.practiceId);
+    const slotsNeeded = Math.ceil(svc.durationMins / 30);
+
+    _h += '<div onclick="addServiceToSlot(' + slotIndex + ',\'' + svc.id + '\')" style="display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:6px;background:var(--bg);border-radius:var(--rs);cursor:pointer;border-left:3px solid ' + color + '">';
+    _h += '<div style="flex:1">';
+    _h += '<div style="font-weight:600">' + svc.name + (svc.isDraft ? ' *' : '') + '</div>';
+    _h += '<div style="font-size:11px;color:var(--txt2)">' + svc.practiceName + ' | ' + svc.durationMins + 'min (' + slotsNeeded + ' slot' + (slotsNeeded > 1 ? 's' : '') + ')</div>';
+    _h += '</div>';
+    _h += '<div style="text-align:right">';
+    _h += '<div style="font-weight:700;color:var(--pri)">' + fc(svc.netPerAppt) + '</div>';
+    _h += '<div style="font-size:10px;color:var(--txt2)">' + fc(svc.netPerMin) + '/min</div>';
+    _h += '</div>';
+    _h += '</div>';
+  });
+
+  if (services.length === 0) {
+    _h += '<div style="padding:20px;text-align:center;color:var(--txt2)">No services with durations set. Set durations in the profitability table first.</div>';
+  }
+
+  _h += '</div>';
+
+  _h += '<div class="brow" style="margin-top:12px">';
+  _h += '<button class="btn btn-s" onclick="closeMod2()">Cancel</button>';
+  _h += '</div>';
+
+  showModal(_h);
+}
+
+function addServiceToSlot(slotIndex, serviceId) {
+  const services = getAllServicesWithMetrics();
+  const svc = services.find(s => s.id === serviceId);
+  if (!svc) return;
+
+  const slotsNeeded = Math.ceil(svc.durationMins / 30);
+  const slots = S.diaryBuilder.slots;
+
+  // Check if enough consecutive slots available
+  if (slotIndex + slotsNeeded > slots.length) {
+    showToast('Not enough time remaining in the day', 'err');
+    return;
+  }
+
+  // Check if any of the needed slots are already filled
+  for (let i = 0; i < slotsNeeded; i++) {
+    if (slots[slotIndex + i].service !== null) {
+      showToast('One or more time slots already filled', 'err');
+      return;
+    }
+  }
+
+  // Fill the primary slot with service
+  slots[slotIndex].service = svc;
+  slots[slotIndex].practiceId = svc.practiceId;
+  slots[slotIndex].netEarning = svc.netPerAppt;
+
+  // Mark additional slots as continuation
+  for (let i = 1; i < slotsNeeded; i++) {
+    slots[slotIndex + i].service = { ...svc, isContinuation: true };
+    slots[slotIndex + i].practiceId = svc.practiceId;
+    slots[slotIndex + i].netEarning = 0; // Don't double count
+  }
+
+  // Recalculate total
+  S.diaryBuilder.totalNet = slots.reduce((sum, s) => sum + (s.netEarning || 0), 0);
+
+  closeMod2();
+  refreshAnalytics();
+}
+
+function removeSlotService(slotIndex) {
+  const slots = S.diaryBuilder.slots;
+  const slot = slots[slotIndex];
+
+  if (!slot.service) return;
+
+  // If this is primary slot, find and clear all continuation slots
+  if (!slot.service.isContinuation) {
+    const slotsNeeded = Math.ceil(slot.service.durationMins / 30);
+    for (let i = 0; i < slotsNeeded && (slotIndex + i) < slots.length; i++) {
+      slots[slotIndex + i].service = null;
+      slots[slotIndex + i].practiceId = null;
+      slots[slotIndex + i].netEarning = 0;
+    }
+  } else {
+    // Find the primary slot and clear from there
+    let primaryIdx = slotIndex;
+    while (primaryIdx > 0 && slots[primaryIdx].service && slots[primaryIdx].service.isContinuation) {
+      primaryIdx--;
+    }
+    removeSlotService(primaryIdx);
+    return;
+  }
+
+  // Recalculate total
+  S.diaryBuilder.totalNet = slots.reduce((sum, s) => sum + (s.netEarning || 0), 0);
+
+  refreshAnalytics();
+}
+
+function clearDiary() {
+  if (!confirm('Clear all services from the diary?')) return;
+  S.diaryBuilder.slots.forEach(slot => {
+    slot.service = null;
+    slot.practiceId = null;
+    slot.netEarning = 0;
+  });
+  S.diaryBuilder.totalNet = 0;
+  refreshAnalytics();
+}
+
+function shareDiarySummary() {
+  const slots = S.diaryBuilder.slots;
+  let summary = 'Planned Day Summary\n';
+  summary += '==================\n\n';
+
+  let lastEndTime = null;
+  slots.forEach(slot => {
+    if (slot.service && !slot.service.isContinuation) {
+      summary += slot.startTime + ' - ' + slot.service.name + ' (' + slot.service.practiceName + ') - ' + fc(slot.netEarning) + '\n';
+    }
+  });
+
+  summary += '\n------------------\n';
+  summary += 'Total Net: ' + fc(S.diaryBuilder.totalNet) + '\n';
+  summary += 'Target: ' + fc(S.diaryBuilder.target) + '\n';
+  const pct = Math.round((S.diaryBuilder.totalNet / S.diaryBuilder.target) * 100);
+  summary += 'Progress: ' + pct + '%\n';
+
+  navigator.clipboard.writeText(summary).then(() => {
+    showToast('Summary copied to clipboard');
+  }).catch(() => {
+    showToast('Could not copy to clipboard', 'err');
+  });
+}
+
+function setDiaryTarget() {
+  const current = S.diaryBuilder.target || 1000;
+  const newTarget = prompt('Set daily target (net earnings):', current);
+  if (newTarget && !isNaN(parseFloat(newTarget))) {
+    S.diaryBuilder.target = parseFloat(newTarget);
+    refreshAnalytics();
+  }
+}
+
+// Profitability filter state
+let profitabilityFilter = 'all';
+
+function filterProfitability(filter) {
+  profitabilityFilter = filter;
+  renderProfitabilitySection();
+}
+
+// Master render function for profitability sections
+function renderProfitabilitySection() {
+  renderProfitabilityTabs();
+  renderProfitabilityTable();
+  renderDraftServices();
+  renderDiaryBuilder();
+}
+
+function renderProfitabilityTabs() {
+  const container = document.getElementById('profitabilityTabs');
+  if (!container) return;
+
+  const tabs = [
+    { id: 'all', label: 'All' },
+    { id: 'bupa', label: 'Bupa' },
+    { id: 'grove', label: 'Grove' },
+    { id: 'adhoc', label: 'Ad Hoc' },
+    { id: 'draft', label: 'Draft' }
+  ];
+
+  let html = '';
+  tabs.forEach(tab => {
+    const isActive = profitabilityFilter === tab.id;
+    html += '<button onclick="filterProfitability(\'' + tab.id + '\')" style="padding:6px 12px;border-radius:16px;border:1px solid ' + (isActive ? 'var(--pri)' : 'var(--bdr)') + ';background:' + (isActive ? 'var(--pri)' : 'transparent') + ';color:' + (isActive ? '#fff' : 'var(--txt)') + ';font-size:12px;font-weight:500;cursor:pointer">' + tab.label + '</button>';
+  });
+  container.innerHTML = html;
+}
+
+function renderProfitabilityTable() {
+  const container = document.getElementById('profitabilityTable');
+  if (!container) return;
+
+  let services = getAllServicesWithMetrics();
+
+  // Filter by selected tab
+  if (profitabilityFilter === 'bupa') {
+    services = services.filter(s => s.practiceId === 'bupa');
+  } else if (profitabilityFilter === 'grove') {
+    services = services.filter(s => s.practiceId === 'grove');
+  } else if (profitabilityFilter === 'adhoc') {
+    services = services.filter(s => s.practiceId.startsWith('adhoc_'));
+  } else if (profitabilityFilter === 'draft') {
+    services = services.filter(s => s.isDraft);
+  }
+
+  // Sort by netPerMin descending (most efficient first), services without duration at bottom
+  services.sort((a, b) => {
+    if (a.durationMins === 0 && b.durationMins > 0) return 1;
+    if (b.durationMins === 0 && a.durationMins > 0) return -1;
+    return b.netPerMin - a.netPerMin;
+  });
+
+  if (services.length === 0) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--txt2)">No services found for this filter</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Header row
+  html += '<div style="display:grid;grid-template-columns:minmax(90px,1fr) repeat(5,minmax(45px,60px));gap:4px;padding:8px 4px;border-bottom:2px solid var(--bdr);font-size:9px;font-weight:600;color:var(--txt2);text-transform:uppercase">';
+  html += '<div>Service</div>';
+  html += '<div style="text-align:right">Net/Appt</div>';
+  html += '<div style="text-align:right">Net/Min</div>';
+  html += '<div style="text-align:right">Net/Hr</div>';
+  html += '<div style="text-align:right">Net/8Hr</div>';
+  html += '<div style="text-align:center">Rating</div>';
+  html += '</div>';
+
+  services.forEach(svc => {
+    const color = getPracticeColor(svc.practiceId);
+    const ratingColor = svc.efficiencyRating >= 90 ? 'var(--ok)' : svc.efficiencyRating >= 70 ? 'var(--warn)' : svc.efficiencyRating >= 50 ? 'var(--txt2)' : 'var(--err)';
+    const hasDuration = svc.durationMins > 0;
+
+    html += '<div style="display:grid;grid-template-columns:minmax(90px,1fr) repeat(5,minmax(45px,60px));gap:4px;padding:10px 4px;border-bottom:1px solid var(--bdr);font-size:11px;align-items:center' + (svc.isDraft ? ';opacity:0.8;font-style:italic' : '') + '">';
+
+    // Service name with practice color indicator
+    html += '<div style="display:flex;align-items:center;gap:6px;min-width:0">';
+    html += '<span style="width:3px;min-width:3px;height:28px;border-radius:2px;background:' + color + '"></span>';
+    html += '<div style="min-width:0;overflow:hidden">';
+    html += '<div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + svc.name + (svc.isDraft ? ' *' : '') + '</div>';
+    html += '<div style="font-size:9px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + svc.practiceName;
+    if (hasDuration) {
+      html += ' | ' + svc.durationMins + 'min';
+    } else {
+      html += ' | <span onclick="showSetDurationModal(\'' + svc.practiceId + '\',\'' + svc.name.replace(/'/g, "\\'") + '\')" style="color:var(--warn);cursor:pointer;text-decoration:underline">Set time</span>';
+    }
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Metrics
+    html += '<div style="text-align:right;font-weight:600;color:var(--pri)">' + fc(svc.netPerAppt) + '</div>';
+
+    if (hasDuration) {
+      html += '<div style="text-align:right">' + fc(svc.netPerMin) + '</div>';
+      html += '<div style="text-align:right">' + fc(svc.netPerHour) + '</div>';
+      html += '<div style="text-align:right;font-weight:600">' + fc(svc.netPer8HrDay) + '</div>';
+
+      // Rating bar
+      html += '<div style="text-align:center">';
+      html += '<div style="display:inline-block;width:32px;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden">';
+      html += '<div style="width:' + svc.efficiencyRating + '%;height:100%;background:' + ratingColor + '"></div>';
+      html += '</div>';
+      html += '<div style="font-size:8px;color:' + ratingColor + ';margin-top:1px">' + svc.efficiencyRating + '%</div>';
+      html += '</div>';
+    } else {
+      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
+      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
+      html += '<div style="text-align:right;color:var(--txt2)">-</div>';
+      html += '<div style="text-align:center;font-size:8px;color:var(--warn)">Set time</div>';
+    }
+
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function renderDraftServices() {
+  const container = document.getElementById('draftServicesContainer');
+  if (!container) return;
+
+  const drafts = S.draftServices || [];
+
+  if (drafts.length === 0) {
+    container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--txt2);font-size:12px">No draft services yet. Add one to model potential earnings.</div>';
+    return;
+  }
+
+  let html = '';
+  drafts.forEach(draft => {
+    const color = getPracticeColor(draft.practiceId);
+    const netPerAppt = draft.isAdhoc ? draft.price : draft.price * draft.commission;
+    const netPerMin = draft.durationMins > 0 ? netPerAppt / draft.durationMins : 0;
+    const netPer8Hr = netPerMin * 60 * 8;
+
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:12px;margin-bottom:6px;background:var(--bg);border-radius:var(--rs);border-left:3px solid ' + color + '">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:600;font-size:13px">' + draft.name + '</div>';
+    html += '<div style="font-size:11px;color:var(--txt2)">' + draft.practiceName + ' | ' + draft.durationMins + 'min | ' + fc(draft.price) + ' gross</div>';
+    if (draft.notes) {
+      html += '<div style="font-size:10px;color:var(--txt2);font-style:italic;margin-top:2px">' + draft.notes + '</div>';
+    }
+    html += '</div>';
+    html += '<div style="text-align:right">';
+    html += '<div style="font-weight:700;color:var(--pri)">' + fc(netPerAppt) + '</div>';
+    html += '<div style="font-size:9px;color:var(--txt2)">' + fc(netPer8Hr) + '/8hr</div>';
+    html += '</div>';
+    html += '<button onclick="showAddDraftServiceModal(\'' + draft.id + '\')" style="background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer">Edit</button>';
+    html += '</div>';
+  });
+
+  container.innerHTML = html;
+}
+
+function renderDiaryBuilder() {
+  const targetContainer = document.getElementById('diaryTargetIndicator');
+  const gridContainer = document.getElementById('diaryBuilderGrid');
+  if (!targetContainer || !gridContainer) return;
+
+  initDiaryBuilder();
+
+  const slots = S.diaryBuilder.slots;
+  const totalNet = S.diaryBuilder.totalNet;
+  const target = S.diaryBuilder.target;
+  const pct = Math.min(Math.round((totalNet / target) * 100), 100);
+  const remaining = Math.max(target - totalNet, 0);
+  const targetColor = pct >= 100 ? 'var(--ok)' : pct >= 75 ? 'var(--warn)' : 'var(--err)';
+
+  // Target indicator
+  let targetHtml = '<div style="margin-bottom:16px">';
+  targetHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+  targetHtml += '<span style="font-size:12px;font-weight:500">Target: ' + fc(target) + '</span>';
+  targetHtml += '<span style="font-size:14px;font-weight:700;color:' + targetColor + '">' + fc(totalNet) + ' (' + pct + '%)</span>';
+  targetHtml += '</div>';
+  targetHtml += '<div style="height:8px;background:var(--bdr);border-radius:4px;overflow:hidden">';
+  targetHtml += '<div style="width:' + pct + '%;height:100%;background:' + targetColor + ';transition:width 0.3s"></div>';
+  targetHtml += '</div>';
+  if (pct >= 100) {
+    targetHtml += '<div style="font-size:11px;color:var(--ok);margin-top:4px;font-weight:600;text-align:center">Target achieved!</div>';
+  } else {
+    targetHtml += '<div style="font-size:11px;color:var(--txt2);margin-top:4px;text-align:center">' + fc(remaining) + ' more to reach target</div>';
+  }
+  targetHtml += '</div>';
+  targetContainer.innerHTML = targetHtml;
+
+  // Diary grid
+  let gridHtml = '<div style="background:var(--bg);border-radius:var(--rs);padding:8px">';
+
+  slots.forEach((slot, i) => {
+    const hasService = slot.service !== null;
+    const isContinuation = hasService && slot.service.isContinuation;
+
+    if (isContinuation) {
+      // Show continuation indicator
+      gridHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;margin-bottom:2px;border-radius:4px;background:' + getPracticeColor(slot.practiceId) + ';opacity:0.6;min-height:24px">';
+      gridHtml += '<div style="font-size:10px;min-width:40px;color:rgba(255,255,255,0.7)">' + slot.startTime + '</div>';
+      gridHtml += '<div style="flex:1;font-size:10px;color:rgba(255,255,255,0.85)">(continued)</div>';
+      gridHtml += '</div>';
+    } else if (hasService) {
+      const bgColor = getPracticeColor(slot.practiceId);
+      gridHtml += '<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:2px;border-radius:6px;background:' + bgColor + ';color:#fff;min-height:40px">';
+      gridHtml += '<div style="font-size:11px;font-weight:600;min-width:40px;opacity:0.85">' + slot.startTime + '</div>';
+      gridHtml += '<div style="flex:1;min-width:0">';
+      gridHtml += '<div style="font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + slot.service.name + '</div>';
+      gridHtml += '<div style="font-size:10px;opacity:0.85">' + slot.service.practiceName + ' | ' + fc(slot.netEarning) + '</div>';
+      gridHtml += '</div>';
+      gridHtml += '<button onclick="event.stopPropagation();removeSlotService(' + i + ')" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:24px;height:24px;color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">&times;</button>';
+      gridHtml += '</div>';
+    } else {
+      // Empty slot
+      gridHtml += '<div onclick="showDiaryServicePicker(' + i + ')" style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:2px;border-radius:6px;background:var(--card);border:1px dashed var(--bdr);min-height:40px;cursor:pointer">';
+      gridHtml += '<div style="font-size:11px;font-weight:500;min-width:40px;color:var(--txt2)">' + slot.startTime + '</div>';
+      gridHtml += '<div style="flex:1;font-size:11px;color:var(--txt2)">Tap to add service</div>';
+      gridHtml += '</div>';
+    }
+  });
+
+  gridHtml += '</div>';
+  gridContainer.innerHTML = gridHtml;
+}
+
 function refreshAnalytics(){
   const container=document.getElementById('analyticsContent');
   if(!container)return;
@@ -7941,8 +8686,41 @@ function refreshAnalytics(){
     _h+='</div>';
   }
 
+  // ===== SERVICE PROFITABILITY ANALYZER SECTION =====
+  _h+='<div class="analytics-card" id="profitabilityCard">';
+  _h+='<h3 class="analytics-title">Service Profitability Analysis</h3>';
+  _h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Compare services by earnings efficiency to optimize your diary</p>';
+  _h+='<div id="profitabilityTabs" style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap"></div>';
+  _h+='<div id="profitabilityTable"></div>';
+  _h+='</div>';
+
+  // Draft Services Section
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Draft Services (Modeling)</h3>';
+  _h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Test potential services before adding them to your practice</p>';
+  _h+='<div id="draftServicesContainer"></div>';
+  _h+='<button class="btn btn-s" style="width:100%;margin-top:8px" onclick="showAddDraftServiceModal()">+ Add Draft Service</button>';
+  _h+='</div>';
+
+  // Diary Builder Section
+  _h+='<div class="analytics-card">';
+  _h+='<h3 class="analytics-title">Diary Builder</h3>';
+  _h+='<p style="font-size:12px;color:var(--txt2);margin-bottom:12px">Plan your ideal day to maximize earnings</p>';
+  _h+='<div id="diaryTargetIndicator"></div>';
+  _h+='<div id="diaryBuilderGrid"></div>';
+  _h+='<div style="display:flex;gap:8px;margin-top:12px">';
+  _h+='<button class="btn btn-s" style="flex:1" onclick="clearDiary()">Clear All</button>';
+  _h+='<button class="btn btn-s" style="flex:1" onclick="setDiaryTarget()">Set Target</button>';
+  _h+='<button class="btn btn-p" style="flex:1" onclick="shareDiarySummary()">Share</button>';
+  _h+='</div>';
+  _h+='</div>';
+
   _h+='</div>';
   container.innerHTML=_h;
+
+  // Render profitability sections
+  initDiaryBuilder();
+  renderProfitabilitySection();
 
   // Render Best Days section
   renderBestDays();
