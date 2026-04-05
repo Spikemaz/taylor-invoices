@@ -966,6 +966,8 @@ async function syncPractices(sheets, sheetId, { practices }, res) {
 
   console.log('[syncPractices] Built', rows.length, 'rows');
   console.log('[syncPractices] Row IDs:', rows.map(r => r[0]).join(', '));
+  // Log services column for debugging (column index 7 = services)
+  rows.forEach(r => console.log('[syncPractices] Row', r[0], 'services:', r[7]));
 
   // Helper to sync to a single sheet and apply colors
   async function syncToSheet(targetSheetId) {
@@ -1078,6 +1080,8 @@ async function loadPractices(sheets, sheetId, res) {
     });
 
   console.log('[loadPractices] Parsed practices:', practices.map(p => ({ id: p.id, type: p.type, name: p.name, services: typeof p.services })));
+  // Log full services for debugging
+  practices.forEach(p => console.log('[loadPractices] Practice', p.id, 'services:', JSON.stringify(p.services)));
   return res.status(200).json({ success: true, practices, count: practices.length });
 }
 

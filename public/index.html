@@ -1376,6 +1376,8 @@ async function syncPracticesToCloud() {
   const practices = [...contractPractices, ...adhocPractices];
   console.log('[Practices Sync]', 'Contract:', contractPractices.length, 'Ad Hoc:', adhocPractices.length);
   console.log('[Practices Sync] Sending practices:', practices.map(p => `${p.id}:${p.type}`).join(', '));
+  // Log services being sent for debugging
+  contractPractices.forEach(p => console.log('[Practices Sync] Practice', p.id, 'services:', JSON.stringify(p.services)));
   try {
     const result = await apiCall('sheets-sync', { action: 'sync_practices', data: { practices }, entity: S.iEnt });
     if (!result.success) {
