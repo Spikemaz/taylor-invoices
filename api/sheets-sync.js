@@ -1,8 +1,19 @@
 // Google Sheets sync endpoint
 // Actions: append_entry, append_invoice, update_entry, delete_entry, load_all, etc.
 // Supports dual sheets: Self-Employed and Ltd Company
+// Multi-user support: Uses session token to route to user-specific sheets
 
 const { google } = require('googleapis');
+
+// Try to load auth module for multi-user support
+let validateSessionToken = null;
+try {
+  const auth = require('./_lib/auth');
+  validateSessionToken = auth.validateSessionToken;
+} catch (e) {
+  // Auth module not available - single-user mode
+  console.log('[sheets-sync] Auth module not available, running in single-user mode');
+}
 
 // Validate required environment variables
 function validateEnvVars() {
@@ -42,18 +53,35 @@ async function getDrive() {
   return drive;
 }
 
-// Dual sheet IDs - one for each entity type
+// Dual sheet IDs - one for each entity type (single-user mode fallback)
 const SHEET_IDS = {
   self: process.env.GOOGLE_SHEET_ID,
   ltd: process.env.GOOGLE_SHEET_ID_LTD
 };
 
-// Get the correct sheet ID based on entity
-function getSheetId(entity) {
+// Get the correct sheet ID based on entity and session
+// Multi-user mode: Use session's sheetId
+// Single-user mode: Use environment variables
+function getSheetId(entity, session) {
+  // Multi-user mode: session contains user's sheet ID
+  if (session && session.sheetId) {
+    return session.sheetId;
+  }
+  // Single-user mode: Use environment variables
   if (entity === 'ltd' && SHEET_IDS.ltd) {
     return SHEET_IDS.ltd;
   }
   return SHEET_IDS.self;
+}
+
+// Validate session from request headers (multi-user mode)
+function getSessionFromRequest(req) {
+  if (!validateSessionToken) return null; // Single-user mode
+
+  const token = req.headers['x-session-token'];
+  if (!token) return null;
+
+  return validateSessionToken(token);
 }
 
 // Column mappings
@@ -225,16 +253,22 @@ async function writeLog(sheets, sheetId, logEntry) {
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { action, data, entity } = req.body;
 
+  // Get session from request (multi-user mode) or null (single-user mode)
+  const session = getSessionFromRequest(req);
+  if (session) {
+    console.log('[sheets-sync] Multi-user mode, user:', session.email);
+  }
+
   try {
     const sheets = await getSheets();
-    const sheetId = getSheetId(entity);
+    const sheetId = getSheetId(entity, session);
 
     switch (action) {
       case 'append_entry': return await appendEntry(sheets, sheetId, data, res);
