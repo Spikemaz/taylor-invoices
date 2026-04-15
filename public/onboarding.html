@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Books IQ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="manifest" href="/manifest.json">
+<title>Get Started - Books IQ</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--acc:#00b36b;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--shm:0 4px 12px rgba(0,0,0,.08);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100%;-webkit-font-smoothing:antialiased}
+.container{min-height:100vh;display:flex;flex-direction:column;padding-top:var(--st);padding-bottom:var(--sb);max-width:600px;margin:0 auto;background:var(--bg)}
+@media(min-width:601px){html,body{background:#e5e5e5}.container{box-shadow:0 0 20px rgba(0,0,0,.1)}}
+.hdr{background:var(--pri-dk);color:#fff;padding:16px;text-align:center;min-height:56px;position:sticky;top:0;z-index:100}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:-.5px}
+.hdr p{font-size:11px;opacity:.8;margin-top:4px}
+.content{flex:1;padding:16px}
+.progress{display:flex;gap:4px;margin-bottom:20px}
+.progress-step{flex:1;height:4px;background:var(--bdr);border-radius:2px}
+.progress-step.done{background:var(--pri)}
+.progress-step.active{background:var(--pri-lt)}
+.section{background:var(--card);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--sh);border:1px solid var(--bdr)}
+.section-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.section-title .icon{font-size:20px}
+.section-desc{font-size:13px;color:var(--txt2);margin-bottom:16px}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-label .req{color:var(--err)}
+.form-input,.form-textarea,.form-select{width:100%;padding:12px 14px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:15px;font-family:var(--f);color:var(--txt);background:var(--bg);outline:none;transition:all .2s}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--pri);background:var(--card)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--txt3)}
+.form-textarea{min-height:80px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.checkbox-item{display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--bdr);border-radius:var(--rs);cursor:pointer;transition:all .2s;font-size:14px}
+.checkbox-item:hover{border-color:var(--pri-lt)}
+.checkbox-item.checked{border-color:var(--pri);background:var(--pri-bg)}
+.checkbox-item input{display:none}
+.checkbox-icon{width:20px;height:20px;border:2px solid var(--bdr);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s}
+.checkbox-item.checked .checkbox-icon{background:var(--pri);border-color:var(--pri);color:#fff}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day-btn{padding:8px 4px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;background:var(--card)}
+.day-btn:hover{border-color:var(--pri-lt)}
+.day-btn.selected{background:var(--pri);border-color:var(--pri);color:#fff}
+.practice-card{border:2px solid var(--bdr);border-radius:var(--r);padding:16px;margin-bottom:12px;position:relative}
+.practice-card .remove-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border:none;background:var(--err-bg);color:var(--err);border-radius:50%;cursor:pointer;font-size:16px}
+.service-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.service-row .form-input{flex:1}
+.service-row .form-input.price{width:100px;flex:none}
+.service-row .remove-svc{width:32px;height:32px;border:none;background:var(--err-bg);color:var(--err);border-radius:var(--rs);cursor:pointer;font-size:14px;flex:none}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border:2px dashed var(--bdr);border-radius:var(--rs);background:transparent;color:var(--txt2);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;width:100%}
+.add-btn:hover{border-color:var(--pri);color:var(--pri)}
+.btn{width:100%;padding:16px;border:none;border-radius:var(--rs);font-size:16px;font-weight:700;font-family:var(--f);cursor:pointer;transition:all .15s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover{background:var(--pri-dk)}
+.btn-primary:disabled{background:var(--txt3);cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg);color:var(--txt);border:2px solid var(--bdr)}
+.btn-secondary:hover{border-color:var(--pri)}
+.btn-row{display:flex;gap:12px;margin-top:20px}
+.btn-row .btn{flex:1}
+.error-box{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.error-text{color:var(--err);font-size:13px;font-weight:500}
+.success-box{text-align:center;padding:40px 20px}
+.success-icon{font-size:64px;margin-bottom:16px}
+.success-title{font-size:24px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.success-desc{font-size:15px;color:var(--txt2);line-height:1.6;margin-bottom:24px}
+.info-box{background:var(--pri-bg);border:1px solid var(--pri);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px}
+.info-box p{font-size:13px;color:var(--pri-dk);line-height:1.5}
+.footer{padding:16px;text-align:center;border-top:1px solid var(--bdr)}
+.footer p{font-size:11px;color:var(--txt3)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hdr">
+    <h1>Books IQ</h1>
+    <p>New User Registration</p>
+  </div>
+
+  <div class="content">
+    <!-- Progress Bar -->
+    <div class="progress" id="progress">
+      <div class="progress-step active" data-step="1"></div>
+      <div class="progress-step" data-step="2"></div>
+      <div class="progress-step" data-step="3"></div>
+      <div class="progress-step" data-step="4"></div>
+    </div>
+
+    <div class="error-box" id="errorBox">
+      <div class="error-text" id="errorText"></div>
+    </div>
+
+    <!-- Step 1: Personal Details -->
+    <div id="step1" class="step">
+      <div class="section">
+        <div class="section-title"><span class="icon">&#128100;</span> Your Details</div>
+        <div class="section-desc">Tell us about yourself so we can set up your account.</div>
+
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="userName" placeholder="e.g. Taylor Muir" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="req">*</span></label>
+          <input type="email" class="form-input" id="userEmail" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone Number <span class="req">*</span></label>
+          <input type="tel" class="form-input" id="userPhone" placeholder="+44 7XXX XXXXXX" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Address <span class="req">*</span></label>
+          <textarea class="form-textarea" id="userAddress" placeholder="Street address&#10;City&#10;Postcode" required></textarea>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="icon">&#127970;</span> Business Type</div>
+        <div class="section-desc">Select how you operate. You can choose both if applicable.</div>
+
+        <div class="checkbox-group">
+          <label class="checkbox-item" id="chkSelf">
+            <input type="checkbox" id="isSelfEmployed">
+            <span class="checkbox-icon">&#10003;</span>
+            <span>Self-Employed</span>
+          </label>
+          <label class="checkbox-item" id="chkLtd">
+            <input type="checkbox" id="isLtdCompany">
+            <span class="checkbox-icon">&#10003;</span>
+            <span>Ltd Company</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="nextStep(1)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Entity Details -->
+    <div id="step2" class="step hidden">
+      <!-- Self-Employed Section -->
+      <div class="section" id="selfSection">
+        <div class="section-title"><span class="icon">&#128188;</span> Self-Employed Details</div>
+        <div class="section-desc">Your trading details for self-employed work.</div>
+
+        <div class="form-group">
+          <label class="form-label">Trading Name (optional)</label>
+          <input type="text" class="form-input" id="selfTradingName" placeholder="Leave blank to use your name">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bank Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="selfBankName" placeholder="e.g. Lloyds Bank">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Account Name <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfAccName" placeholder="Account holder name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfSort" placeholder="00-00-00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Number <span class="req">*</span></label>
+          <input type="text" class="form-input" id="selfAccNum" placeholder="8-digit account number">
+        </div>
+      </div>
+
+      <!-- Ltd Company Section -->
+      <div class="section" id="ltdSection">
+        <div class="section-title"><span class="icon">&#127970;</span> Ltd Company Details</div>
+        <div class="section-desc">Your registered company information.</div>
+
+        <div class="form-group">
+          <label class="form-label">Company Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdCompanyName" placeholder="Your Company Ltd">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Company Number <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdCompanyNo" placeholder="8-digit Companies House number">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Registered Address <span class="req">*</span></label>
+          <textarea class="form-textarea" id="ltdAddress" placeholder="Registered office address"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bank Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdBankName" placeholder="e.g. Lloyds Bank">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Account Name <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdAccName" placeholder="Account holder name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdSort" placeholder="00-00-00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Number <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdAccNum" placeholder="8-digit account number">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(2)">Back</button>
+        <button class="btn btn-primary" onclick="nextStep(2)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Practices -->
+    <div id="step3" class="step hidden">
+      <div class="section">
+        <div class="section-title"><span class="icon">&#127973;</span> Your Practices</div>
+        <div class="section-desc">Add the dental practices where you work. You can add more later.</div>
+
+        <div id="practicesList"></div>
+
+        <button class="add-btn" onclick="addPractice()">
+          <span>+</span> Add Practice
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(3)">Back</button>
+        <button class="btn btn-primary" onclick="nextStep(3)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Review & Submit -->
+    <div id="step4" class="step hidden">
+      <div class="section">
+        <div class="section-title"><span class="icon">&#9989;</span> Review & Submit</div>
+        <div class="section-desc">Please review your information before submitting.</div>
+
+        <div id="reviewContent"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="icon">&#128274;</span> Terms & Conditions</div>
+
+        <div class="checkbox-group">
+          <label class="checkbox-item" id="chkTerms">
+            <input type="checkbox" id="acceptTerms">
+            <span class="checkbox-icon">&#10003;</span>
+            <span>I agree to the terms of service and privacy policy</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(4)">Back</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitApplication()">Submit Application</button>
+      </div>
+    </div>
+
+    <!-- Success State -->
+    <div id="successState" class="step hidden">
+      <div class="success-box">
+        <div class="success-icon">&#127881;</div>
+        <div class="success-title">Application Submitted!</div>
+        <div class="success-desc">
+          Thank you for registering with Books IQ.<br><br>
+          We're setting up your account now. You'll receive an email at <strong id="successEmail"></strong> with your login link shortly.
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='/login.html'">Go to Login</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 Books IQ. All rights reserved.</p>
+  </div>
+</div>
+
+<script>
+// State
+const formData = {
+  user: { name: '', email: '', phone: '', address: '' },
+  entityType: { self: false, ltd: false },
+  selfEmployed: { tradingName: '', bankName: '', accName: '', sort: '', accNum: '' },
+  ltdCompany: { companyName: '', companyNo: '', address: '', bankName: '', accName: '', sort: '', accNum: '' },
+  practices: []
+};
+
+let currentStep = 1;
+let practiceCount = 0;
+
+// Initialize checkboxes
+document.querySelectorAll('.checkbox-item').forEach(item => {
+  item.addEventListener('click', function(e) {
+    if (e.target.tagName === 'INPUT') return;
+    const checkbox = this.querySelector('input');
+    checkbox.checked = !checkbox.checked;
+    this.classList.toggle('checked', checkbox.checked);
+  });
+});
+
+// Step navigation
+function updateProgress() {
+  document.querySelectorAll('.progress-step').forEach((step, i) => {
+    step.classList.remove('done', 'active');
+    if (i + 1 < currentStep) step.classList.add('done');
+    if (i + 1 === currentStep) step.classList.add('active');
+  });
+}
+
+function showStep(step) {
+  document.querySelectorAll('.step').forEach(s => s.classList.add('hidden'));
+  document.getElementById('step' + step).classList.remove('hidden');
+  updateProgress();
+  window.scrollTo(0, 0);
+}
+
+function nextStep(from) {
+  hideError();
+  if (!validateStep(from)) return;
+  saveStepData(from);
+
+  if (from === 3) {
+    buildReview();
+  }
+
+  currentStep = from + 1;
+  showStep(currentStep);
+}
+
+function prevStep(from) {
+  currentStep = from - 1;
+  showStep(currentStep);
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    const name = document.getElementById('userName').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const phone = document.getElementById('userPhone').value.trim();
+    const address = document.getElementById('userAddress').value.trim();
+    const isSelf = document.getElementById('isSelfEmployed').checked;
+    const isLtd = document.getElementById('isLtdCompany').checked;
+
+    if (!name) return showError('Please enter your name');
+    if (!email || !email.includes('@')) return showError('Please enter a valid email address');
+    if (!phone) return showError('Please enter your phone number');
+    if (!address) return showError('Please enter your address');
+    if (!isSelf && !isLtd) return showError('Please select at least one business type');
+
+    // Show/hide entity sections based on selection
+    document.getElementById('selfSection').classList.toggle('hidden', !isSelf);
+    document.getElementById('ltdSection').classList.toggle('hidden', !isLtd);
+
+    return true;
+  }
+
+  if (step === 2) {
+    const isSelf = document.getElementById('isSelfEmployed').checked;
+    const isLtd = document.getElementById('isLtdCompany').checked;
+
+    if (isSelf) {
+      if (!document.getElementById('selfBankName').value.trim()) return showError('Please enter your bank name');
+      if (!document.getElementById('selfAccName').value.trim()) return showError('Please enter account holder name');
+      if (!document.getElementById('selfSort').value.trim()) return showError('Please enter sort code');
+      if (!document.getElementById('selfAccNum').value.trim()) return showError('Please enter account number');
+    }
+
+    if (isLtd) {
+      if (!document.getElementById('ltdCompanyName').value.trim()) return showError('Please enter company name');
+      if (!document.getElementById('ltdCompanyNo').value.trim()) return showError('Please enter company number');
+      if (!document.getElementById('ltdAddress').value.trim()) return showError('Please enter registered address');
+      if (!document.getElementById('ltdBankName').value.trim()) return showError('Please enter bank name');
+      if (!document.getElementById('ltdAccName').value.trim()) return showError('Please enter account holder name');
+      if (!document.getElementById('ltdSort').value.trim()) return showError('Please enter sort code');
+      if (!document.getElementById('ltdAccNum').value.trim()) return showError('Please enter account number');
+    }
+
+    return true;
+  }
+
+  if (step === 3) {
+    // At least one practice recommended but not required
+    return true;
+  }
+
+  return true;
+}
+
+function saveStepData(step) {
+  if (step === 1) {
+    formData.user.name = document.getElementById('userName').value.trim();
+    formData.user.email = document.getElementById('userEmail').value.trim();
+    formData.user.phone = document.getElementById('userPhone').value.trim();
+    formData.user.address = document.getElementById('userAddress').value.trim();
+    formData.entityType.self = document.getElementById('isSelfEmployed').checked;
+    formData.entityType.ltd = document.getElementById('isLtdCompany').checked;
+  }
+
+  if (step === 2) {
+    if (formData.entityType.self) {
+      formData.selfEmployed.tradingName = document.getElementById('selfTradingName').value.trim();
+      formData.selfEmployed.bankName = document.getElementById('selfBankName').value.trim();
+      formData.selfEmployed.accName = document.getElementById('selfAccName').value.trim();
+      formData.selfEmployed.sort = document.getElementById('selfSort').value.trim();
+      formData.selfEmployed.accNum = document.getElementById('selfAccNum').value.trim();
+    }
+
+    if (formData.entityType.ltd) {
+      formData.ltdCompany.companyName = document.getElementById('ltdCompanyName').value.trim();
+      formData.ltdCompany.companyNo = document.getElementById('ltdCompanyNo').value.trim();
+      formData.ltdCompany.address = document.getElementById('ltdAddress').value.trim();
+      formData.ltdCompany.bankName = document.getElementById('ltdBankName').value.trim();
+      formData.ltdCompany.accName = document.getElementById('ltdAccName').value.trim();
+      formData.ltdCompany.sort = document.getElementById('ltdSort').value.trim();
+      formData.ltdCompany.accNum = document.getElementById('ltdAccNum').value.trim();
+    }
+  }
+
+  if (step === 3) {
+    savePractices();
+  }
+}
+
+// Practice management
+function addPractice() {
+  practiceCount++;
+  const id = 'practice' + practiceCount;
+
+  const html = `
+    <div class="practice-card" id="${id}">
+      <button class="remove-btn" onclick="removePractice('${id}')">&times;</button>
+
+      <div class="form-group">
+        <label class="form-label">Practice Name <span class="req">*</span></label>
+        <input type="text" class="form-input practice-name" placeholder="e.g. Bupa Dental Care">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Short Name <span class="req">*</span></label>
+          <input type="text" class="form-input practice-short" placeholder="e.g. Bupa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type <span class="req">*</span></label>
+          <select class="form-select practice-type">
+            <option value="contract">Contract (Commission)</option>
+            <option value="adhoc">Ad Hoc (Per Patient)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <textarea class="form-textarea practice-address" placeholder="Practice address"></textarea>
+      </div>
+
+      <div class="form-group contract-fields">
+        <label class="form-label">Commission Rate (%)</label>
+        <input type="number" class="form-input practice-commission" placeholder="e.g. 35" min="0" max="100">
+      </div>
+
+      <div class="form-group adhoc-fields hidden">
+        <label class="form-label">Rate Per Patient (£)</label>
+        <input type="number" class="form-input practice-rate" placeholder="e.g. 25" step="0.01">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Working Days</label>
+        <div class="day-grid">
+          <div class="day-btn" data-day="1">Mon</div>
+          <div class="day-btn" data-day="2">Tue</div>
+          <div class="day-btn" data-day="3">Wed</div>
+          <div class="day-btn" data-day="4">Thu</div>
+          <div class="day-btn" data-day="5">Fri</div>
+          <div class="day-btn" data-day="6">Sat</div>
+          <div class="day-btn" data-day="0">Sun</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Services</label>
+        <div class="services-list"></div>
+        <button class="add-btn" onclick="addService('${id}')" style="margin-top:8px">
+          <span>+</span> Add Service
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('practicesList').insertAdjacentHTML('beforeend', html);
+
+  // Setup event listeners for the new practice card
+  const card = document.getElementById(id);
+
+  // Type toggle
+  card.querySelector('.practice-type').addEventListener('change', function() {
+    card.querySelector('.contract-fields').classList.toggle('hidden', this.value === 'adhoc');
+    card.querySelector('.adhoc-fields').classList.toggle('hidden', this.value === 'contract');
+  });
+
+  // Day selection
+  card.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.classList.toggle('selected');
+    });
+  });
+
+  // Add default service
+  addService(id);
+}
+
+function removePractice(id) {
+  document.getElementById(id).remove();
+}
+
+function addService(practiceId) {
+  const servicesList = document.querySelector('#' + practiceId + ' .services-list');
+  const html = `
+    <div class="service-row">
+      <input type="text" class="form-input service-name" placeholder="Service name">
+      <input type="number" class="form-input price service-price" placeholder="£" step="0.01">
+      <button class="remove-svc" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+  `;
+  servicesList.insertAdjacentHTML('beforeend', html);
+}
+
+function savePractices() {
+  formData.practices = [];
+
+  document.querySelectorAll('.practice-card').forEach(card => {
+    const days = [];
+    card.querySelectorAll('.day-btn.selected').forEach(btn => {
+      days.push(parseInt(btn.dataset.day));
+    });
+
+    const services = {};
+    card.querySelectorAll('.service-row').forEach(row => {
+      const name = row.querySelector('.service-name').value.trim();
+      const price = parseFloat(row.querySelector('.service-price').value) || 0;
+      if (name) services[name] = { p: price, d: 'per patient' };
+    });
+
+    const practice = {
+      name: card.querySelector('.practice-name').value.trim(),
+      short: card.querySelector('.practice-short').value.trim(),
+      type: card.querySelector('.practice-type').value,
+      address: card.querySelector('.practice-address').value.trim(),
+      commission: parseFloat(card.querySelector('.practice-commission').value) / 100 || 0,
+      rate: parseFloat(card.querySelector('.practice-rate').value) || 0,
+      days: days,
+      services: services
+    };
+
+    if (practice.name && practice.short) {
+      formData.practices.push(practice);
+    }
+  });
+}
+
+// Review
+function buildReview() {
+  let html = '<div style="font-size:14px;line-height:1.8">';
+
+  html += '<p><strong>Name:</strong> ' + formData.user.name + '</p>';
+  html += '<p><strong>Email:</strong> ' + formData.user.email + '</p>';
+  html += '<p><strong>Phone:</strong> ' + formData.user.phone + '</p>';
+  html += '<p><strong>Business Type:</strong> ';
+  const types = [];
+  if (formData.entityType.self) types.push('Self-Employed');
+  if (formData.entityType.ltd) types.push('Ltd Company');
+  html += types.join(', ') + '</p>';
+
+  if (formData.practices.length > 0) {
+    html += '<p><strong>Practices:</strong> ' + formData.practices.map(p => p.name).join(', ') + '</p>';
+  }
+
+  html += '</div>';
+
+  document.getElementById('reviewContent').innerHTML = html;
+}
+
+// Submit
+async function submitApplication() {
+  hideError();
+
+  if (!document.getElementById('acceptTerms').checked) {
+    return showError('Please accept the terms and conditions');
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const response = await fetch('/api/onboarding/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      document.getElementById('successEmail').textContent = formData.user.email;
+      document.querySelectorAll('.step').forEach(s => s.classList.add('hidden'));
+      document.getElementById('successState').classList.remove('hidden');
+      document.querySelector('.progress').style.display = 'none';
+    } else {
+      showError(result.error || 'Failed to submit application. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
+    }
+  } catch (e) {
+    console.error('Submit error:', e);
+    showError('Network error. Please check your connection and try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit Application';
+  }
+}
+
+// Error handling
+function showError(msg) {
+  document.getElementById('errorText').textContent = msg;
+  document.getElementById('errorBox').classList.add('show');
+  window.scrollTo(0, 0);
+  return false;
+}
+
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+// Initialize
+showStep(1);
+</script>
+</body>
+</html>
