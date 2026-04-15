@@ -12,6 +12,7 @@
     "jspdf": "^2.5.1"
   },
   "devDependencies": {
+    "dotenv": "^17.4.2",
     "vercel": "^37.0.0"
   },
   "engines": {

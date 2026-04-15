@@ -15,6 +15,130 @@ try {
   console.log('[sheets-sync] Auth module not available, running in single-user mode');
 }
 
+// Master Sheet ID for central backup (mirror mode)
+const MASTER_SHEET_ID = process.env.MASTER_SHEET_ID;
+
+// Mirror entry to Master Sheet's AllEntries tab
+async function mirrorEntryToMaster(sheets, userId, entry) {
+  if (!MASTER_SHEET_ID) return;
+  try {
+    const row = [userId, ...ENTRY_COLUMNS.map(col => {
+      if (col === 'createdAt') return entry.createdAt || new Date().toISOString();
+      const val = entry[col];
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return JSON.stringify(val);
+      return val;
+    })];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'AllEntries!A:U',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+  } catch (e) {
+    console.error('[Mirror] Failed to mirror entry to Master Sheet:', e.message);
+  }
+}
+
+// Mirror invoice to Master Sheet's AllInvoices tab
+async function mirrorInvoiceToMaster(sheets, userId, invoice) {
+  if (!MASTER_SHEET_ID) return;
+  try {
+    const row = [userId, ...INVOICE_COLUMNS.map(col => {
+      if (col === 'createdAt') return invoice.createdAt || new Date().toISOString();
+      const val = invoice[col];
+      if (val === null || val === undefined) return '';
+      if (typeof val === 'object') return JSON.stringify(val);
+      return val;
+    })];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'AllInvoices!A:AD',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+  } catch (e) {
+    console.error('[Mirror] Failed to mirror invoice to Master Sheet:', e.message);
+  }
+}
+
+// Update mirrored entry in Master Sheet
+async function updateMirroredEntry(sheets, entryId, updates) {
+  if (!MASTER_SHEET_ID) return;
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'AllEntries!A:U',
+    });
+    const rows = response.data.values || [];
+    // Find by entry ID (column B, index 1)
+    const rowIndex = rows.findIndex(row => row[1] === entryId);
+    if (rowIndex === -1) return;
+
+    const currentRow = rows[rowIndex];
+    const updatedRow = currentRow.map((val, i) => {
+      if (i === 0) return val; // Keep userId
+      const col = ENTRY_COLUMNS[i - 1];
+      if (updates.hasOwnProperty(col)) {
+        const newVal = updates[col];
+        if (newVal === null || newVal === undefined) return '';
+        if (typeof newVal === 'object') return JSON.stringify(newVal);
+        return newVal;
+      }
+      return val;
+    });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: `AllEntries!A${rowIndex + 1}:U${rowIndex + 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [updatedRow] }
+    });
+  } catch (e) {
+    console.error('[Mirror] Failed to update mirrored entry:', e.message);
+  }
+}
+
+// Delete mirrored entry from Master Sheet
+async function deleteMirroredEntry(sheets, entryId) {
+  if (!MASTER_SHEET_ID) return;
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'AllEntries!A:U',
+    });
+    const rows = response.data.values || [];
+    const rowIndex = rows.findIndex(row => row[1] === entryId);
+    if (rowIndex === -1) return;
+
+    const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: MASTER_SHEET_ID });
+    const allEntriesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'AllEntries');
+    if (!allEntriesSheet) return;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: MASTER_SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: allEntriesSheet.properties.sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1
+            }
+          }
+        }]
+      }
+    });
+  } catch (e) {
+    console.error('[Mirror] Failed to delete mirrored entry:', e.message);
+  }
+}
+
 // Validate required environment variables
 function validateEnvVars() {
   const required = ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SHEET_ID'];
@@ -269,10 +393,11 @@ module.exports = async (req, res) => {
   try {
     const sheets = await getSheets();
     const sheetId = getSheetId(entity, session);
+    const userId = session?.userId || 'single-user';
 
     switch (action) {
-      case 'append_entry': return await appendEntry(sheets, sheetId, data, res);
-      case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res);
+      case 'append_entry': return await appendEntry(sheets, sheetId, data, res, userId);
+      case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res, userId);
       case 'update_entry': return await updateEntry(sheets, sheetId, data, res);
       case 'batch_update_entries': return await batchUpdateEntries(sheets, sheetId, data, res);
       case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res);
@@ -305,9 +430,12 @@ module.exports = async (req, res) => {
 };
 
 // ===== ENTRIES =====
-async function appendEntry(sheets, sheetId, entry, res) {
+async function appendEntry(sheets, sheetId, entry, res, userId) {
+  const createdAt = new Date().toISOString();
+  entry.createdAt = createdAt;
+
   const row = ENTRY_COLUMNS.map(col => {
-    if (col === 'createdAt') return new Date().toISOString();
+    if (col === 'createdAt') return createdAt;
     const val = entry[col];
     if (val === null || val === undefined) return '';
     if (typeof val === 'object') return JSON.stringify(val);
@@ -321,6 +449,9 @@ async function appendEntry(sheets, sheetId, entry, res) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Mirror to Master Sheet for central backup
+  await mirrorEntryToMaster(sheets, userId, entry);
 
   // Apply color coding based on practice
   const rowIndex = await getLastRowIndex(sheets, sheetId, 'Entries');
@@ -384,6 +515,9 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
     previousData: previousData,
     newData: updates
   });
+
+  // Mirror update to Master Sheet
+  await updateMirroredEntry(sheets, id, updates);
 
   return res.status(200).json({ success: true, message: 'Entry updated', id });
 }
@@ -498,6 +632,9 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
     changes: `Deleted entry: ${deletedData.pName} - ${deletedData.svc} - ${deletedData.pts} pts - £${deletedData.gross} (moved to Trash)`,
     previousData: deletedData
   });
+
+  // Mirror deletion to Master Sheet
+  await deleteMirroredEntry(sheets, id);
 
   return res.status(200).json({ success: true, message: 'Entry moved to Trash', id });
 }
@@ -635,9 +772,12 @@ async function syncEntries(sheets, sheetId, { entries }, res) {
 }
 
 // ===== INVOICES =====
-async function appendInvoice(sheets, sheetId, invoice, res) {
+async function appendInvoice(sheets, sheetId, invoice, res, userId) {
+  const createdAt = new Date().toISOString();
+  invoice.createdAt = createdAt;
+
   const row = INVOICE_COLUMNS.map(col => {
-    if (col === 'createdAt') return new Date().toISOString();
+    if (col === 'createdAt') return createdAt;
     const val = invoice[col];
     if (val === null || val === undefined) return '';
     if (typeof val === 'object') return JSON.stringify(val);
@@ -651,6 +791,9 @@ async function appendInvoice(sheets, sheetId, invoice, res) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Mirror to Master Sheet for central backup
+  await mirrorInvoiceToMaster(sheets, userId, invoice);
 
   // Apply color coding based on practice
   const rowIndex = await getLastRowIndex(sheets, sheetId, 'Invoices');

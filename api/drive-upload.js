@@ -30,6 +30,24 @@ async function getDrive() {
 
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID;
 const DRIVE_OWNER_EMAIL = process.env.GOOGLE_DRIVE_OWNER_EMAIL; // Email to transfer ownership to
+const BACKUP_FOLDER_ID = process.env.GOOGLE_DRIVE_BACKUP_FOLDER_ID; // Central backup folder for all users
+
+// Try to load auth module for multi-user support
+let validateSessionToken = null;
+try {
+  const auth = require('./_lib/auth');
+  validateSessionToken = auth.validateSessionToken;
+} catch (e) {
+  console.log('[drive-upload] Auth module not available, running in single-user mode');
+}
+
+// Get session from request headers
+function getSessionFromRequest(req) {
+  if (!validateSessionToken) return null;
+  const token = req.headers['x-session-token'];
+  if (!token) return null;
+  return validateSessionToken(token);
+}
 
 module.exports = async (req, res) => {
   // CORS headers
@@ -51,6 +69,14 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: fileName, pdfBase64' });
   }
 
+  // Get session for multi-user support
+  const session = getSessionFromRequest(req);
+  const userId = session?.userId || 'single-user';
+  const userName = session?.name || 'Taylor Muir';
+
+  // Use user's Drive folder if available, otherwise fall back to env var
+  const userFolderId = session?.driveFolderId || ROOT_FOLDER_ID;
+
   try {
     const drive = await getDrive();
 
@@ -59,8 +85,8 @@ module.exports = async (req, res) => {
     const yearStr = year || new Date().getFullYear().toString();
     const monthStr = month || new Date().toLocaleString('en-GB', { month: 'long' });
 
-    // Get or create Entity folder
-    const entityFolderId = await getOrCreateFolder(drive, entityFolderName, ROOT_FOLDER_ID);
+    // Get or create Entity folder (in user's folder)
+    const entityFolderId = await getOrCreateFolder(drive, entityFolderName, userFolderId);
 
     // Get or create Invoices folder inside Entity
     const invoicesFolderId = await getOrCreateFolder(drive, 'Invoices', entityFolderId);
@@ -136,6 +162,32 @@ module.exports = async (req, res) => {
       supportsAllDrives: true
     });
 
+    // Also copy to central backup folder if configured
+    let backupFileId = null;
+    if (BACKUP_FOLDER_ID) {
+      try {
+        // Backup structure: UserName/Year/Month/
+        const backupUserFolderId = await getOrCreateFolder(drive, userName, BACKUP_FOLDER_ID);
+        const backupYearFolderId = await getOrCreateFolder(drive, yearStr, backupUserFolderId);
+        const backupMonthFolderId = await getOrCreateFolder(drive, monthStr, backupYearFolderId);
+
+        // Copy file to backup location
+        const backupFile = await drive.files.copy({
+          fileId: updatedFile.data.id,
+          requestBody: {
+            name: fileName,
+            parents: [backupMonthFolderId]
+          },
+          supportsAllDrives: true
+        });
+        backupFileId = backupFile.data.id;
+        console.log(`[Backup] PDF copied to backup folder: ${userName}/${yearStr}/${monthStr}/${fileName}`);
+      } catch (backupErr) {
+        console.error('[Backup] Failed to copy to backup folder:', backupErr.message);
+        // Don't fail the main operation if backup fails
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'PDF uploaded successfully',
@@ -143,7 +195,8 @@ module.exports = async (req, res) => {
       fileName: updatedFile.data.name,
       webViewLink: updatedFile.data.webViewLink,
       webContentLink: updatedFile.data.webContentLink,
-      folderPath: folderPath
+      folderPath: folderPath,
+      backupFileId: backupFileId
     });
 
   } catch (error) {
