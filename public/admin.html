@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2d6a4f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <title>Admin - Books IQ</title>
 <style>
 :root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--warn:#f59e0b;--warn-bg:#fef9c3;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
@@ -252,7 +253,7 @@ let users = [];
 (function init() {
   const sessionStr = localStorage.getItem('booksiq_session');
   if (!sessionStr) {
-    window.location.href = '/login.html';
+    window.location.href = '/login';
     return;
   }
 
@@ -260,7 +261,7 @@ let users = [];
     session = JSON.parse(sessionStr);
     if (session.exp < Date.now()) {
       localStorage.removeItem('booksiq_session');
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return;
     }
 
@@ -274,13 +275,13 @@ let users = [];
     document.getElementById('adminUser').textContent = session.email;
     loadUsers();
   } catch (e) {
-    window.location.href = '/login.html';
+    window.location.href = '/login';
   }
 })();
 
 function logout() {
   localStorage.removeItem('booksiq_session');
-  window.location.href = '/login.html';
+  window.location.href = '/login';
 }
 
 // API calls

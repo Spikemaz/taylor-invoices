@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Books IQ">
 <meta name="theme-color" content="#2d6a4f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <title>Books IQ - Invoice Manager</title>
 <style>
@@ -667,17 +668,17 @@ input[type="date"].fi{min-width:100%;display:block}
       } else {
         // Expired session - redirect to login
         localStorage.removeItem('booksiq_session');
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return;
       }
     } catch (e) {
       localStorage.removeItem('booksiq_session');
-      window.location.href = '/login.html';
+      window.location.href = '/login';
       return;
     }
   } else {
     // No session - redirect to login
-    window.location.href = '/login.html';
+    window.location.href = '/login';
     return;
   }
 })();
@@ -691,7 +692,7 @@ function getSession() {
 function logout() {
   localStorage.removeItem('booksiq_session');
   window.BOOKSIQ_SESSION = null;
-  window.location.href = '/login.html';
+  window.location.href = '/login';
 }
 
 // Admin user switcher
