@@ -76,6 +76,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 .footer{padding:16px;text-align:center;border-top:1px solid var(--bdr)}
 .footer p{font-size:11px;color:var(--txt3)}
 .hidden{display:none!important}
+.field-hint{font-size:11px;color:var(--txt3);margin-top:4px;font-style:italic}
 </style>
 </head>
 <body>
@@ -100,6 +101,15 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 
     <!-- Step 1: Personal Details -->
     <div id="step1" class="step">
+      <div class="info-box" style="margin-bottom:16px">
+        <p><strong>Welcome to Books IQ!</strong> This form will set up your invoice management account. You'll need:</p>
+        <ul style="margin:8px 0 0 16px;font-size:13px;color:var(--pri-dk);line-height:1.6">
+          <li>Your personal/business contact details</li>
+          <li>Bank details for receiving payments</li>
+          <li>Info about dental practices where you work (optional - can add later)</li>
+        </ul>
+      </div>
+
       <div class="section">
         <div class="section-title"><span class="icon">&#128100;</span> Your Details</div>
         <div class="section-desc">Tell us about yourself so we can set up your account.</div>
@@ -116,12 +126,19 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 
         <div class="form-group">
           <label class="form-label">Phone Number <span class="req">*</span></label>
-          <input type="tel" class="form-input" id="userPhone" placeholder="+44 7XXX XXXXXX" required>
+          <input type="tel" class="form-input" id="userPhone" placeholder="07XXX XXXXXX" required>
+          <div class="field-hint">Your mobile number for business contact</div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Address <span class="req">*</span></label>
-          <textarea class="form-textarea" id="userAddress" placeholder="Street address&#10;City&#10;Postcode" required></textarea>
+          <input type="text" class="form-input" id="userAddressLine1" placeholder="House number and street" required style="margin-bottom:8px">
+          <input type="text" class="form-input" id="userAddressLine2" placeholder="Flat/unit (optional)" style="margin-bottom:8px">
+          <div class="form-row" style="margin-bottom:0">
+            <input type="text" class="form-input" id="userCity" placeholder="Town/City" required>
+            <input type="text" class="form-input" id="userPostcode" placeholder="Postcode" required style="text-transform:uppercase">
+          </div>
+          <div class="field-hint">This will appear on your invoices</div>
         </div>
       </div>
 
@@ -153,74 +170,97 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
       <!-- Self-Employed Section -->
       <div class="section" id="selfSection">
         <div class="section-title"><span class="icon">&#128188;</span> Self-Employed Details</div>
-        <div class="section-desc">Your trading details for self-employed work.</div>
+        <div class="section-desc">Your trading details for self-employed work. These appear on your invoices.</div>
 
         <div class="form-group">
           <label class="form-label">Trading Name (optional)</label>
           <input type="text" class="form-input" id="selfTradingName" placeholder="Leave blank to use your name">
+          <div class="field-hint">If you trade under a different name (e.g., "Smith Dental Hygiene")</div>
+        </div>
+
+        <div class="info-box" style="margin-bottom:16px">
+          <p><strong>Bank Details</strong> - Where practices will pay your invoices</p>
         </div>
 
         <div class="form-group">
           <label class="form-label">Bank Name <span class="req">*</span></label>
-          <input type="text" class="form-input" id="selfBankName" placeholder="e.g. Lloyds Bank">
+          <input type="text" class="form-input" id="selfBankName" placeholder="e.g. Lloyds Bank, Barclays, NatWest">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Holder Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="selfAccName" placeholder="Name as shown on your bank account">
+          <div class="field-hint">Exactly as it appears on your bank statement</div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Account Name <span class="req">*</span></label>
-            <input type="text" class="form-input" id="selfAccName" placeholder="Account holder name">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfSort" placeholder="00-00-00" maxlength="8" inputmode="numeric">
+            <div class="field-hint">6 digits (e.g., 12-34-56)</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Sort Code <span class="req">*</span></label>
-            <input type="text" class="form-input" id="selfSort" placeholder="00-00-00">
+            <label class="form-label">Account Number <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfAccNum" placeholder="12345678" maxlength="8" inputmode="numeric">
+            <div class="field-hint">8 digits</div>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Account Number <span class="req">*</span></label>
-          <input type="text" class="form-input" id="selfAccNum" placeholder="8-digit account number">
         </div>
       </div>
 
       <!-- Ltd Company Section -->
       <div class="section" id="ltdSection">
         <div class="section-title"><span class="icon">&#127970;</span> Ltd Company Details</div>
-        <div class="section-desc">Your registered company information.</div>
+        <div class="section-desc">Your registered company information from Companies House.</div>
 
         <div class="form-group">
           <label class="form-label">Company Name <span class="req">*</span></label>
-          <input type="text" class="form-input" id="ltdCompanyName" placeholder="Your Company Ltd">
+          <input type="text" class="form-input" id="ltdCompanyName" placeholder="e.g. Smith Dental Services Ltd">
+          <div class="field-hint">Exactly as registered with Companies House</div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Company Number <span class="req">*</span></label>
-          <input type="text" class="form-input" id="ltdCompanyNo" placeholder="8-digit Companies House number">
+          <input type="text" class="form-input" id="ltdCompanyNo" placeholder="12345678" maxlength="8" inputmode="numeric">
+          <div class="field-hint">8-digit number from Companies House</div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Registered Address <span class="req">*</span></label>
-          <textarea class="form-textarea" id="ltdAddress" placeholder="Registered office address"></textarea>
+          <input type="text" class="form-input" id="ltdAddressLine1" placeholder="Street address" required style="margin-bottom:8px">
+          <input type="text" class="form-input" id="ltdAddressLine2" placeholder="Address line 2 (optional)" style="margin-bottom:8px">
+          <div class="form-row" style="margin-bottom:0">
+            <input type="text" class="form-input" id="ltdCity" placeholder="Town/City" required>
+            <input type="text" class="form-input" id="ltdPostcode" placeholder="Postcode" required style="text-transform:uppercase">
+          </div>
+          <div class="field-hint">Must match your Companies House registration</div>
+        </div>
+
+        <div class="info-box" style="margin-bottom:16px">
+          <p><strong>Bank Details</strong> - Where practices will pay your company invoices</p>
         </div>
 
         <div class="form-group">
           <label class="form-label">Bank Name <span class="req">*</span></label>
-          <input type="text" class="form-input" id="ltdBankName" placeholder="e.g. Lloyds Bank">
+          <input type="text" class="form-input" id="ltdBankName" placeholder="e.g. Lloyds Bank, Barclays, NatWest">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Holder Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdAccName" placeholder="Company or personal account name">
+          <div class="field-hint">Exactly as it appears on your bank statement</div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Account Name <span class="req">*</span></label>
-            <input type="text" class="form-input" id="ltdAccName" placeholder="Account holder name">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdSort" placeholder="00-00-00" maxlength="8" inputmode="numeric">
+            <div class="field-hint">6 digits (e.g., 12-34-56)</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Sort Code <span class="req">*</span></label>
-            <input type="text" class="form-input" id="ltdSort" placeholder="00-00-00">
+            <label class="form-label">Account Number <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdAccNum" placeholder="12345678" maxlength="8" inputmode="numeric">
+            <div class="field-hint">8 digits</div>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Account Number <span class="req">*</span></label>
-          <input type="text" class="form-input" id="ltdAccNum" placeholder="8-digit account number">
         </div>
       </div>
 
@@ -313,6 +353,64 @@ const formData = {
 let currentStep = 1;
 let practiceCount = 0;
 
+// Auto-format sort codes (XX-XX-XX)
+function formatSortCode(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 6) value = value.slice(0, 6);
+  if (value.length >= 4) {
+    value = value.slice(0, 2) + '-' + value.slice(2, 4) + '-' + value.slice(4);
+  } else if (value.length >= 2) {
+    value = value.slice(0, 2) + '-' + value.slice(2);
+  }
+  input.value = value;
+}
+
+// Auto-format account numbers (digits only, max 8)
+function formatAccountNumber(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 8) value = value.slice(0, 8);
+  input.value = value;
+}
+
+// Auto-format company number (digits only, max 8)
+function formatCompanyNumber(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 8) value = value.slice(0, 8);
+  input.value = value;
+}
+
+// Auto-format phone number
+function formatPhoneNumber(input) {
+  let value = input.value.replace(/[^0-9+]/g, '');
+  input.value = value;
+}
+
+// Auto-format postcode (uppercase)
+function formatPostcode(input) {
+  input.value = input.value.toUpperCase();
+}
+
+// Setup input formatters
+document.addEventListener('DOMContentLoaded', function() {
+  // Sort codes
+  document.getElementById('selfSort').addEventListener('input', function() { formatSortCode(this); });
+  document.getElementById('ltdSort').addEventListener('input', function() { formatSortCode(this); });
+
+  // Account numbers
+  document.getElementById('selfAccNum').addEventListener('input', function() { formatAccountNumber(this); });
+  document.getElementById('ltdAccNum').addEventListener('input', function() { formatAccountNumber(this); });
+
+  // Company number
+  document.getElementById('ltdCompanyNo').addEventListener('input', function() { formatCompanyNumber(this); });
+
+  // Phone number
+  document.getElementById('userPhone').addEventListener('input', function() { formatPhoneNumber(this); });
+
+  // Postcodes
+  document.getElementById('userPostcode').addEventListener('input', function() { formatPostcode(this); });
+  document.getElementById('ltdPostcode').addEventListener('input', function() { formatPostcode(this); });
+});
+
 // Initialize checkboxes
 document.querySelectorAll('.checkbox-item').forEach(item => {
   item.addEventListener('click', function(e) {
@@ -362,14 +460,19 @@ function validateStep(step) {
     const name = document.getElementById('userName').value.trim();
     const email = document.getElementById('userEmail').value.trim();
     const phone = document.getElementById('userPhone').value.trim();
-    const address = document.getElementById('userAddress').value.trim();
+    const addressLine1 = document.getElementById('userAddressLine1').value.trim();
+    const city = document.getElementById('userCity').value.trim();
+    const postcode = document.getElementById('userPostcode').value.trim();
     const isSelf = document.getElementById('isSelfEmployed').checked;
     const isLtd = document.getElementById('isLtdCompany').checked;
 
     if (!name) return showError('Please enter your name');
     if (!email || !email.includes('@')) return showError('Please enter a valid email address');
     if (!phone) return showError('Please enter your phone number');
-    if (!address) return showError('Please enter your address');
+    if (phone.replace(/[^0-9]/g, '').length < 10) return showError('Please enter a valid phone number');
+    if (!addressLine1) return showError('Please enter your street address');
+    if (!city) return showError('Please enter your town/city');
+    if (!postcode) return showError('Please enter your postcode');
     if (!isSelf && !isLtd) return showError('Please select at least one business type');
 
     // Show/hide entity sections based on selection
@@ -384,20 +487,27 @@ function validateStep(step) {
     const isLtd = document.getElementById('isLtdCompany').checked;
 
     if (isSelf) {
-      if (!document.getElementById('selfBankName').value.trim()) return showError('Please enter your bank name');
-      if (!document.getElementById('selfAccName').value.trim()) return showError('Please enter account holder name');
-      if (!document.getElementById('selfSort').value.trim()) return showError('Please enter sort code');
-      if (!document.getElementById('selfAccNum').value.trim()) return showError('Please enter account number');
+      if (!document.getElementById('selfBankName').value.trim()) return showError('Please enter your bank name for self-employed');
+      if (!document.getElementById('selfAccName').value.trim()) return showError('Please enter account holder name for self-employed');
+      const selfSort = document.getElementById('selfSort').value.replace(/[^0-9]/g, '');
+      if (selfSort.length !== 6) return showError('Sort code must be 6 digits (e.g., 12-34-56)');
+      const selfAcc = document.getElementById('selfAccNum').value.replace(/[^0-9]/g, '');
+      if (selfAcc.length !== 8) return showError('Account number must be 8 digits');
     }
 
     if (isLtd) {
-      if (!document.getElementById('ltdCompanyName').value.trim()) return showError('Please enter company name');
-      if (!document.getElementById('ltdCompanyNo').value.trim()) return showError('Please enter company number');
-      if (!document.getElementById('ltdAddress').value.trim()) return showError('Please enter registered address');
-      if (!document.getElementById('ltdBankName').value.trim()) return showError('Please enter bank name');
-      if (!document.getElementById('ltdAccName').value.trim()) return showError('Please enter account holder name');
-      if (!document.getElementById('ltdSort').value.trim()) return showError('Please enter sort code');
-      if (!document.getElementById('ltdAccNum').value.trim()) return showError('Please enter account number');
+      if (!document.getElementById('ltdCompanyName').value.trim()) return showError('Please enter your company name');
+      const companyNo = document.getElementById('ltdCompanyNo').value.replace(/[^0-9]/g, '');
+      if (companyNo.length !== 8) return showError('Company number must be 8 digits');
+      if (!document.getElementById('ltdAddressLine1').value.trim()) return showError('Please enter company registered address');
+      if (!document.getElementById('ltdCity').value.trim()) return showError('Please enter company town/city');
+      if (!document.getElementById('ltdPostcode').value.trim()) return showError('Please enter company postcode');
+      if (!document.getElementById('ltdBankName').value.trim()) return showError('Please enter bank name for Ltd company');
+      if (!document.getElementById('ltdAccName').value.trim()) return showError('Please enter account holder name for Ltd company');
+      const ltdSort = document.getElementById('ltdSort').value.replace(/[^0-9]/g, '');
+      if (ltdSort.length !== 6) return showError('Sort code must be 6 digits (e.g., 12-34-56)');
+      const ltdAcc = document.getElementById('ltdAccNum').value.replace(/[^0-9]/g, '');
+      if (ltdAcc.length !== 8) return showError('Account number must be 8 digits');
     }
 
     return true;
@@ -416,7 +526,18 @@ function saveStepData(step) {
     formData.user.name = document.getElementById('userName').value.trim();
     formData.user.email = document.getElementById('userEmail').value.trim();
     formData.user.phone = document.getElementById('userPhone').value.trim();
-    formData.user.address = document.getElementById('userAddress').value.trim();
+
+    // Build address from separate fields
+    const line1 = document.getElementById('userAddressLine1').value.trim();
+    const line2 = document.getElementById('userAddressLine2').value.trim();
+    const city = document.getElementById('userCity').value.trim();
+    const postcode = document.getElementById('userPostcode').value.trim().toUpperCase();
+    const addressParts = [line1];
+    if (line2) addressParts.push(line2);
+    addressParts.push(city);
+    addressParts.push(postcode);
+    formData.user.address = addressParts.join(', ');
+
     formData.entityType.self = document.getElementById('isSelfEmployed').checked;
     formData.entityType.ltd = document.getElementById('isLtdCompany').checked;
   }
@@ -433,7 +554,18 @@ function saveStepData(step) {
     if (formData.entityType.ltd) {
       formData.ltdCompany.companyName = document.getElementById('ltdCompanyName').value.trim();
       formData.ltdCompany.companyNo = document.getElementById('ltdCompanyNo').value.trim();
-      formData.ltdCompany.address = document.getElementById('ltdAddress').value.trim();
+
+      // Build Ltd address from separate fields
+      const ltdLine1 = document.getElementById('ltdAddressLine1').value.trim();
+      const ltdLine2 = document.getElementById('ltdAddressLine2').value.trim();
+      const ltdCity = document.getElementById('ltdCity').value.trim();
+      const ltdPostcode = document.getElementById('ltdPostcode').value.trim().toUpperCase();
+      const ltdAddressParts = [ltdLine1];
+      if (ltdLine2) ltdAddressParts.push(ltdLine2);
+      ltdAddressParts.push(ltdCity);
+      ltdAddressParts.push(ltdPostcode);
+      formData.ltdCompany.address = ltdAddressParts.join(', ');
+
       formData.ltdCompany.bankName = document.getElementById('ltdBankName').value.trim();
       formData.ltdCompany.accName = document.getElementById('ltdAccName').value.trim();
       formData.ltdCompany.sort = document.getElementById('ltdSort').value.trim();
@@ -475,8 +607,12 @@ function addPractice() {
       </div>
 
       <div class="form-group">
-        <label class="form-label">Address</label>
-        <textarea class="form-textarea practice-address" placeholder="Practice address"></textarea>
+        <label class="form-label">Practice Address</label>
+        <input type="text" class="form-input practice-address-line1" placeholder="Street address" style="margin-bottom:8px">
+        <div class="form-row" style="margin-bottom:0">
+          <input type="text" class="form-input practice-city" placeholder="Town/City">
+          <input type="text" class="form-input practice-postcode" placeholder="Postcode" style="text-transform:uppercase">
+        </div>
       </div>
 
       <div class="form-group contract-fields">
@@ -566,11 +702,20 @@ function savePractices() {
       if (name) services[name] = { p: price, d: 'per patient' };
     });
 
+    // Build practice address from fields
+    const pracLine1 = card.querySelector('.practice-address-line1').value.trim();
+    const pracCity = card.querySelector('.practice-city').value.trim();
+    const pracPostcode = card.querySelector('.practice-postcode').value.trim().toUpperCase();
+    const addressParts = [];
+    if (pracLine1) addressParts.push(pracLine1);
+    if (pracCity) addressParts.push(pracCity);
+    if (pracPostcode) addressParts.push(pracPostcode);
+
     const practice = {
       name: card.querySelector('.practice-name').value.trim(),
       short: card.querySelector('.practice-short').value.trim(),
       type: card.querySelector('.practice-type').value,
-      address: card.querySelector('.practice-address').value.trim(),
+      address: addressParts.join(', '),
       commission: parseFloat(card.querySelector('.practice-commission').value) / 100 || 0,
       rate: parseFloat(card.querySelector('.practice-rate').value) || 0,
       days: days,
@@ -585,24 +730,80 @@ function savePractices() {
 
 // Review
 function buildReview() {
-  let html = '<div style="font-size:14px;line-height:1.8">';
+  let html = '<div style="font-size:14px;line-height:1.6">';
 
-  html += '<p><strong>Name:</strong> ' + formData.user.name + '</p>';
-  html += '<p><strong>Email:</strong> ' + formData.user.email + '</p>';
-  html += '<p><strong>Phone:</strong> ' + formData.user.phone + '</p>';
-  html += '<p><strong>Business Type:</strong> ';
+  // Personal Details
+  html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+  html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Your Details</div>';
+  html += '<p><strong>Name:</strong> ' + escapeHtml(formData.user.name) + '</p>';
+  html += '<p><strong>Email:</strong> ' + escapeHtml(formData.user.email) + '</p>';
+  html += '<p><strong>Phone:</strong> ' + escapeHtml(formData.user.phone) + '</p>';
+  html += '<p><strong>Address:</strong> ' + escapeHtml(formData.user.address) + '</p>';
+  html += '</div>';
+
+  // Business Type
   const types = [];
   if (formData.entityType.self) types.push('Self-Employed');
   if (formData.entityType.ltd) types.push('Ltd Company');
-  html += types.join(', ') + '</p>';
+  html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+  html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Business Type</div>';
+  html += '<p>' + types.join(' + ') + '</p>';
+  html += '</div>';
 
+  // Self-Employed Details
+  if (formData.entityType.self) {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Self-Employed Bank Details</div>';
+    if (formData.selfEmployed.tradingName) {
+      html += '<p><strong>Trading As:</strong> ' + escapeHtml(formData.selfEmployed.tradingName) + '</p>';
+    }
+    html += '<p><strong>Bank:</strong> ' + escapeHtml(formData.selfEmployed.bankName) + '</p>';
+    html += '<p><strong>Account:</strong> ' + escapeHtml(formData.selfEmployed.accName) + '</p>';
+    html += '<p><strong>Sort Code:</strong> ' + escapeHtml(formData.selfEmployed.sort) + '</p>';
+    html += '<p><strong>Account No:</strong> ****' + escapeHtml(formData.selfEmployed.accNum.slice(-4)) + '</p>';
+    html += '</div>';
+  }
+
+  // Ltd Company Details
+  if (formData.entityType.ltd) {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Ltd Company Details</div>';
+    html += '<p><strong>Company:</strong> ' + escapeHtml(formData.ltdCompany.companyName) + '</p>';
+    html += '<p><strong>Company No:</strong> ' + escapeHtml(formData.ltdCompany.companyNo) + '</p>';
+    html += '<p><strong>Address:</strong> ' + escapeHtml(formData.ltdCompany.address) + '</p>';
+    html += '<p><strong>Bank:</strong> ' + escapeHtml(formData.ltdCompany.bankName) + '</p>';
+    html += '<p><strong>Account:</strong> ' + escapeHtml(formData.ltdCompany.accName) + '</p>';
+    html += '<p><strong>Sort Code:</strong> ' + escapeHtml(formData.ltdCompany.sort) + '</p>';
+    html += '<p><strong>Account No:</strong> ****' + escapeHtml(formData.ltdCompany.accNum.slice(-4)) + '</p>';
+    html += '</div>';
+  }
+
+  // Practices
   if (formData.practices.length > 0) {
-    html += '<p><strong>Practices:</strong> ' + formData.practices.map(p => p.name).join(', ') + '</p>';
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Your Practices (' + formData.practices.length + ')</div>';
+    formData.practices.forEach(p => {
+      html += '<p>• <strong>' + escapeHtml(p.name) + '</strong> (' + escapeHtml(p.short) + ') - ' + (p.type === 'contract' ? 'Contract' : 'Ad Hoc') + '</p>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--txt3);margin-bottom:8px">Practices</div>';
+    html += '<p style="color:var(--txt3);font-style:italic">No practices added yet (you can add them later)</p>';
+    html += '</div>';
   }
 
   html += '</div>';
 
   document.getElementById('reviewContent').innerHTML = html;
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Submit

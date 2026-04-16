@@ -713,8 +713,13 @@ async function loadAdminUsers() {
     const select = document.getElementById('adminUserSelect');
     if (!select) return;
 
-    // Clear existing options except first
-    select.innerHTML = '<option value="">View as myself</option>';
+    // Clear existing options
+    const hasSelectedUser = session.viewingAs;
+    if (hasSelectedUser) {
+      select.innerHTML = '<option value="">View as myself</option>';
+    } else {
+      select.innerHTML = '<option value="" disabled selected>Select a user...</option>';
+    }
 
     // Add user options
     adminUsers.forEach(u => {
@@ -722,6 +727,10 @@ async function loadAdminUsers() {
         const opt = document.createElement('option');
         opt.value = u.userId;
         opt.textContent = u.name || u.email;
+        // Pre-select if currently viewing as this user
+        if (session.viewingAs === u.userId) {
+          opt.selected = true;
+        }
         select.appendChild(opt);
       }
     });
@@ -2228,16 +2237,19 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   // Show account section in settings if user is logged in (multi-user mode)
   const session = getSession();
+  const isAdmin = session && session.role === 'admin';
+  const hasNoSelectedUser = isAdmin && !session.viewingAs;
+
   if (session) {
     const accountSection = document.getElementById('settingsAccount');
     if (accountSection) accountSection.style.display = '';
     const emailDisplay = document.getElementById('settingsUserEmail');
     if (emailDisplay) emailDisplay.textContent = session.email || session.name || 'User';
-    console.log('[Auth] User logged in:', session.email);
+    console.log('[Auth] User logged in:', session.email, 'isAdmin:', isAdmin);
 
-    // Load admin user switcher if admin
-    if (session.role === 'admin') {
-      loadAdminUsers();
+    // Load admin user switcher if admin - do this FIRST before anything else
+    if (isAdmin) {
+      await loadAdminUsers();
     }
   }
 
@@ -2263,8 +2275,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const splashMinTime = 800; // ms - let animation complete
   const splashStart = Date.now();
 
-  // STEP 4: Sync from cloud in background
-  const syncPromise = loadFromCloud();
+  // For admins without a selected user, skip cloud sync - show user selector instead
+  let syncPromise;
+  if (hasNoSelectedUser) {
+    console.log('[Admin] No user selected - skipping data load');
+    syncPromise = Promise.resolve(true); // Fake success so UI shows
+  } else {
+    // STEP 4: Sync from cloud in background
+    syncPromise = loadFromCloud();
+  }
 
   // Wait for both: minimum splash time AND cloud sync
   const [success] = await Promise.all([
@@ -2276,6 +2295,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   const splash = document.getElementById('splash');
   splash.classList.add('fade-out');
   setTimeout(() => splash.style.display = 'none', 400);
+
+  // For admins without selected user, show prompt to select user
+  if (hasNoSelectedUser) {
+    S.viewEnt = 'all';
+    document.getElementById('hdrE').textContent = 'Admin';
+    upHome(true);
+    showToast('Select a user to view their data', 'ok');
+    return;
+  }
 
   if (success) {
     // Run data migrations after cloud load

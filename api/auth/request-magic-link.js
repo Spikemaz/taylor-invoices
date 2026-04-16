@@ -89,10 +89,11 @@ module.exports = async function handler(req, res) {
                 Hi ${user.name || 'there'},
               </p>
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.5;">
-                Click the button below to sign in, or use the code:
+                Click the button below to sign in, or tap your code to copy it:
               </p>
-              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
-                <span style="font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #2d6a4f;">${code}</span>
+              <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; cursor: pointer;" onclick="navigator.clipboard?.writeText('${code}')">
+                <p style="color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">Your Login Code (tap to copy)</p>
+                <span style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 36px; font-weight: 700; letter-spacing: 12px; color: #2d6a4f; user-select: all;">${code}</span>
               </div>
               <a href="${magicLink}"
                  style="display: inline-block; background: #2d6a4f; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 16px 0;">

@@ -86,7 +86,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
       <form id="emailForm">
         <div class="input-group">
           <label class="input-label" for="email">Email Address</label>
-          <input type="email" id="email" class="input-field" placeholder="you@example.com" required autocomplete="email" autocapitalize="off">
+          <input type="email" id="email" class="input-field" placeholder="you@example.com" required autocomplete="email" autocapitalize="off" list="savedEmails">
+          <datalist id="savedEmails"></datalist>
         </div>
         <button type="submit" class="btn btn-primary" id="submitBtn">
           Send Magic Link
@@ -147,11 +148,40 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
     return;
   }
 
+  // Load saved emails into datalist
+  loadSavedEmails();
+
   // Check for error in URL
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
   if (error) {
     showError(decodeURIComponent(error));
+  }
+
+  // Helper to load saved emails
+  function loadSavedEmails() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('booksiq_saved_emails') || '[]');
+      const datalist = document.getElementById('savedEmails');
+      datalist.innerHTML = saved.map(e => '<option value="' + e + '">').join('');
+      // Pre-fill with most recent email if available
+      if (saved.length > 0) {
+        document.getElementById('email').value = saved[0];
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Helper to save email after successful login request
+  function saveEmail(email) {
+    try {
+      let saved = JSON.parse(localStorage.getItem('booksiq_saved_emails') || '[]');
+      // Remove if exists, add to front (most recent first)
+      saved = saved.filter(e => e.toLowerCase() !== email.toLowerCase());
+      saved.unshift(email.toLowerCase());
+      // Keep max 5 emails
+      saved = saved.slice(0, 5);
+      localStorage.setItem('booksiq_saved_emails', JSON.stringify(saved));
+    } catch (e) { /* ignore */ }
   }
 
   // Form submission
@@ -178,6 +208,8 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
       const data = await response.json();
 
       if (response.ok) {
+        // Save email for future auto-fill
+        saveEmail(email);
         // Show success state
         storedEmail = email;
         document.getElementById('sentEmail').textContent = email;
