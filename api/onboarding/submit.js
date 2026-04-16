@@ -2,7 +2,10 @@
  * POST /api/onboarding/submit
  *
  * Process new user onboarding form submission.
- * Creates user's Google Sheet, populates with settings/practices, adds to Master Sheet.
+ * Creates DUAL sheets for each user:
+ *   1. Master backup sheet (service account owned, never shared, persists forever)
+ *   2. User-facing sheet (shared with user's email for viewing/editing)
+ * Also creates Drive folders and adds user to Master Sheet.
  *
  * Body: { user, entityType, selfEmployed, ltdCompany, practices }
  * Returns: { success: true, userId } or { error: string }
@@ -10,6 +13,10 @@
 
 const { google } = require('googleapis');
 const crypto = require('crypto');
+
+// Central backup folder for master backup sheets (service account owned)
+// This folder contains all user backup sheets - users never see this
+const MASTER_BACKUP_FOLDER_ID = process.env.MASTER_BACKUP_FOLDER_ID;
 
 // Get auth client
 function getAuthClient() {
@@ -84,59 +91,149 @@ module.exports = async function handler(req, res) {
     // Generate unique user ID
     const userId = crypto.randomUUID();
 
-    // Create new Google Sheet for user (copy from template or create fresh)
-    const newSheet = await drive.files.create({
+    console.log(`[Onboarding] Creating dual sheets for user: ${user.name} (${email})`);
+
+    // ========== CREATE DUAL SHEETS ==========
+    // 1. Master backup sheet (service account owned, never shared)
+    // 2. User-facing sheet (shared with user's email)
+
+    // --- MASTER BACKUP SHEET ---
+    // This sheet stays in the central backup folder, owned by service account
+    // Users never see or access this - it's our permanent backup
+    const backupSheetRequest = {
+      requestBody: {
+        name: `[BACKUP] ${user.name} - ${userId.slice(0, 8)}`,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+      },
+      fields: 'id',
+    };
+
+    // If backup folder is configured, put it there
+    if (MASTER_BACKUP_FOLDER_ID) {
+      backupSheetRequest.requestBody.parents = [MASTER_BACKUP_FOLDER_ID];
+    }
+
+    const backupSheet = await drive.files.create(backupSheetRequest);
+    const backupSheetId = backupSheet.data.id;
+    console.log(`[Onboarding] Created backup sheet: ${backupSheetId}`);
+
+    // --- USER-FACING SHEET ---
+    // This sheet is what the user sees - shared with their email
+    const userSheet = await drive.files.create({
       requestBody: {
         name: `BooksIQ - ${user.name}`,
         mimeType: 'application/vnd.google-apps.spreadsheet',
       },
       fields: 'id',
     });
+    const userSheetId = userSheet.data.id;
+    console.log(`[Onboarding] Created user sheet: ${userSheetId}`);
 
-    const userSheetId = newSheet.data.id;
+    // Share user-facing sheet with the user's email (writer access)
+    try {
+      await drive.permissions.create({
+        fileId: userSheetId,
+        requestBody: {
+          type: 'user',
+          role: 'writer',
+          emailAddress: email,
+        },
+        sendNotificationEmail: false, // Don't spam them with sharing emails
+      });
+      console.log(`[Onboarding] Shared user sheet with: ${email}`);
+    } catch (shareError) {
+      console.error(`[Onboarding] Warning: Could not share sheet with ${email}:`, shareError.message);
+      // Continue anyway - admin can manually share if needed
+    }
 
-    // Set up sheet tabs
-    await setupUserSheet(sheets, userSheetId, { user, entityType, selfEmployed, ltdCompany, practices });
+    // Set up BOTH sheets with identical structure
+    await Promise.all([
+      setupUserSheet(sheets, backupSheetId, { user, entityType, selfEmployed, ltdCompany, practices }),
+      setupUserSheet(sheets, userSheetId, { user, entityType, selfEmployed, ltdCompany, practices })
+    ]);
+    console.log(`[Onboarding] Initialized both sheets with tabs and data`);
 
-    // Create Drive folder for user's invoices
-    const newFolder = await drive.files.create({
+    // ========== CREATE DUAL DRIVE FOLDERS ==========
+    // 1. Master backup folder for invoices (service account owned)
+    // 2. User-facing folder (shared with user's email)
+
+    // --- BACKUP INVOICE FOLDER ---
+    const backupFolderRequest = {
+      requestBody: {
+        name: `[BACKUP] Invoices - ${user.name}`,
+        mimeType: 'application/vnd.google-apps.folder',
+      },
+      fields: 'id',
+    };
+
+    if (MASTER_BACKUP_FOLDER_ID) {
+      backupFolderRequest.requestBody.parents = [MASTER_BACKUP_FOLDER_ID];
+    }
+
+    const backupFolder = await drive.files.create(backupFolderRequest);
+    const backupFolderId = backupFolder.data.id;
+    console.log(`[Onboarding] Created backup folder: ${backupFolderId}`);
+
+    // --- USER-FACING INVOICE FOLDER ---
+    const userFolder = await drive.files.create({
       requestBody: {
         name: `BooksIQ Invoices - ${user.name}`,
         mimeType: 'application/vnd.google-apps.folder',
       },
       fields: 'id',
     });
+    const userFolderId = userFolder.data.id;
+    console.log(`[Onboarding] Created user folder: ${userFolderId}`);
 
-    const userFolderId = newFolder.data.id;
+    // Share user-facing folder with the user's email (writer access)
+    try {
+      await drive.permissions.create({
+        fileId: userFolderId,
+        requestBody: {
+          type: 'user',
+          role: 'writer',
+          emailAddress: email,
+        },
+        sendNotificationEmail: false,
+      });
+      console.log(`[Onboarding] Shared user folder with: ${email}`);
+    } catch (shareError) {
+      console.error(`[Onboarding] Warning: Could not share folder with ${email}:`, shareError.message);
+    }
 
     // Determine entity type string
     let entType = 'self';
     if (entityType.self && entityType.ltd) entType = 'both';
     else if (entityType.ltd) entType = 'ltd';
 
-    // Add user to Master Sheet
+    // Add user to Master Sheet with DUAL sheet/folder references
+    // Columns: userId, email, name, status, role, sheetId (user-facing), driveFolderId (user-facing),
+    //          entityType, createdAt, lastLogin, consentedAt, backupSheetId, backupFolderId
     const userRow = [
-      userId,                           // userId
-      email,                            // email
-      user.name,                        // name
-      'active',                         // status
-      'user',                           // role
-      userSheetId,                      // sheetId
-      userFolderId,                     // driveFolderId
-      entType,                          // entityType
-      new Date().toISOString(),         // createdAt
-      '',                               // lastLogin
-      consentedAt || new Date().toISOString()  // consentedAt
+      userId,                           // A: userId
+      email,                            // B: email
+      user.name,                        // C: name
+      'active',                         // D: status
+      'user',                           // E: role
+      userSheetId,                      // F: sheetId (user-facing - this is what the app uses)
+      userFolderId,                     // G: driveFolderId (user-facing - this is where user's PDFs go)
+      entType,                          // H: entityType
+      new Date().toISOString(),         // I: createdAt
+      '',                               // J: lastLogin
+      consentedAt || new Date().toISOString(),  // K: consentedAt
+      backupSheetId,                    // L: backupSheetId (master backup - service account owned)
+      backupFolderId                    // M: backupFolderId (master backup - service account owned)
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: masterSheetId,
-      range: 'Users!A:K',
+      range: 'Users!A:M',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [userRow]
       }
     });
+    console.log(`[Onboarding] Added user to Master Sheet with dual sheet/folder references`);
 
     // Send welcome email with magic link
     if (process.env.RESEND_API_KEY) {

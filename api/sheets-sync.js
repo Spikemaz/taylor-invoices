@@ -283,6 +283,25 @@ function getSheetId(entity, session, req = null) {
   return SHEET_IDS.self;
 }
 
+// Get the backup sheet ID from session (for dual-write operations)
+// Returns null if no backup sheet is configured (legacy users)
+function getBackupSheetId(session, req = null) {
+  // Admin impersonation: check for override header
+  if (req && session && session.role === 'admin') {
+    const overrideBackupSheetId = req.headers['x-override-backup-sheet-id'];
+    if (overrideBackupSheetId) {
+      console.log('[sheets-sync] Admin override: using backupSheetId', overrideBackupSheetId);
+      return overrideBackupSheetId;
+    }
+  }
+  // Multi-user mode: session contains backup sheet ID
+  if (session && session.backupSheetId) {
+    return session.backupSheetId;
+  }
+  // No backup sheet configured
+  return null;
+}
+
 // Validate session from request headers (multi-user mode)
 function getSessionFromRequest(req) {
   if (!validateSessionToken) return null; // Single-user mode
@@ -462,7 +481,7 @@ async function writeLog(sheets, sheetId, logEntry) {
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token, X-Override-Sheet-Id, X-Override-Drive-Folder-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token, X-Override-Sheet-Id, X-Override-Drive-Folder-Id, X-Override-Backup-Sheet-Id');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -478,18 +497,19 @@ module.exports = async (req, res) => {
   try {
     const sheets = await getSheets();
     const sheetId = getSheetId(entity, session, req);
+    const backupSheetId = getBackupSheetId(session, req);
     const userId = session?.userId || 'single-user';
 
     switch (action) {
-      case 'append_entry': return await appendEntry(sheets, sheetId, data, res, userId);
-      case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res, userId);
-      case 'update_entry': return await updateEntry(sheets, sheetId, data, res);
-      case 'batch_update_entries': return await batchUpdateEntries(sheets, sheetId, data, res);
-      case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res, userId);
+      case 'append_entry': return await appendEntry(sheets, sheetId, data, res, userId, backupSheetId);
+      case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res, userId, backupSheetId);
+      case 'update_entry': return await updateEntry(sheets, sheetId, data, res, backupSheetId);
+      case 'batch_update_entries': return await batchUpdateEntries(sheets, sheetId, data, res, backupSheetId);
+      case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res, userId, backupSheetId);
       case 'load_all': return await loadAll(sheets, sheetId, res);
-      case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res);
-      case 'update_invoice_status': return await updateInvoiceStatus(sheets, sheetId, data, res);
-      case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res, userId);
+      case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res, backupSheetId);
+      case 'update_invoice_status': return await updateInvoiceStatus(sheets, sheetId, data, res, backupSheetId);
+      case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res, userId, backupSheetId);
       case 'sync_entries': return await syncEntries(sheets, sheetId, data, res);
       case 'sync_invoices': return await syncInvoices(sheets, sheetId, data, res);
       case 'sync_practices': return await syncPractices(sheets, sheetId, data, res);
@@ -515,7 +535,7 @@ module.exports = async (req, res) => {
 };
 
 // ===== ENTRIES =====
-async function appendEntry(sheets, sheetId, entry, res, userId) {
+async function appendEntry(sheets, sheetId, entry, res, userId, backupSheetId = null) {
   const createdAt = new Date().toISOString();
   entry.createdAt = createdAt;
 
@@ -527,6 +547,7 @@ async function appendEntry(sheets, sheetId, entry, res, userId) {
     return val;
   });
 
+  // Write to user-facing sheet
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
     range: 'Entries!A:T',
@@ -534,6 +555,23 @@ async function appendEntry(sheets, sheetId, entry, res, userId) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Write to backup sheet (if configured) - dual write for data safety
+  if (backupSheetId) {
+    try {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: backupSheetId,
+        range: 'Entries!A:T',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: [row] }
+      });
+      console.log('[sheets-sync] Entry written to backup sheet');
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to write to backup sheet:', backupError.message);
+      // Continue - don't fail the main operation
+    }
+  }
 
   // Mirror to Master Sheet for central backup
   await mirrorEntryToMaster(sheets, userId, entry);
@@ -555,7 +593,7 @@ async function appendEntry(sheets, sheetId, entry, res, userId) {
   return res.status(200).json({ success: true, message: 'Entry appended', id: entry.id });
 }
 
-async function updateEntry(sheets, sheetId, { id, updates }, res) {
+async function updateEntry(sheets, sheetId, { id, updates }, res, backupSheetId = null) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Entries!A:T',
@@ -583,12 +621,37 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
     return currentRow[i] || '';
   });
 
+  // Update user-facing sheet
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
     range: `Entries!A${rowIndex + 1}:T${rowIndex + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values: [updatedRow] }
   });
+
+  // Update backup sheet (if configured)
+  if (backupSheetId) {
+    try {
+      // Find the entry in backup sheet
+      const backupResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: backupSheetId,
+        range: 'Entries!A:T',
+      });
+      const backupRows = backupResponse.data.values || [];
+      const backupRowIndex = backupRows.findIndex(row => row[0] === id);
+      if (backupRowIndex !== -1) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: backupSheetId,
+          range: `Entries!A${backupRowIndex + 1}:T${backupRowIndex + 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [updatedRow] }
+        });
+        console.log('[sheets-sync] Entry updated in backup sheet');
+      }
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to update backup sheet:', backupError.message);
+    }
+  }
 
   // Log the update with before/after data
   const changedFields = Object.keys(updates).filter(k => updates[k] !== previousData[k]).join(', ');
@@ -608,7 +671,7 @@ async function updateEntry(sheets, sheetId, { id, updates }, res) {
 }
 
 // Batch update multiple entries at once (reduces API calls from N*2 to 2)
-async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
+async function batchUpdateEntries(sheets, sheetId, { entries }, res, backupSheetId = null) {
   if (!entries || !entries.length) {
     return res.status(400).json({ error: 'No entries provided' });
   }
@@ -648,7 +711,7 @@ async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
     results.push({ id, success: true });
   }
 
-  // Single batch update
+  // Single batch update to user-facing sheet
   if (updateRequests.length > 0) {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: sheetId,
@@ -657,6 +720,52 @@ async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
         data: updateRequests
       }
     });
+
+    // Also update backup sheet (if configured)
+    if (backupSheetId) {
+      try {
+        // Re-read backup sheet and build update requests for it
+        const backupResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: backupSheetId,
+          range: 'Entries!A:T',
+        });
+        const backupRows = backupResponse.data.values || [];
+        const backupUpdateRequests = [];
+
+        for (const { id, updates } of entries) {
+          const backupRowIndex = backupRows.findIndex(row => row[0] === id);
+          if (backupRowIndex !== -1) {
+            const currentRow = backupRows[backupRowIndex];
+            const updatedRow = ENTRY_COLUMNS.map((col, i) => {
+              if (updates.hasOwnProperty(col)) {
+                const val = updates[col];
+                if (val === null || val === undefined) return '';
+                if (typeof val === 'object') return JSON.stringify(val);
+                return val;
+              }
+              return currentRow[i] || '';
+            });
+            backupUpdateRequests.push({
+              range: `Entries!A${backupRowIndex + 1}:T${backupRowIndex + 1}`,
+              values: [updatedRow]
+            });
+          }
+        }
+
+        if (backupUpdateRequests.length > 0) {
+          await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: backupSheetId,
+            requestBody: {
+              valueInputOption: 'RAW',
+              data: backupUpdateRequests
+            }
+          });
+          console.log(`[sheets-sync] Batch updated ${backupUpdateRequests.length} entries in backup sheet`);
+        }
+      } catch (backupError) {
+        console.error('[sheets-sync] Warning: Failed to batch update backup sheet:', backupError.message);
+      }
+    }
   }
 
   return res.status(200).json({
@@ -666,7 +775,7 @@ async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
   });
 }
 
-async function deleteEntry(sheets, sheetId, { id }, res, userId) {
+async function deleteEntry(sheets, sheetId, { id }, res, userId, backupSheetId = null) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Entries!A:T',
@@ -709,6 +818,42 @@ async function deleteEntry(sheets, sheetId, { id }, res, userId) {
     }
   });
 
+  // Delete from backup sheet (if configured)
+  if (backupSheetId) {
+    try {
+      const backupResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: backupSheetId,
+        range: 'Entries!A:T',
+      });
+      const backupRows = backupResponse.data.values || [];
+      const backupRowIndex = backupRows.findIndex(row => row[0] === id);
+      if (backupRowIndex !== -1) {
+        const backupMetadata = await sheets.spreadsheets.get({ spreadsheetId: backupSheetId });
+        const backupEntriesSheet = backupMetadata.data.sheets.find(s => s.properties.title === 'Entries');
+        if (backupEntriesSheet) {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: backupSheetId,
+            requestBody: {
+              requests: [{
+                deleteDimension: {
+                  range: {
+                    sheetId: backupEntriesSheet.properties.sheetId,
+                    dimension: 'ROWS',
+                    startIndex: backupRowIndex,
+                    endIndex: backupRowIndex + 1
+                  }
+                }
+              }]
+            }
+          });
+          console.log('[sheets-sync] Entry deleted from backup sheet');
+        }
+      }
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to delete from backup sheet:', backupError.message);
+    }
+  }
+
   // Log the deletion with full previous data
   await writeLog(sheets, sheetId, {
     action: 'DELETE',
@@ -724,7 +869,7 @@ async function deleteEntry(sheets, sheetId, { id }, res, userId) {
   return res.status(200).json({ success: true, message: 'Entry moved to Trash', id });
 }
 
-async function deleteInvoice(sheets, sheetId, { num, driveLink }, res, userId) {
+async function deleteInvoice(sheets, sheetId, { num, driveLink }, res, userId, backupSheetId = null) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Invoices!A:AD',
@@ -773,6 +918,42 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res, userId) {
       }]
     }
   });
+
+  // Delete from backup sheet (if configured)
+  if (backupSheetId) {
+    try {
+      const backupResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: backupSheetId,
+        range: 'Invoices!A:AD',
+      });
+      const backupRows = backupResponse.data.values || [];
+      const backupRowIndex = backupRows.findIndex(row => row[0] === num || row[0] === String(num));
+      if (backupRowIndex !== -1) {
+        const backupMetadata = await sheets.spreadsheets.get({ spreadsheetId: backupSheetId });
+        const backupInvoicesSheet = backupMetadata.data.sheets.find(s => s.properties.title === 'Invoices');
+        if (backupInvoicesSheet) {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: backupSheetId,
+            requestBody: {
+              requests: [{
+                deleteDimension: {
+                  range: {
+                    sheetId: backupInvoicesSheet.properties.sheetId,
+                    dimension: 'ROWS',
+                    startIndex: backupRowIndex,
+                    endIndex: backupRowIndex + 1
+                  }
+                }
+              }]
+            }
+          });
+          console.log('[sheets-sync] Invoice deleted from backup sheet');
+        }
+      }
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to delete invoice from backup sheet:', backupError.message);
+    }
+  }
 
   // Log the deletion with full previous data
   const hasPdf = !!driveLinkToDelete;
@@ -861,7 +1042,7 @@ async function syncEntries(sheets, sheetId, { entries }, res) {
 }
 
 // ===== INVOICES =====
-async function appendInvoice(sheets, sheetId, invoice, res, userId) {
+async function appendInvoice(sheets, sheetId, invoice, res, userId, backupSheetId = null) {
   const createdAt = new Date().toISOString();
   invoice.createdAt = createdAt;
 
@@ -873,6 +1054,7 @@ async function appendInvoice(sheets, sheetId, invoice, res, userId) {
     return val;
   });
 
+  // Write to user-facing sheet
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
     range: 'Invoices!A:AD',
@@ -880,6 +1062,22 @@ async function appendInvoice(sheets, sheetId, invoice, res, userId) {
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [row] }
   });
+
+  // Write to backup sheet (if configured) - dual write for data safety
+  if (backupSheetId) {
+    try {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: backupSheetId,
+        range: 'Invoices!A:AD',
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: [row] }
+      });
+      console.log('[sheets-sync] Invoice written to backup sheet');
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to write invoice to backup sheet:', backupError.message);
+    }
+  }
 
   // Mirror to Master Sheet for central backup
   await mirrorInvoiceToMaster(sheets, userId, invoice);
@@ -911,7 +1109,7 @@ async function appendInvoice(sheets, sheetId, invoice, res, userId) {
   return res.status(200).json({ success: true, message: 'Invoice appended', num: invoice.num });
 }
 
-async function updateInvoice(sheets, sheetId, { num, updates }, res) {
+async function updateInvoice(sheets, sheetId, { num, updates }, res, backupSheetId = null) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Invoices!A:AD',
@@ -946,6 +1144,29 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
     requestBody: { values: [updatedRow] }
   });
 
+  // Update backup sheet (if configured)
+  if (backupSheetId) {
+    try {
+      const backupResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId: backupSheetId,
+        range: 'Invoices!A:AD',
+      });
+      const backupRows = backupResponse.data.values || [];
+      const backupRowIndex = backupRows.findIndex(row => row[0] === num || row[0] === String(num));
+      if (backupRowIndex !== -1) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: backupSheetId,
+          range: `Invoices!A${backupRowIndex + 1}:AA${backupRowIndex + 1}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [updatedRow] }
+        });
+        console.log('[sheets-sync] Invoice updated in backup sheet');
+      }
+    } catch (backupError) {
+      console.error('[sheets-sync] Warning: Failed to update invoice in backup sheet:', backupError.message);
+    }
+  }
+
   // Log the update
   const changedFields = Object.keys(updates).filter(k => updates[k] !== previousData[k]).join(', ');
   await writeLog(sheets, sheetId, {
@@ -961,7 +1182,7 @@ async function updateInvoice(sheets, sheetId, { num, updates }, res) {
 }
 
 // Update invoice payment status (paid/unpaid)
-async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate }, res) {
+async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate }, res, backupSheetId = null) {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
@@ -1016,6 +1237,35 @@ async function updateInvoiceStatus(sheets, sheetId, { num, paidStatus, paidDate 
       valueInputOption: 'RAW',
       requestBody: { values: [currentRow] }
     });
+
+    // Update backup sheet (if configured)
+    if (backupSheetId) {
+      try {
+        const backupResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId: backupSheetId,
+          range: 'Invoices!A:AE',
+        });
+        const backupRows = backupResponse.data.values || [];
+        const backupRowIndex = backupRows.findIndex((row, i) => i > 0 && (row[0] === num || row[0] === String(num)));
+        if (backupRowIndex !== -1) {
+          const backupCurrentRow = [...backupRows[backupRowIndex]];
+          while (backupCurrentRow.length <= Math.max(paidStatusIdx, paidDateIdx)) {
+            backupCurrentRow.push('');
+          }
+          backupCurrentRow[paidStatusIdx] = paidStatus || '';
+          backupCurrentRow[paidDateIdx] = paidDate || '';
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: backupSheetId,
+            range: `Invoices!A${backupRowIndex + 1}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [backupCurrentRow] }
+          });
+          console.log('[sheets-sync] Invoice status updated in backup sheet');
+        }
+      } catch (backupError) {
+        console.error('[sheets-sync] Warning: Failed to update invoice status in backup sheet:', backupError.message);
+      }
+    }
 
     // Log the status change
     await writeLog(sheets, sheetId, {

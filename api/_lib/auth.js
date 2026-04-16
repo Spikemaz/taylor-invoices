@@ -36,13 +36,14 @@ async function getMasterSheet() {
 
 /**
  * Find user by email in Master Sheet
+ * Now includes backupSheetId and backupFolderId columns (L, M)
  */
 async function findUserByEmail(email) {
   const { sheets, spreadsheetId } = await getMasterSheet();
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Users!A:K',
+    range: 'Users!A:M',  // Extended to include backupSheetId and backupFolderId
   });
 
   const rows = response.data.values || [];
@@ -67,13 +68,14 @@ async function findUserByEmail(email) {
 
 /**
  * Find user by ID in Master Sheet
+ * Now includes backupSheetId and backupFolderId columns (L, M)
  */
 async function findUserById(userId) {
   const { sheets, spreadsheetId } = await getMasterSheet();
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Users!A:K',
+    range: 'Users!A:M',  // Extended to include backupSheetId and backupFolderId
   });
 
   const rows = response.data.values || [];
@@ -198,6 +200,7 @@ async function validateMagicLink(token, email = null) {
 
 /**
  * Create a session token (signed with secret)
+ * Includes both user-facing and backup sheet/folder IDs
  */
 function createSessionToken(user) {
   const payload = {
@@ -205,8 +208,10 @@ function createSessionToken(user) {
     email: user.email,
     name: user.name,
     role: user.role || 'user',
-    sheetId: user.sheetId,
-    driveFolderId: user.driveFolderId,
+    sheetId: user.sheetId,                     // User-facing sheet (shared with user)
+    driveFolderId: user.driveFolderId,         // User-facing folder (shared with user)
+    backupSheetId: user.backupSheetId || '',   // Backup sheet (service account owned)
+    backupFolderId: user.backupFolderId || '', // Backup folder (service account owned)
     exp: Date.now() + SESSION_EXPIRY_MS
   };
 
