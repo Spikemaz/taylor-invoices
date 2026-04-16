@@ -78,6 +78,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 .footer p{font-size:11px;color:var(--txt3)}
 .hidden{display:none!important}
 .field-hint{font-size:11px;color:var(--txt3);margin-top:4px;font-style:italic}
+.phone-group{display:flex;gap:8px}
+.phone-group .country-code{width:100px;flex:none}
+.phone-group .phone-number{flex:1}
 </style>
 </head>
 <body>
@@ -127,8 +130,22 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 
         <div class="form-group">
           <label class="form-label">Phone Number <span class="req">*</span></label>
-          <input type="tel" class="form-input" id="userPhone" placeholder="07XXX XXXXXX" required>
-          <div class="field-hint">Your mobile number for business contact</div>
+          <div class="phone-group">
+            <select class="form-select country-code" id="userCountryCode">
+              <option value="+44" selected>+44</option>
+              <option value="+1">+1</option>
+              <option value="+353">+353</option>
+              <option value="+49">+49</option>
+              <option value="+33">+33</option>
+              <option value="+34">+34</option>
+              <option value="+39">+39</option>
+              <option value="+31">+31</option>
+              <option value="+61">+61</option>
+              <option value="+64">+64</option>
+            </select>
+            <input type="tel" class="form-input phone-number" id="userPhone" placeholder="7XXX XXXXXX" required>
+          </div>
+          <div class="field-hint">UK (+44), Ireland (+353), US/Canada (+1), Germany (+49), France (+33), Spain (+34), Italy (+39), Netherlands (+31), Australia (+61), New Zealand (+64)</div>
         </div>
 
         <div class="form-group">
@@ -380,9 +397,13 @@ function formatCompanyNumber(input) {
   input.value = value;
 }
 
-// Auto-format phone number
+// Auto-format phone number (digits only, strip leading zero for country code format)
 function formatPhoneNumber(input) {
-  let value = input.value.replace(/[^0-9+]/g, '');
+  let value = input.value.replace(/[^0-9]/g, '');
+  // If user types leading 0, strip it (country code handles the prefix)
+  if (value.startsWith('0')) {
+    value = value.substring(1);
+  }
   input.value = value;
 }
 
@@ -478,7 +499,8 @@ function validateStep(step) {
     if (!name) return showError('Please enter your name');
     if (!email || !email.includes('@')) return showError('Please enter a valid email address');
     if (!phone) return showError('Please enter your phone number');
-    if (phone.replace(/[^0-9]/g, '').length < 10) return showError('Please enter a valid phone number');
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 11) return showError('Please enter a valid phone number (9-11 digits)');
     if (!addressLine1) return showError('Please enter your street address');
     if (!city) return showError('Please enter your town/city');
     if (!county) return showError('Please enter your county');
@@ -535,7 +557,11 @@ function saveStepData(step) {
   if (step === 1) {
     formData.user.name = document.getElementById('userName').value.trim();
     formData.user.email = document.getElementById('userEmail').value.trim();
-    formData.user.phone = document.getElementById('userPhone').value.trim();
+
+    // Combine country code + phone number
+    const countryCode = document.getElementById('userCountryCode').value;
+    const phoneNum = document.getElementById('userPhone').value.trim().replace(/^0+/, ''); // Strip leading zeros
+    formData.user.phone = countryCode + ' ' + phoneNum;
 
     // Build address from separate fields
     const line1 = document.getElementById('userAddressLine1').value.trim();
