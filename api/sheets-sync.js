@@ -103,10 +103,27 @@ async function updateMirroredEntry(sheets, entryId, updates) {
   }
 }
 
-// Delete mirrored entry from Master Sheet
-async function deleteMirroredEntry(sheets, entryId) {
+// Move mirrored entry to DeletedEntries in Master Sheet (keeps permanent record)
+async function deleteMirroredEntry(sheets, entryId, userId, deletedData) {
   if (!MASTER_SHEET_ID) return;
   try {
+    // First, add to DeletedEntries tab for permanent record
+    const deletedRow = [
+      new Date().toISOString(), // deletedAt
+      userId || 'unknown',
+      entryId,
+      JSON.stringify(deletedData || {})
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'DeletedEntries!A:D',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [deletedRow] }
+    });
+
+    // Then remove from AllEntries
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: MASTER_SHEET_ID,
       range: 'AllEntries!A:U',
@@ -135,7 +152,66 @@ async function deleteMirroredEntry(sheets, entryId) {
       }
     });
   } catch (e) {
-    console.error('[Mirror] Failed to delete mirrored entry:', e.message);
+    console.error('[Mirror] Failed to archive mirrored entry:', e.message);
+  }
+}
+
+// Move mirrored invoice to DeletedInvoices in Master Sheet (keeps permanent record)
+async function deleteMirroredInvoice(sheets, invoiceNum, userId, deletedData) {
+  if (!MASTER_SHEET_ID) return;
+  try {
+    // Add to DeletedInvoices tab for permanent record
+    const deletedRow = [
+      new Date().toISOString(), // deletedAt
+      userId || 'unknown',
+      invoiceNum,
+      deletedData.practice || '',
+      deletedData.amount || '',
+      deletedData.driveLink || '', // Keep drive link so we know where backup PDF is
+      JSON.stringify(deletedData || {})
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'DeletedInvoices!A:G',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [deletedRow] }
+    });
+
+    // Then remove from AllInvoices
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: MASTER_SHEET_ID,
+      range: 'AllInvoices!A:AD',
+    });
+    const rows = response.data.values || [];
+    // Invoice num is in column B (index 1) since column A is userId
+    const rowIndex = rows.findIndex(row => row[1] === invoiceNum || row[1] === String(invoiceNum));
+    if (rowIndex === -1) return;
+
+    const sheetMetadata = await sheets.spreadsheets.get({ spreadsheetId: MASTER_SHEET_ID });
+    const allInvoicesSheet = sheetMetadata.data.sheets.find(s => s.properties.title === 'AllInvoices');
+    if (!allInvoicesSheet) return;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: MASTER_SHEET_ID,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: allInvoicesSheet.properties.sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1
+            }
+          }
+        }]
+      }
+    });
+
+    console.log(`[Mirror] Invoice #${invoiceNum} moved to DeletedInvoices (backup PDF retained)`);
+  } catch (e) {
+    console.error('[Mirror] Failed to archive mirrored invoice:', e.message);
   }
 }
 
@@ -400,11 +476,11 @@ module.exports = async (req, res) => {
       case 'append_invoice': return await appendInvoice(sheets, sheetId, data, res, userId);
       case 'update_entry': return await updateEntry(sheets, sheetId, data, res);
       case 'batch_update_entries': return await batchUpdateEntries(sheets, sheetId, data, res);
-      case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res);
+      case 'delete_entry': return await deleteEntry(sheets, sheetId, data, res, userId);
       case 'load_all': return await loadAll(sheets, sheetId, res);
       case 'update_invoice': return await updateInvoice(sheets, sheetId, data, res);
       case 'update_invoice_status': return await updateInvoiceStatus(sheets, sheetId, data, res);
-      case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res);
+      case 'delete_invoice': return await deleteInvoice(sheets, sheetId, data, res, userId);
       case 'sync_entries': return await syncEntries(sheets, sheetId, data, res);
       case 'sync_invoices': return await syncInvoices(sheets, sheetId, data, res);
       case 'sync_practices': return await syncPractices(sheets, sheetId, data, res);
@@ -581,7 +657,7 @@ async function batchUpdateEntries(sheets, sheetId, { entries }, res) {
   });
 }
 
-async function deleteEntry(sheets, sheetId, { id }, res) {
+async function deleteEntry(sheets, sheetId, { id }, res, userId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Entries!A:T',
@@ -633,13 +709,13 @@ async function deleteEntry(sheets, sheetId, { id }, res) {
     previousData: deletedData
   });
 
-  // Mirror deletion to Master Sheet
-  await deleteMirroredEntry(sheets, id);
+  // Mirror deletion to Master Sheet (moves to DeletedEntries for permanent record)
+  await deleteMirroredEntry(sheets, id, userId, deletedData);
 
   return res.status(200).json({ success: true, message: 'Entry moved to Trash', id });
 }
 
-async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
+async function deleteInvoice(sheets, sheetId, { num, driveLink }, res, userId) {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: 'Invoices!A:AD',
@@ -698,6 +774,10 @@ async function deleteInvoice(sheets, sheetId, { num, driveLink }, res) {
     changes: `Deleted invoice: #${num} - ${deletedData.practice} - £${deletedData.amount} (moved to Trash tab${hasPdf ? ', PDF pending Apps Script cleanup' : ''})`,
     previousData: deletedData
   });
+
+  // Mirror deletion to Master Sheet (moves to DeletedInvoices for permanent record)
+  // PDF backup is retained in central backup folder
+  await deleteMirroredInvoice(sheets, num, userId, deletedData);
 
   return res.status(200).json({
     success: true,

@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { user, entityType, selfEmployed, ltdCompany, practices } = req.body;
+    const { user, entityType, selfEmployed, ltdCompany, practices, consentedAt } = req.body;
 
     // Validate required fields
     if (!user?.name || !user?.email || !user?.phone || !user?.address) {
@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
     // Check for existing user
     const usersResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: masterSheetId,
-      range: 'Users!A:J',
+      range: 'Users!A:K',
     });
 
     const rows = usersResponse.data.values || [];
@@ -125,12 +125,13 @@ module.exports = async function handler(req, res) {
       userFolderId,                     // driveFolderId
       entType,                          // entityType
       new Date().toISOString(),         // createdAt
-      ''                                // lastLogin
+      '',                               // lastLogin
+      consentedAt || new Date().toISOString()  // consentedAt
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: masterSheetId,
-      range: 'Users!A:J',
+      range: 'Users!A:K',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [userRow]

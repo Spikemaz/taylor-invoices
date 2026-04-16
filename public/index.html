@@ -44,6 +44,10 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .banner h3{font-size:12px;font-weight:600;margin-bottom:6px;text-align:center}
 .hb-row{margin-bottom:6px;text-align:center}.hb-lbl{font-size:9px;font-weight:600;opacity:.85;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.hb-nums{font-size:24px;font-weight:800;letter-spacing:-1px;display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);padding:3px 12px;border-radius:6px}.hb-nums .g{color:#fca5a5;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .n{color:#86efac;text-shadow:0 1px 3px rgba(0,0,0,.4)}.hb-nums .sep{color:rgba(255,255,255,.5);font-weight:400}
 .hb-split{display:flex;gap:10px;text-align:center}.hb-col{flex:1}.hb-col .hb-lbl{display:block;font-size:8px;font-weight:600;opacity:.85;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px}.hb-col .hb-nums{font-size:16px;font-weight:800;letter-spacing:-.5px;display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:5px}
+.admin-switcher{background:linear-gradient(135deg,#7c3aed,#a855f7);padding:8px 12px;margin-bottom:6px;border-radius:var(--rs);display:flex;align-items:center;gap:8px}
+.admin-switcher::before{content:'👁 Viewing as';color:rgba(255,255,255,.9);font-size:11px;font-weight:600;white-space:nowrap}
+.admin-switcher select{flex:1;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 10px;color:#fff;font-size:12px;font-weight:600;font-family:var(--f);cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.admin-switcher select option{background:#333;color:#fff}
 .entbox{background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:var(--rs);margin-bottom:8px;overflow:hidden}
 .esw{display:flex;padding:3px}
 .ebtn{flex:1;padding:6px 10px;border:2px solid transparent;background:rgba(255,255,255,.15);font-size:11px;font-weight:600;color:rgba(255,255,255,.8);border-radius:6px;cursor:pointer;transition:all .2s;font-family:var(--f)}.ebtn.act{background:rgba(255,255,255,.35);border-color:rgba(255,255,255,.4);color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.2)}
@@ -369,7 +373,6 @@ input[type="date"].fi{min-width:100%;display:block}
 <button class="hdr-btn" id="navTracker" onclick="showScreen('tracker')" title="Tracking">&#128203;</button>
 <button class="hdr-btn" id="navAnalytics" onclick="showScreen('analytics')" title="Analytics">&#128200;</button>
 <button class="hdr-btn" id="navSettings" onclick="showScreen('settings')" title="Settings">&#9881;</button>
-<button class="hdr-btn" id="navLogout" onclick="logout()" title="Logout" style="display:none;">&#128682;</button>
 </div>
 </div>
 
@@ -377,6 +380,11 @@ input[type="date"].fi{min-width:100%;display:block}
 
 <!-- HOME -->
 <div class="scr" id="scr-home">
+<div class="admin-switcher" id="adminSwitcher" style="display:none;">
+<select id="adminUserSelect" onchange="switchViewAsUser(this.value)">
+<option value="">View as myself</option>
+</select>
+</div>
 <div class="entbox" id="hBan">
 <div class="esw">
 <button class="ebtn" onclick="setEntity('all')" id="eA">All</button>
@@ -612,7 +620,15 @@ input[type="date"].fi{min-width:100%;display:block}
 </div>
 </div>
 
-<p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">Taylor Invoice Manager v1.0<br>Built with ♥ by Marcus</p>
+<div class="sgrp sgrp-account" id="settingsAccount" style="display:none;">
+<div class="sgrp-hdr">Account</div>
+<div class="ssec">
+<div class="srow"><span class="la">Logged in as</span><span class="va" id="settingsUserEmail" style="font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;"></span></div>
+<div class="srow" onclick="logout()" style="color:var(--err);"><span class="la">Sign Out</span><span class="va">🚪</span></div>
+</div>
+</div>
+
+<p style="text-align:center;font-size:11px;color:var(--txt3);margin-top:20px;padding-bottom:20px">BooksIQ v1.0<br>Built with ♥ by Marcus</p>
 </div>
 
 </div>
@@ -672,6 +688,85 @@ function logout() {
   localStorage.removeItem('booksiq_session');
   window.BOOKSIQ_SESSION = null;
   window.location.href = '/login.html';
+}
+
+// Admin user switcher
+let adminUsers = [];
+let originalSession = null;
+
+async function loadAdminUsers() {
+  const session = getSession();
+  if (!session || session.role !== 'admin') return;
+
+  try {
+    const resp = await fetch('/api/admin/users', {
+      headers: { 'X-Session-Token': session.token }
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    adminUsers = data.users || [];
+
+    const select = document.getElementById('adminUserSelect');
+    if (!select) return;
+
+    // Clear existing options except first
+    select.innerHTML = '<option value="">View as myself</option>';
+
+    // Add user options
+    adminUsers.forEach(u => {
+      if (u.status === 'active') {
+        const opt = document.createElement('option');
+        opt.value = u.userId;
+        opt.textContent = u.name || u.email;
+        select.appendChild(opt);
+      }
+    });
+
+    // Show switcher
+    document.getElementById('adminSwitcher').style.display = '';
+  } catch (e) {
+    console.error('Failed to load admin users:', e);
+  }
+}
+
+async function switchViewAsUser(userId) {
+  const session = getSession();
+  if (!session || session.role !== 'admin') return;
+
+  // Store original session if not already stored
+  if (!originalSession) {
+    originalSession = { ...session };
+  }
+
+  if (!userId) {
+    // Switch back to own view
+    window.BOOKSIQ_SESSION = originalSession;
+    localStorage.setItem('booksiq_session', JSON.stringify(originalSession));
+    showToast('Viewing as yourself', 'ok');
+    await loadAll();
+    upHome();
+    return;
+  }
+
+  // Find user data
+  const user = adminUsers.find(u => u.userId === userId);
+  if (!user) return;
+
+  // Create impersonated session (keep admin token for API auth)
+  const impersonatedSession = {
+    ...session,
+    viewingAs: userId,
+    viewingAsName: user.name,
+    sheetId: user.sheetId,
+    driveFolderId: user.driveFolderId
+  };
+
+  window.BOOKSIQ_SESSION = impersonatedSession;
+  localStorage.setItem('booksiq_session', JSON.stringify(impersonatedSession));
+
+  showToast('Viewing as ' + (user.name || user.email), 'ok');
+  await loadAll();
+  upHome();
 }
 
 // ===== LOGOS =====
@@ -2120,12 +2215,19 @@ async function runDataMigrations() {
 document.addEventListener('DOMContentLoaded', async ()=>{
   console.log('DOMContentLoaded: Starting');
 
-  // Show logout button if user is logged in (multi-user mode)
+  // Show account section in settings if user is logged in (multi-user mode)
   const session = getSession();
   if (session) {
-    const logoutBtn = document.getElementById('navLogout');
-    if (logoutBtn) logoutBtn.style.display = '';
+    const accountSection = document.getElementById('settingsAccount');
+    if (accountSection) accountSection.style.display = '';
+    const emailDisplay = document.getElementById('settingsUserEmail');
+    if (emailDisplay) emailDisplay.textContent = session.email || session.name || 'User';
     console.log('[Auth] User logged in:', session.email);
+
+    // Load admin user switcher if admin
+    if (session.role === 'admin') {
+      loadAdminUsers();
+    }
   }
 
   // STEP 1: Load from localStorage INSTANTLY (no waiting)

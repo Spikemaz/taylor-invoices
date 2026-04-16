@@ -5,8 +5,8 @@
 const { google } = require('googleapis');
 const crypto = require('crypto');
 
-// Session token validity (30 days)
-const SESSION_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+// Session token validity (365 days)
+const SESSION_EXPIRY_MS = 365 * 24 * 60 * 60 * 1000;
 
 // Magic link validity (15 minutes)
 const MAGIC_LINK_EXPIRY_MS = 15 * 60 * 1000;
@@ -42,7 +42,7 @@ async function findUserByEmail(email) {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Users!A:J',
+    range: 'Users!A:K',
   });
 
   const rows = response.data.values || [];
@@ -73,7 +73,7 @@ async function findUserById(userId) {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Users!A:J',
+    range: 'Users!A:K',
   });
 
   const rows = response.data.values || [];
@@ -104,9 +104,16 @@ function generateToken(bytes = 32) {
 }
 
 /**
+ * Generate a 6-digit login code
+ */
+function generateCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
  * Store magic link token in Master Sheet
  */
-async function storeMagicLink(email, token) {
+async function storeMagicLink(email, token, code = null) {
   const { sheets, spreadsheetId } = await getMasterSheet();
 
   const now = new Date();
@@ -114,7 +121,7 @@ async function storeMagicLink(email, token) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: 'MagicLinks!A:E',
+    range: 'MagicLinks!A:F',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
@@ -122,23 +129,24 @@ async function storeMagicLink(email, token) {
         email,
         now.toISOString(),
         expiresAt.toISOString(),
-        'false' // used
+        'false', // used
+        code || '' // 6-digit code
       ]]
     }
   });
 
-  return { token, expiresAt };
+  return { token, code, expiresAt };
 }
 
 /**
- * Validate and consume magic link token
+ * Validate and consume magic link token or 6-digit code
  */
-async function validateMagicLink(token) {
+async function validateMagicLink(token, email = null) {
   const { sheets, spreadsheetId } = await getMasterSheet();
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'MagicLinks!A:E',
+    range: 'MagicLinks!A:F',
   });
 
   const rows = response.data.values || [];
@@ -149,9 +157,14 @@ async function validateMagicLink(token) {
   const emailIdx = headers.indexOf('email');
   const expiresIdx = headers.indexOf('expiresAt');
   const usedIdx = headers.indexOf('used');
+  const codeIdx = headers.indexOf('code') !== -1 ? headers.indexOf('code') : 5;
 
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][tokenIdx] === token) {
+    // Match by token OR by code+email combo
+    const isTokenMatch = rows[i][tokenIdx] === token;
+    const isCodeMatch = email && rows[i][codeIdx] === token && rows[i][emailIdx] === email.toLowerCase();
+
+    if (isTokenMatch || isCodeMatch) {
       // Check if used
       if (rows[i][usedIdx] === 'true') {
         return { valid: false, error: 'Token already used' };
@@ -258,7 +271,7 @@ async function updateLastLogin(userId) {
   // Find user row
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Users!A:J',
+    range: 'Users!A:K',
   });
 
   const rows = response.data.values || [];
@@ -295,6 +308,7 @@ module.exports = {
   findUserByEmail,
   findUserById,
   generateToken,
+  generateCode,
   storeMagicLink,
   validateMagicLink,
   createSessionToken,

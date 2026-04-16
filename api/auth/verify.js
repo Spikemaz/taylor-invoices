@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
       role: user.role || 'user',
       sheetId: user.sheetId,
       driveFolderId: user.driveFolderId,
-      exp: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
+      exp: Date.now() + (365 * 24 * 60 * 60 * 1000) // 365 days
     };
 
     // Redirect to app with session data in hash fragment

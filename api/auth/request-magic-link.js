@@ -7,7 +7,7 @@
  * Returns: { success: true } or { error: string }
  */
 
-const { findUserByEmail, generateToken, storeMagicLink } = require('../_lib/auth');
+const { findUserByEmail, generateToken, generateCode, storeMagicLink } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   // CORS headers
@@ -61,9 +61,10 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: 'Account pending approval. Please complete onboarding first.' });
     }
 
-    // Generate and store magic link token
+    // Generate and store magic link token + 6-digit code
     const token = generateToken();
-    await storeMagicLink(normalizedEmail, token);
+    const code = generateCode();
+    await storeMagicLink(normalizedEmail, token, code);
 
     // Build magic link URL
     const baseUrl = process.env.APP_URL || `https://${req.headers.host}`;
@@ -88,14 +89,17 @@ module.exports = async function handler(req, res) {
                 Hi ${user.name || 'there'},
               </p>
               <p style="color: #1a1a1a; font-size: 16px; line-height: 1.5;">
-                Click the button below to sign in to your BooksIQ account. This link will expire in 15 minutes.
+                Click the button below to sign in, or use the code:
               </p>
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+                <span style="font-family: monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #2d6a4f;">${code}</span>
+              </div>
               <a href="${magicLink}"
-                 style="display: inline-block; background: #2d6a4f; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 24px 0;">
-                Sign In
+                 style="display: inline-block; background: #2d6a4f; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 16px 0;">
+                Sign In Instantly
               </a>
-              <p style="color: #6b7280; font-size: 14px; line-height: 1.5;">
-                If you didn't request this link, you can safely ignore this email.
+              <p style="color: #6b7280; font-size: 14px; line-height: 1.5; margin-top: 16px;">
+                This code expires in 15 minutes. If you didn't request this, you can safely ignore this email.
               </p>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
               <p style="color: #9ca3af; font-size: 12px;">
@@ -112,10 +116,11 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to send email. Please try again.' });
       }
     } else {
-      // Development mode - log the link
+      // Development mode - log the link and code
       console.log('='.repeat(60));
       console.log('MAGIC LINK (Resend API key not configured):');
       console.log(magicLink);
+      console.log('CODE:', code);
       console.log('='.repeat(60));
     }
 

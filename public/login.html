@@ -48,6 +48,13 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 .success-desc strong{color:var(--txt)}
 .back-link{text-align:center;margin-top:20px}
 .back-link a{color:var(--pri);font-size:14px;font-weight:600;text-decoration:none}
+.code-input-group{display:flex;gap:8px;justify-content:center;margin:16px 0}
+.code-digit{width:44px;height:56px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:24px;font-weight:700;text-align:center;font-family:var(--f);color:var(--txt);background:var(--bg);outline:none;transition:all .2s}
+.code-digit:focus{border-color:var(--pri);background:var(--card)}
+.or-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--txt3);font-size:13px}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.btn-secondary{background:var(--card);color:var(--pri);border:2px solid var(--pri)}
+.btn-secondary:hover{background:var(--pri-bg)}
 .spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-radius:50%;border-top-color:#fff;animation:spin 1s ease-in-out infinite;margin-right:8px;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 .footer{padding:16px;text-align:center}
@@ -95,11 +102,32 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
       <div class="success-icon">📧</div>
       <div class="success-title">Check Your Email</div>
       <div class="success-desc">
-        We've sent a magic link to<br>
-        <strong id="sentEmail"></strong><br><br>
-        Click the link in the email to sign in. The link expires in 15 minutes.
+        We've sent a login code to<br>
+        <strong id="sentEmail"></strong>
       </div>
-      <div class="back-link" style="margin-top:24px">
+
+      <div class="or-divider">Enter your 6-digit code</div>
+
+      <form id="codeForm">
+        <div class="code-input-group">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="0" autocomplete="one-time-code">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="1">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="2">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="3">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="4">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="5">
+        </div>
+        <div class="error-box" id="codeErrorBox">
+          <div class="error-text" id="codeErrorText"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="verifyBtn">
+          Verify Code
+        </button>
+      </form>
+
+      <div class="or-divider">or click the link in your email</div>
+
+      <div class="back-link" style="margin-top:12px">
         <a href="#" onclick="showLoginForm()">Use a different email</a>
       </div>
     </div>
@@ -151,9 +179,12 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
 
       if (response.ok) {
         // Show success state
+        storedEmail = email;
         document.getElementById('sentEmail').textContent = email;
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('successBox').classList.add('show');
+        // Focus first code input
+        setTimeout(() => codeInputs[0].focus(), 100);
       } else {
         showError(data.error || 'Something went wrong. Please try again.');
         btn.disabled = false;
@@ -182,7 +213,97 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);height:100%
     document.getElementById('email').value = '';
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').textContent = 'Send Magic Link';
+    // Clear code inputs
+    document.querySelectorAll('.code-digit').forEach(input => input.value = '');
   };
+
+  // Code input handling
+  const codeInputs = document.querySelectorAll('.code-digit');
+  let storedEmail = '';
+
+  codeInputs.forEach((input, idx) => {
+    input.addEventListener('input', function(e) {
+      const val = e.target.value;
+      // Only allow digits
+      if (!/^\d*$/.test(val)) {
+        e.target.value = '';
+        return;
+      }
+      // Auto-advance to next input
+      if (val && idx < codeInputs.length - 1) {
+        codeInputs[idx + 1].focus();
+      }
+      // Auto-submit when all filled
+      if (getFullCode().length === 6) {
+        document.getElementById('codeForm').dispatchEvent(new Event('submit'));
+      }
+    });
+
+    input.addEventListener('keydown', function(e) {
+      // Handle backspace
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        codeInputs[idx - 1].focus();
+      }
+    });
+
+    input.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = paste.replace(/\D/g, '').split('').slice(0, 6);
+      digits.forEach((d, i) => {
+        if (codeInputs[i]) codeInputs[i].value = d;
+      });
+      if (digits.length === 6) {
+        document.getElementById('codeForm').dispatchEvent(new Event('submit'));
+      }
+    });
+  });
+
+  function getFullCode() {
+    return Array.from(codeInputs).map(i => i.value).join('');
+  }
+
+  // Code form submission
+  document.getElementById('codeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const code = getFullCode();
+    if (code.length !== 6) return;
+
+    const btn = document.getElementById('verifyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verifying...';
+    document.getElementById('codeErrorBox').classList.remove('show');
+
+    try {
+      const response = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: storedEmail, code })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.session) {
+        localStorage.setItem('booksiq_session', JSON.stringify(data.session));
+        window.location.href = '/';
+      } else {
+        document.getElementById('codeErrorText').textContent = data.error || 'Invalid code';
+        document.getElementById('codeErrorBox').classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Verify Code';
+        // Clear inputs on error
+        codeInputs.forEach(i => i.value = '');
+        codeInputs[0].focus();
+      }
+    } catch (err) {
+      console.error('Code verification error:', err);
+      document.getElementById('codeErrorText').textContent = 'Network error. Please try again.';
+      document.getElementById('codeErrorBox').classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Verify Code';
+    }
+  });
 
   function getSession() {
     try {
