@@ -4,6 +4,14 @@
   "outputDirectory": "public",
   "framework": null,
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "taylor-invoices.vercel.app" }],
+      "destination": "https://booksiq.app/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
