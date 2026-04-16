@@ -410,22 +410,22 @@ document.addEventListener('DOMContentLoaded', function() {
   // Postcodes
   document.getElementById('userPostcode').addEventListener('input', function() { formatPostcode(this); });
   document.getElementById('ltdPostcode').addEventListener('input', function() { formatPostcode(this); });
-});
 
-// Initialize checkboxes - handle both label clicks and direct checkbox clicks
-document.querySelectorAll('.checkbox-item').forEach(item => {
-  const checkbox = item.querySelector('input');
+  // Initialize checkboxes - handle both label clicks and direct checkbox clicks
+  document.querySelectorAll('.checkbox-item').forEach(item => {
+    const checkbox = item.querySelector('input');
 
-  // Handle clicks on the label wrapper (but not on the checkbox itself)
-  item.addEventListener('click', function(e) {
-    if (e.target.tagName === 'INPUT') return;
-    checkbox.checked = !checkbox.checked;
-    item.classList.toggle('checked', checkbox.checked);
-  });
+    // Handle clicks on the label wrapper (but not on the checkbox itself)
+    item.addEventListener('click', function(e) {
+      if (e.target.tagName === 'INPUT') return;
+      checkbox.checked = !checkbox.checked;
+      item.classList.toggle('checked', checkbox.checked);
+    });
 
-  // Handle direct checkbox clicks and programmatic changes
-  checkbox.addEventListener('change', function() {
-    item.classList.toggle('checked', checkbox.checked);
+    // Handle direct checkbox clicks and programmatic changes
+    checkbox.addEventListener('change', function() {
+      item.classList.toggle('checked', checkbox.checked);
+    });
   });
 });
 
