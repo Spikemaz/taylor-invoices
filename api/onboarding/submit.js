@@ -347,10 +347,10 @@ async function setupUserSheet(sheets, sheetId, data) {
   // Add headers to Practices tab
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: 'Practices!A1:Q1',
+    range: 'Practices!A1:R1',
     valueInputOption: 'RAW',
     requestBody: {
-      values: [['id', 'short', 'name', 'type', 'addr', 'email', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'paymentDueDay', 'createdAt']]
+      values: [['id', 'short', 'name', 'type', 'paymentMethod', 'addr', 'email', 'comm', 'services', 'days', 'rate', 'air', 'active', 'color', 'paidHours', 'ptsPerHour', 'paymentDueDay', 'createdAt']]
     }
   });
 
@@ -358,17 +358,20 @@ async function setupUserSheet(sheets, sheetId, data) {
   if (practices && practices.length > 0) {
     const practiceRows = practices.map((p, idx) => {
       const practiceId = p.short.toLowerCase().replace(/[^a-z0-9]/g, '');
+      // paymentMethod: 'commission' or 'perpatient'
+      const paymentMethod = p.paymentMethod || (p.type === 'adhoc' ? 'perpatient' : 'commission');
       return [
         practiceId,                           // id
         p.short,                              // short
         p.name,                               // name
-        p.type,                               // type
+        p.type,                               // type: 'contract' or 'adhoc'
+        paymentMethod,                        // paymentMethod: 'commission' or 'perpatient'
         p.address,                            // addr
         '',                                   // email
-        p.type === 'contract' ? p.commission : 0,  // comm
+        paymentMethod === 'commission' ? p.commission : 0,  // comm
         JSON.stringify(p.services || {}),     // services
         JSON.stringify(p.days || []),         // days
-        p.type === 'adhoc' ? p.rate : 0,      // rate
+        paymentMethod === 'perpatient' ? p.rate : 0,  // rate
         9,                                    // air (default)
         true,                                 // active
         '',                                   // color
@@ -381,7 +384,7 @@ async function setupUserSheet(sheets, sheetId, data) {
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
-      range: 'Practices!A:Q',
+      range: 'Practices!A:R',
       valueInputOption: 'RAW',
       requestBody: { values: practiceRows }
     });

@@ -652,10 +652,12 @@ function addPractice() {
           <input type="text" class="form-input practice-short" placeholder="e.g. Bupa">
         </div>
         <div class="form-group">
-          <label class="form-label">Type <span class="req">*</span></label>
+          <label class="form-label">Payment Type <span class="req">*</span></label>
           <select class="form-select practice-type">
-            <option value="contract">Contract (Commission)</option>
-            <option value="adhoc">Ad Hoc (Per Patient)</option>
+            <option value="contract-commission">Contract - Commission %</option>
+            <option value="contract-perpatient">Contract - Per Patient £</option>
+            <option value="adhoc-commission">Ad Hoc - Commission %</option>
+            <option value="adhoc-perpatient">Ad Hoc - Per Patient £</option>
           </select>
         </div>
       </div>
@@ -669,12 +671,12 @@ function addPractice() {
         </div>
       </div>
 
-      <div class="form-group contract-fields">
+      <div class="form-group commission-fields">
         <label class="form-label">Commission Rate (%)</label>
         <input type="number" class="form-input practice-commission" placeholder="e.g. 35" min="0" max="100">
       </div>
 
-      <div class="form-group adhoc-fields hidden">
+      <div class="form-group perpatient-fields hidden">
         <label class="form-label">Rate Per Patient (£)</label>
         <input type="number" class="form-input practice-rate" placeholder="e.g. 25" step="0.01">
       </div>
@@ -707,10 +709,11 @@ function addPractice() {
   // Setup event listeners for the new practice card
   const card = document.getElementById(id);
 
-  // Type toggle
+  // Payment type toggle - show commission or per-patient fields
   card.querySelector('.practice-type').addEventListener('change', function() {
-    card.querySelector('.contract-fields').classList.toggle('hidden', this.value === 'adhoc');
-    card.querySelector('.adhoc-fields').classList.toggle('hidden', this.value === 'contract');
+    const isCommission = this.value.includes('commission');
+    card.querySelector('.commission-fields').classList.toggle('hidden', !isCommission);
+    card.querySelector('.perpatient-fields').classList.toggle('hidden', isCommission);
   });
 
   // Day selection
@@ -765,13 +768,18 @@ function savePractices() {
     if (pracCity) addressParts.push(pracCity);
     if (pracPostcode) addressParts.push(pracPostcode);
 
+    // Parse payment type (e.g., "contract-commission" -> type: "contract", paymentMethod: "commission")
+    const typeValue = card.querySelector('.practice-type').value;
+    const [practiceType, paymentMethod] = typeValue.split('-');
+
     const practice = {
       name: card.querySelector('.practice-name').value.trim(),
       short: card.querySelector('.practice-short').value.trim(),
-      type: card.querySelector('.practice-type').value,
+      type: practiceType,                 // 'contract' or 'adhoc'
+      paymentMethod: paymentMethod,       // 'commission' or 'perpatient'
       address: addressParts.join(', '),
-      commission: parseFloat(card.querySelector('.practice-commission').value) / 100 || 0,
-      rate: parseFloat(card.querySelector('.practice-rate').value) || 0,
+      commission: paymentMethod === 'commission' ? (parseFloat(card.querySelector('.practice-commission').value) / 100 || 0) : 0,
+      rate: paymentMethod === 'perpatient' ? (parseFloat(card.querySelector('.practice-rate').value) || 0) : 0,
       days: days,
       services: services
     };
