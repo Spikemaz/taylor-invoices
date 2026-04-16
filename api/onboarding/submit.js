@@ -208,11 +208,12 @@ module.exports = async function handler(req, res) {
 
     // Add user to Master Sheet with DUAL sheet/folder references
     // Columns: userId, email, name, status, role, sheetId (user-facing), driveFolderId (user-facing),
-    //          entityType, createdAt, lastLogin, consentedAt, backupSheetId, backupFolderId
+    //          entityType, createdAt, lastLogin, consentedAt, backupSheetId, backupFolderId,
+    //          firstName, middleNames, surname, phone
     const userRow = [
       userId,                           // A: userId
       email,                            // B: email
-      user.name,                        // C: name
+      user.name,                        // C: name (full display name)
       'active',                         // D: status
       'user',                           // E: role
       userSheetId,                      // F: sheetId (user-facing - this is what the app uses)
@@ -222,12 +223,16 @@ module.exports = async function handler(req, res) {
       '',                               // J: lastLogin
       consentedAt || new Date().toISOString(),  // K: consentedAt
       backupSheetId,                    // L: backupSheetId (master backup - service account owned)
-      backupFolderId                    // M: backupFolderId (master backup - service account owned)
+      backupFolderId,                   // M: backupFolderId (master backup - service account owned)
+      user.firstName || '',             // N: firstName
+      user.middleNames || '',           // O: middleNames
+      user.surname || '',               // P: surname
+      user.phone || ''                  // Q: phone
     ];
 
     await sheets.spreadsheets.values.append({
       spreadsheetId: masterSheetId,
-      range: 'Users!A:M',
+      range: 'Users!A:Q',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
         values: [userRow]

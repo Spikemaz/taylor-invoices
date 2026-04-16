@@ -118,9 +118,19 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
         <div class="section-title"><span class="icon">&#128100;</span> Your Details</div>
         <div class="section-desc">Tell us about yourself so we can set up your account.</div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name <span class="req">*</span></label>
+            <input type="text" class="form-input" id="userFirstName" placeholder="e.g. Taylor" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Surname <span class="req">*</span></label>
+            <input type="text" class="form-input" id="userSurname" placeholder="e.g. Muir" required>
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label">Full Name <span class="req">*</span></label>
-          <input type="text" class="form-input" id="userName" placeholder="e.g. Taylor Muir" required>
+          <label class="form-label">Middle Name(s)</label>
+          <input type="text" class="form-input" id="userMiddleNames" placeholder="Optional">
         </div>
 
         <div class="form-group">
@@ -361,7 +371,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 <script>
 // State
 const formData = {
-  user: { name: '', email: '', phone: '', address: '' },
+  user: { firstName: '', middleNames: '', surname: '', name: '', email: '', phone: '', address: '' },
   entityType: { self: false, ltd: false },
   selfEmployed: { tradingName: '', bankName: '', accName: '', sort: '', accNum: '' },
   ltdCompany: { companyName: '', companyNo: '', address: '', bankName: '', accName: '', sort: '', accNum: '' },
@@ -486,7 +496,8 @@ function prevStep(from) {
 
 function validateStep(step) {
   if (step === 1) {
-    const name = document.getElementById('userName').value.trim();
+    const firstName = document.getElementById('userFirstName').value.trim();
+    const surname = document.getElementById('userSurname').value.trim();
     const email = document.getElementById('userEmail').value.trim();
     const phone = document.getElementById('userPhone').value.trim();
     const addressLine1 = document.getElementById('userAddressLine1').value.trim();
@@ -496,7 +507,8 @@ function validateStep(step) {
     const isSelf = document.getElementById('isSelfEmployed').checked;
     const isLtd = document.getElementById('isLtdCompany').checked;
 
-    if (!name) return showError('Please enter your name');
+    if (!firstName) return showError('Please enter your first name');
+    if (!surname) return showError('Please enter your surname');
     if (!email || !email.includes('@')) return showError('Please enter a valid email address');
     if (!phone) return showError('Please enter your phone number');
     const phoneDigits = phone.replace(/[^0-9]/g, '');
@@ -555,7 +567,17 @@ function validateStep(step) {
 
 function saveStepData(step) {
   if (step === 1) {
-    formData.user.name = document.getElementById('userName').value.trim();
+    // Store name components separately for mail merge etc
+    formData.user.firstName = document.getElementById('userFirstName').value.trim();
+    formData.user.middleNames = document.getElementById('userMiddleNames').value.trim();
+    formData.user.surname = document.getElementById('userSurname').value.trim();
+
+    // Build full name for display purposes
+    const nameParts = [formData.user.firstName];
+    if (formData.user.middleNames) nameParts.push(formData.user.middleNames);
+    nameParts.push(formData.user.surname);
+    formData.user.name = nameParts.join(' ');
+
     formData.user.email = document.getElementById('userEmail').value.trim();
 
     // Combine country code + phone number
