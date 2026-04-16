@@ -702,24 +702,32 @@ async function loadAdminUsers() {
   const session = getSession();
   if (!session || session.role !== 'admin') return;
 
+  const select = document.getElementById('adminUserSelect');
+  const switcher = document.getElementById('adminSwitcher');
+  if (!select || !switcher) return;
+
+  // Show switcher immediately for admin - even if API fails, they should see it
+  switcher.style.display = '';
+
+  // Clear existing options
+  const hasSelectedUser = session.viewingAs;
+  if (hasSelectedUser) {
+    select.innerHTML = '<option value="">View as myself</option>';
+  } else {
+    select.innerHTML = '<option value="" disabled selected>Select a user...</option>';
+  }
+
   try {
     const resp = await fetch('/api/admin/users', {
       headers: { 'X-Session-Token': session.token }
     });
-    if (!resp.ok) return;
+    if (!resp.ok) {
+      console.error('[Admin] Failed to fetch users:', resp.status, resp.statusText);
+      return;
+    }
     const data = await resp.json();
     adminUsers = data.users || [];
-
-    const select = document.getElementById('adminUserSelect');
-    if (!select) return;
-
-    // Clear existing options
-    const hasSelectedUser = session.viewingAs;
-    if (hasSelectedUser) {
-      select.innerHTML = '<option value="">View as myself</option>';
-    } else {
-      select.innerHTML = '<option value="" disabled selected>Select a user...</option>';
-    }
+    console.log('[Admin] Loaded', adminUsers.length, 'users');
 
     // Add user options
     adminUsers.forEach(u => {
@@ -734,11 +742,8 @@ async function loadAdminUsers() {
         select.appendChild(opt);
       }
     });
-
-    // Show switcher
-    document.getElementById('adminSwitcher').style.display = '';
   } catch (e) {
-    console.error('Failed to load admin users:', e);
+    console.error('[Admin] Failed to load admin users:', e);
   }
 }
 

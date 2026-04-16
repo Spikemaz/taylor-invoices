@@ -134,8 +134,9 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
           <label class="form-label">Address <span class="req">*</span></label>
           <input type="text" class="form-input" id="userAddressLine1" placeholder="House number and street" required style="margin-bottom:8px">
           <input type="text" class="form-input" id="userAddressLine2" placeholder="Flat/unit (optional)" style="margin-bottom:8px">
+          <input type="text" class="form-input" id="userCity" placeholder="Town/City" required style="margin-bottom:8px">
           <div class="form-row" style="margin-bottom:0">
-            <input type="text" class="form-input" id="userCity" placeholder="Town/City" required>
+            <input type="text" class="form-input" id="userCounty" placeholder="County" required>
             <input type="text" class="form-input" id="userPostcode" placeholder="Postcode" required style="text-transform:uppercase">
           </div>
           <div class="field-hint">This will appear on your invoices</div>
@@ -411,13 +412,20 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('ltdPostcode').addEventListener('input', function() { formatPostcode(this); });
 });
 
-// Initialize checkboxes
+// Initialize checkboxes - handle both label clicks and direct checkbox clicks
 document.querySelectorAll('.checkbox-item').forEach(item => {
+  const checkbox = item.querySelector('input');
+
+  // Handle clicks on the label wrapper (but not on the checkbox itself)
   item.addEventListener('click', function(e) {
     if (e.target.tagName === 'INPUT') return;
-    const checkbox = this.querySelector('input');
     checkbox.checked = !checkbox.checked;
-    this.classList.toggle('checked', checkbox.checked);
+    item.classList.toggle('checked', checkbox.checked);
+  });
+
+  // Handle direct checkbox clicks and programmatic changes
+  checkbox.addEventListener('change', function() {
+    item.classList.toggle('checked', checkbox.checked);
   });
 });
 
@@ -462,6 +470,7 @@ function validateStep(step) {
     const phone = document.getElementById('userPhone').value.trim();
     const addressLine1 = document.getElementById('userAddressLine1').value.trim();
     const city = document.getElementById('userCity').value.trim();
+    const county = document.getElementById('userCounty').value.trim();
     const postcode = document.getElementById('userPostcode').value.trim();
     const isSelf = document.getElementById('isSelfEmployed').checked;
     const isLtd = document.getElementById('isLtdCompany').checked;
@@ -472,6 +481,7 @@ function validateStep(step) {
     if (phone.replace(/[^0-9]/g, '').length < 10) return showError('Please enter a valid phone number');
     if (!addressLine1) return showError('Please enter your street address');
     if (!city) return showError('Please enter your town/city');
+    if (!county) return showError('Please enter your county');
     if (!postcode) return showError('Please enter your postcode');
     if (!isSelf && !isLtd) return showError('Please select at least one business type');
 
@@ -531,10 +541,12 @@ function saveStepData(step) {
     const line1 = document.getElementById('userAddressLine1').value.trim();
     const line2 = document.getElementById('userAddressLine2').value.trim();
     const city = document.getElementById('userCity').value.trim();
+    const county = document.getElementById('userCounty').value.trim();
     const postcode = document.getElementById('userPostcode').value.trim().toUpperCase();
     const addressParts = [line1];
     if (line2) addressParts.push(line2);
     addressParts.push(city);
+    addressParts.push(county);
     addressParts.push(postcode);
     formData.user.address = addressParts.join(', ');
 
