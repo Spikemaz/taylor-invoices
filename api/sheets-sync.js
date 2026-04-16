@@ -259,10 +259,19 @@ const SHEET_IDS = {
   ltd: process.env.GOOGLE_SHEET_ID_LTD
 };
 
-// Get the correct sheet ID based on entity and session
+// Get the correct sheet ID based on entity, session, and admin override
+// Admin impersonation: Use X-Override-Sheet-Id header (admin viewing as another user)
 // Multi-user mode: Use session's sheetId
 // Single-user mode: Use environment variables
-function getSheetId(entity, session) {
+function getSheetId(entity, session, req = null) {
+  // Admin impersonation: check for override header (admin viewing as another user)
+  if (req && session && session.role === 'admin') {
+    const overrideSheetId = req.headers['x-override-sheet-id'];
+    if (overrideSheetId) {
+      console.log('[sheets-sync] Admin override: using sheetId', overrideSheetId);
+      return overrideSheetId;
+    }
+  }
   // Multi-user mode: session contains user's sheet ID
   if (session && session.sheetId) {
     return session.sheetId;
@@ -453,7 +462,7 @@ async function writeLog(sheets, sheetId, logEntry) {
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token, X-Override-Sheet-Id, X-Override-Drive-Folder-Id');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -468,7 +477,7 @@ module.exports = async (req, res) => {
 
   try {
     const sheets = await getSheets();
-    const sheetId = getSheetId(entity, session);
+    const sheetId = getSheetId(entity, session, req);
     const userId = session?.userId || 'single-user';
 
     switch (action) {

@@ -53,7 +53,7 @@ module.exports = async (req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Session-Token, X-Override-Sheet-Id, X-Override-Drive-Folder-Id');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -74,8 +74,15 @@ module.exports = async (req, res) => {
   const userId = session?.userId || 'single-user';
   const userName = session?.name || 'Taylor Muir';
 
-  // Use user's Drive folder if available, otherwise fall back to env var
-  const userFolderId = session?.driveFolderId || ROOT_FOLDER_ID;
+  // Admin impersonation: check for override header
+  let userFolderId = session?.driveFolderId || ROOT_FOLDER_ID;
+  if (session && session.role === 'admin') {
+    const overrideFolderId = req.headers['x-override-drive-folder-id'];
+    if (overrideFolderId) {
+      console.log('[drive-upload] Admin override: using driveFolderId', overrideFolderId);
+      userFolderId = overrideFolderId;
+    }
+  }
 
   try {
     const drive = await getDrive();

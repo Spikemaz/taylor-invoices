@@ -1361,6 +1361,13 @@ async function apiCall(endpoint, data) {
     const session = getSession();
     if (session && session.token) {
       headers['X-Session-Token'] = session.token;
+      // Admin impersonation: send override headers when viewing as another user
+      if (session.viewingAs && session.sheetId) {
+        headers['X-Override-Sheet-Id'] = session.sheetId;
+      }
+      if (session.viewingAs && session.driveFolderId) {
+        headers['X-Override-Drive-Folder-Id'] = session.driveFolderId;
+      }
     }
     const res = await fetch(API_BASE + '/api/' + endpoint, {
       method: 'POST',
