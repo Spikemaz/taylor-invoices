@@ -132,8 +132,7 @@ html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:
 
         <div class="form-group">
           <label class="form-label">Address <span class="req">*</span></label>
-          <input type="text" class="form-input" id="userAddressLine1" placeholder="House number and street" required style="margin-bottom:8px">
-          <input type="text" class="form-input" id="userAddressLine2" placeholder="Flat/unit (optional)" style="margin-bottom:8px">
+          <input type="text" class="form-input" id="userAddressLine1" placeholder="Street name" required style="margin-bottom:8px">
           <input type="text" class="form-input" id="userCity" placeholder="Town/City" required style="margin-bottom:8px">
           <div class="form-row" style="margin-bottom:0">
             <input type="text" class="form-input" id="userCounty" placeholder="County" required>
@@ -539,16 +538,10 @@ function saveStepData(step) {
 
     // Build address from separate fields
     const line1 = document.getElementById('userAddressLine1').value.trim();
-    const line2 = document.getElementById('userAddressLine2').value.trim();
     const city = document.getElementById('userCity').value.trim();
     const county = document.getElementById('userCounty').value.trim();
     const postcode = document.getElementById('userPostcode').value.trim().toUpperCase();
-    const addressParts = [line1];
-    if (line2) addressParts.push(line2);
-    addressParts.push(city);
-    addressParts.push(county);
-    addressParts.push(postcode);
-    formData.user.address = addressParts.join(', ');
+    formData.user.address = [line1, city, county, postcode].join(', ');
 
     formData.entityType.self = document.getElementById('isSelfEmployed').checked;
     formData.entityType.ltd = document.getElementById('isLtdCompany').checked;
