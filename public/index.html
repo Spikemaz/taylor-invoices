@@ -665,16 +665,20 @@ input[type="date"].fi{min-width:100%;display:block}
         // Valid session - store globally for API calls
         window.BOOKSIQ_SESSION = session;
       } else {
-        // Expired session
+        // Expired session - redirect to login
         localStorage.removeItem('booksiq_session');
-        // Redirect to login if multi-user mode is enabled
-        if (typeof MULTI_USER_ENABLED !== 'undefined' && MULTI_USER_ENABLED) {
-          window.location.href = '/login.html';
-        }
+        window.location.href = '/login.html';
+        return;
       }
     } catch (e) {
       localStorage.removeItem('booksiq_session');
+      window.location.href = '/login.html';
+      return;
     }
+  } else {
+    // No session - redirect to login
+    window.location.href = '/login.html';
+    return;
   }
 })();
 
