@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Admin - Books IQ</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--warn:#f59e0b;--warn-bg:#fef9c3;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{font-family:var(--f);background:var(--bg);color:var(--txt);min-height:100vh}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.hdr{background:var(--pri-dk);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.hdr h1{font-size:20px;font-weight:700}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.hdr-user{font-size:13px;opacity:.8}
+.hdr-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 16px;border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:600}
+.hdr-btn:hover{background:rgba(255,255,255,.3)}
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--card);padding:4px;border-radius:var(--r);box-shadow:var(--sh)}
+.tab{flex:1;padding:12px;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--txt2);cursor:pointer;border-radius:var(--rs);transition:all .2s}
+.tab:hover{background:var(--bg)}
+.tab.active{background:var(--pri);color:#fff}
+.card{background:var(--card);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--sh)}
+.card-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);text-align:center}
+.stat-value{font-size:28px;font-weight:700;color:var(--pri-dk)}
+.stat-label{font-size:12px;color:var(--txt2);margin-top:4px}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;text-align:left;border-bottom:1px solid var(--bdr)}
+th{font-size:12px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+td{font-size:14px}
+tr:hover{background:var(--bg)}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase}
+.badge-active{background:var(--ok-bg);color:var(--ok)}
+.badge-pending{background:var(--warn-bg);color:var(--warn)}
+.badge-suspended{background:var(--err-bg);color:var(--err)}
+.badge-admin{background:var(--pri-bg);color:var(--pri-dk)}
+.badge-user{background:var(--bg);color:var(--txt2)}
+.action-btn{padding:6px 12px;border:1px solid var(--bdr);border-radius:var(--rs);background:var(--card);font-size:12px;cursor:pointer;margin-right:4px}
+.action-btn:hover{background:var(--bg)}
+.action-btn.danger{color:var(--err);border-color:var(--err)}
+.action-btn.danger:hover{background:var(--err-bg)}
+.search-box{display:flex;gap:8px;margin-bottom:16px}
+.search-input{flex:1;padding:10px 14px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:14px;outline:none}
+.search-input:focus{border-color:var(--pri)}
+.filter-select{padding:10px 14px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:14px;background:var(--card);cursor:pointer}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:var(--r);padding:24px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:16px}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--txt3)}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px}
+.form-input,.form-textarea{width:100%;padding:10px 14px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:14px;font-family:var(--f)}
+.form-input:focus,.form-textarea:focus{border-color:var(--pri);outline:none}
+.form-textarea{min-height:100px;resize:vertical}
+.btn{padding:12px 20px;border:none;border-radius:var(--rs);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover{background:var(--pri-dk)}
+.btn-secondary{background:var(--bg);color:var(--txt);border:2px solid var(--bdr)}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+.empty-state{text-align:center;padding:40px;color:var(--txt2)}
+.empty-state p{margin-top:8px;font-size:14px}
+.loading{text-align:center;padding:40px;color:var(--txt2)}
+.hidden{display:none}
+@media(max-width:768px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  table{font-size:12px}
+  th,td{padding:8px}
+  .action-btn{padding:4px 8px;font-size:11px}
+}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Admin Panel</h1>
+  <div class="hdr-right">
+    <span class="hdr-user" id="adminUser"></span>
+    <button class="hdr-btn" onclick="window.location.href='/'">Back to App</button>
+    <button class="hdr-btn" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats" id="stats">
+    <div class="stat">
+      <div class="stat-value" id="statTotal">-</div>
+      <div class="stat-label">Total Users</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statActive">-</div>
+      <div class="stat-label">Active</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statPending">-</div>
+      <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value" id="statSuspended">-</div>
+      <div class="stat-label">Suspended</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="users" onclick="switchTab('users')">Users</button>
+    <button class="tab" data-tab="logs" onclick="switchTab('logs')">Activity Logs</button>
+    <button class="tab" data-tab="import" onclick="switchTab('import')">Import Data</button>
+  </div>
+
+  <!-- Users Tab -->
+  <div id="tab-users" class="tab-content">
+    <div class="card">
+      <div class="card-title">
+        <span>User Management</span>
+        <button class="btn btn-primary" onclick="showAddUser()">+ Add User</button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" class="search-input" id="searchUsers" placeholder="Search by name or email..." oninput="filterUsers()">
+        <select class="filter-select" id="filterStatus" onchange="filterUsers()">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      <div id="usersLoading" class="loading">Loading users...</div>
+
+      <table id="usersTable" class="hidden">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Role</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+
+      <div id="usersEmpty" class="empty-state hidden">
+        <p>No users found</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs Tab -->
+  <div id="tab-logs" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Activity Logs</div>
+
+      <div id="logsLoading" class="loading">Loading logs...</div>
+
+      <table id="logsTable" class="hidden">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Admin</th>
+            <th>Action</th>
+            <th>Target User</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Import Tab -->
+  <div id="tab-import" class="tab-content hidden">
+    <div class="card">
+      <div class="card-title">Import Historical Data</div>
+
+      <div class="form-group">
+        <label class="form-label">Select User</label>
+        <select class="filter-select" id="importUser" style="width:100%">
+          <option value="">Choose a user...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Data Type</label>
+        <select class="filter-select" id="importType" style="width:100%">
+          <option value="entries">Work Entries</option>
+          <option value="invoices">Invoices</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">CSV/JSON Data</label>
+        <textarea class="form-textarea" id="importData" placeholder="Paste CSV or JSON data here..." style="min-height:200px;font-family:monospace"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="importData()">Import Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- User Edit Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Edit User</div>
+
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input type="text" class="form-input" id="modalName">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="modalEmail">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="filter-select" id="modalStatus" style="width:100%">
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Role</label>
+      <select class="filter-select" id="modalRole" style="width:100%">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+
+    <input type="hidden" id="modalUserId">
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let session = null;
+let users = [];
+
+// Auth check
+(function init() {
+  const sessionStr = localStorage.getItem('booksiq_session');
+  if (!sessionStr) {
+    window.location.href = '/login';
+    return;
+  }
+
+  try {
+    session = JSON.parse(sessionStr);
+    if (session.exp < Date.now()) {
+      localStorage.removeItem('booksiq_session');
+      window.location.href = '/login';
+      return;
+    }
+
+    // Check if admin
+    if (session.role !== 'admin') {
+      alert('Access denied. Admin privileges required.');
+      window.location.href = '/';
+      return;
+    }
+
+    document.getElementById('adminUser').textContent = session.email;
+    loadUsers();
+  } catch (e) {
+    window.location.href = '/login';
+  }
+})();
+
+function logout() {
+  localStorage.removeItem('booksiq_session');
+  window.location.href = '/login';
+}
+
+// API calls
+async function apiCall(endpoint, data = {}) {
+  const res = await fetch('/api/admin/' + endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Session-Token': session?.token || ''
+    },
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+// Tabs
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+
+  if (tab === 'logs') loadLogs();
+  if (tab === 'import') populateImportUserSelect();
+}
+
+// Users
+async function loadUsers() {
+  const result = await apiCall('users', { action: 'list' });
+
+  document.getElementById('usersLoading').classList.add('hidden');
+
+  if (result.success && result.users) {
+    users = result.users;
+    updateStats();
+    renderUsers(users);
+  } else {
+    document.getElementById('usersEmpty').classList.remove('hidden');
+  }
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = users.length;
+  document.getElementById('statActive').textContent = users.filter(u => u.status === 'active').length;
+  document.getElementById('statPending').textContent = users.filter(u => u.status === 'pending').length;
+  document.getElementById('statSuspended').textContent = users.filter(u => u.status === 'suspended').length;
+}
+
+function renderUsers(list) {
+  const tbody = document.getElementById('usersBody');
+  const table = document.getElementById('usersTable');
+  const empty = document.getElementById('usersEmpty');
+
+  if (list.length === 0) {
+    table.classList.add('hidden');
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  table.classList.remove('hidden');
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = list.map(u => `
+    <tr>
+      <td><strong>${escapeHtml(u.name)}</strong></td>
+      <td>${escapeHtml(u.email)}</td>
+      <td><span class="badge badge-${u.status}">${u.status}</span></td>
+      <td><span class="badge badge-${u.role}">${u.role}</span></td>
+      <td>${u.lastLogin ? formatDate(u.lastLogin) : 'Never'}</td>
+      <td>
+        <button class="action-btn" onclick="editUser('${u.userId}')">Edit</button>
+        <button class="action-btn" onclick="sendMagicLink('${u.userId}')">Send Link</button>
+        ${u.status === 'active' ? `<button class="action-btn danger" onclick="suspendUser('${u.userId}')">Suspend</button>` : ''}
+        ${u.status === 'suspended' ? `<button class="action-btn" onclick="activateUser('${u.userId}')">Activate</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterUsers() {
+  const search = document.getElementById('searchUsers').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+
+  const filtered = users.filter(u => {
+    const matchSearch = !search || u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+    const matchStatus = !status || u.status === status;
+    return matchSearch && matchStatus;
+  });
+
+  renderUsers(filtered);
+}
+
+function editUser(userId) {
+  const user = users.find(u => u.userId === userId);
+  if (!user) return;
+
+  document.getElementById('modalTitle').textContent = 'Edit User';
+  document.getElementById('modalUserId').value = userId;
+  document.getElementById('modalName').value = user.name;
+  document.getElementById('modalEmail').value = user.email;
+  document.getElementById('modalStatus').value = user.status;
+  document.getElementById('modalRole').value = user.role;
+
+  document.getElementById('userModal').classList.add('show');
+}
+
+function showAddUser() {
+  document.getElementById('modalTitle').textContent = 'Add User';
+  document.getElementById('modalUserId').value = '';
+  document.getElementById('modalName').value = '';
+  document.getElementById('modalEmail').value = '';
+  document.getElementById('modalStatus').value = 'active';
+  document.getElementById('modalRole').value = 'user';
+
+  document.getElementById('userModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('userModal').classList.remove('show');
+}
+
+async function saveUser() {
+  const userId = document.getElementById('modalUserId').value;
+  const data = {
+    userId,
+    name: document.getElementById('modalName').value,
+    email: document.getElementById('modalEmail').value,
+    status: document.getElementById('modalStatus').value,
+    role: document.getElementById('modalRole').value
+  };
+
+  const action = userId ? 'update' : 'create';
+  const result = await apiCall('users', { action, ...data });
+
+  if (result.success) {
+    closeModal();
+    loadUsers();
+  } else {
+    alert(result.error || 'Failed to save user');
+  }
+}
+
+async function suspendUser(userId) {
+  if (!confirm('Are you sure you want to suspend this user?')) return;
+
+  const result = await apiCall('users', { action: 'update', userId, status: 'suspended' });
+  if (result.success) loadUsers();
+  else alert(result.error || 'Failed to suspend user');
+}
+
+async function activateUser(userId) {
+  const result = await apiCall('users', { action: 'update', userId, status: 'active' });
+  if (result.success) loadUsers();
+  else alert(result.error || 'Failed to activate user');
+}
+
+async function sendMagicLink(userId) {
+  const user = users.find(u => u.userId === userId);
+  if (!user) return;
+
+  const result = await apiCall('users', { action: 'send_magic_link', email: user.email });
+  if (result.success) {
+    alert('Magic link sent to ' + user.email);
+  } else {
+    alert(result.error || 'Failed to send magic link');
+  }
+}
+
+// Logs
+async function loadLogs() {
+  const result = await apiCall('logs', { action: 'list' });
+
+  document.getElementById('logsLoading').classList.add('hidden');
+
+  if (result.success && result.logs) {
+    const tbody = document.getElementById('logsBody');
+    document.getElementById('logsTable').classList.remove('hidden');
+
+    tbody.innerHTML = result.logs.map(log => `
+      <tr>
+        <td>${formatDate(log.timestamp)}</td>
+        <td>${escapeHtml(log.adminId || '-')}</td>
+        <td>${escapeHtml(log.action)}</td>
+        <td>${escapeHtml(log.targetUserId || '-')}</td>
+        <td>${escapeHtml(log.details || '')}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+// Import
+function populateImportUserSelect() {
+  const select = document.getElementById('importUser');
+  select.innerHTML = '<option value="">Choose a user...</option>' +
+    users.map(u => `<option value="${u.userId}">${escapeHtml(u.name)} (${escapeHtml(u.email)})</option>`).join('');
+}
+
+async function importData() {
+  const userId = document.getElementById('importUser').value;
+  const dataType = document.getElementById('importType').value;
+  const rawData = document.getElementById('importData').value;
+
+  if (!userId) return alert('Please select a user');
+  if (!rawData.trim()) return alert('Please paste data to import');
+
+  let data;
+  try {
+    // Try JSON first
+    data = JSON.parse(rawData);
+  } catch (e) {
+    // Try CSV
+    const lines = rawData.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    data = lines.slice(1).map(line => {
+      const values = line.split(',');
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = values[i]?.trim());
+      return obj;
+    });
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return alert('Invalid data format');
+  }
+
+  const result = await apiCall('import', {
+    action: 'import',
+    userId,
+    dataType,
+    records: data
+  });
+
+  if (result.success) {
+    alert(`Successfully imported ${result.count} records`);
+    document.getElementById('importData').value = '';
+  } else {
+    alert(result.error || 'Import failed');
+  }
+}
+
+// Utilities
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Close modal on overlay click
+document.getElementById('userModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
