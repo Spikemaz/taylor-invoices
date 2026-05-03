@@ -1,0 +1,25 @@
+{
+  "name": "taylor-invoices",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "vercel-dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "test:e2e:drive": "node scripts/e2e-drive-sync.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "googleapis": "^118.0.0",
+    "jspdf": "^2.5.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "vercel": "^37.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
