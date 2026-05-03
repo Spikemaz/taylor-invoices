@@ -1,0 +1,97 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1777798046789,
+      "tag": "0000_stage_0_foundations",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777802655905,
+      "tag": "0001_stage_1_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777803575518,
+      "tag": "0002_broken_inhumans",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777900000000,
+      "tag": "0003_stage_2_bank_feeds",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778000000000,
+      "tag": "0004_stage_3_auto_categorisation",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778100000000,
+      "tag": "0005_stage_4_expenses_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778200000000,
+      "tag": "0006_stage_5_tax_engine_sa",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778300000000,
+      "tag": "0007_stage_6_tax_engine_ltd",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778300100000,
+      "tag": "0008_stage_6_journal_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778400000000,
+      "tag": "0009_stage_7_vat_mtd",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0010_stage_8_reports_year_end",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778500100000,
+      "tag": "0011_stage_8_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0012_stage_9_invoicing_polish",
+      "breakpoints": true
+    }
+  ]
+}
