@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Books IQ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<title>Get Started - Books IQ</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--acc:#00b36b;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--shm:0 4px 12px rgba(0,0,0,.08);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{font-family:var(--f);background:var(--pri-dk);color:var(--txt);min-height:100%;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+.container{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding-bottom:var(--sb);max-width:600px;margin:0 auto;background:var(--bg)}
+@media(min-width:601px){html,body{background:#e5e5e5}.container{box-shadow:0 0 20px rgba(0,0,0,.1)}}
+.hdr{background:var(--pri-dk);color:#fff;padding:calc(16px + var(--st)) 16px 16px;text-align:center;min-height:calc(56px + var(--st));position:sticky;top:0;z-index:100}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:-.5px}
+.hdr p{font-size:11px;opacity:.8;margin-top:4px}
+.content{flex:1;padding:16px}
+.progress{display:flex;gap:4px;margin-bottom:20px}
+.progress-step{flex:1;height:4px;background:var(--bdr);border-radius:2px}
+.progress-step.done{background:var(--pri)}
+.progress-step.active{background:var(--pri-lt)}
+.section{background:var(--card);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--sh);border:1px solid var(--bdr)}
+.section-title{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.section-title .icon{font-size:20px}
+.section-desc{font-size:13px;color:var(--txt2);margin-bottom:16px}
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-label .req{color:var(--err)}
+.form-input,.form-textarea,.form-select{width:100%;padding:12px 14px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:15px;font-family:var(--f);color:var(--txt);background:var(--bg);outline:none;transition:all .2s}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--pri);background:var(--card)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--txt3)}
+.form-textarea{min-height:80px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.checkbox-item{display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--bdr);border-radius:var(--rs);cursor:pointer;transition:all .2s;font-size:14px}
+.checkbox-item:hover{border-color:var(--pri-lt)}
+.checkbox-item.checked{border-color:var(--pri);background:var(--pri-bg)}
+.checkbox-item input{display:none}
+.checkbox-icon{width:20px;height:20px;border:2px solid var(--bdr);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;color:transparent;flex-shrink:0}
+.checkbox-item.checked .checkbox-icon{background:var(--pri);border-color:var(--pri);color:#fff}
+.day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day-btn{padding:8px 4px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:11px;font-weight:600;text-align:center;cursor:pointer;transition:all .2s;background:var(--card)}
+.day-btn:hover{border-color:var(--pri-lt)}
+.day-btn.selected{background:var(--pri);border-color:var(--pri);color:#fff}
+.practice-card{border:2px solid var(--bdr);border-radius:var(--r);padding:16px;margin-bottom:12px;position:relative}
+.practice-card .remove-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border:none;background:var(--err-bg);color:var(--err);border-radius:50%;cursor:pointer;font-size:16px}
+.service-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.service-row .form-input{flex:1}
+.service-row .form-input.price{width:100px;flex:none}
+.service-row .remove-svc{width:32px;height:32px;border:none;background:var(--err-bg);color:var(--err);border-radius:var(--rs);cursor:pointer;font-size:14px;flex:none}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border:2px dashed var(--bdr);border-radius:var(--rs);background:transparent;color:var(--txt2);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;width:100%}
+.add-btn:hover{border-color:var(--pri);color:var(--pri)}
+.btn{width:100%;padding:16px;border:none;border-radius:var(--rs);font-size:16px;font-weight:700;font-family:var(--f);cursor:pointer;transition:all .15s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover{background:var(--pri-dk)}
+.btn-primary:disabled{background:var(--txt3);cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg);color:var(--txt);border:2px solid var(--bdr)}
+.btn-secondary:hover{border-color:var(--pri)}
+.btn-row{display:flex;gap:12px;margin-top:20px}
+.btn-row .btn{flex:1}
+.error-box{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.error-text{color:var(--err);font-size:13px;font-weight:500}
+.success-box{text-align:center;padding:40px 20px}
+.success-icon{font-size:64px;margin-bottom:16px}
+.success-title{font-size:24px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.success-desc{font-size:15px;color:var(--txt2);line-height:1.6;margin-bottom:24px}
+.info-box{background:var(--pri-bg);border:1px solid var(--pri);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px}
+.info-box p{font-size:13px;color:var(--pri-dk);line-height:1.5}
+.footer{padding:16px;text-align:center;border-top:1px solid var(--bdr)}
+.footer p{font-size:11px;color:var(--txt3)}
+.hidden{display:none!important}
+.field-hint{font-size:11px;color:var(--txt3);margin-top:4px;font-style:italic}
+.phone-group{display:flex;gap:8px}
+.phone-group .country-code{width:100px;flex:none}
+.phone-group .phone-number{flex:1}
+.step-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:12px 16px;background:var(--card);border-radius:var(--r);border:1px solid var(--bdr)}
+.step-nav-arrow{width:40px;height:40px;border:2px solid var(--bdr);border-radius:50%;background:var(--bg);color:var(--txt);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.step-nav-arrow:hover:not(:disabled){border-color:var(--pri);color:var(--pri);background:var(--pri-bg)}
+.step-nav-arrow:disabled{opacity:.3;cursor:not-allowed}
+.step-nav-info{text-align:center;flex:1}
+.step-nav-title{font-size:14px;font-weight:700;color:var(--txt)}
+.step-nav-subtitle{font-size:11px;color:var(--txt3);margin-top:2px}
+.progress-step{cursor:pointer;transition:all .2s}
+.progress-step:hover{opacity:.8;transform:scaleY(1.5)}
+.saved-indicator{position:fixed;bottom:20px;right:20px;background:var(--ok);color:#fff;padding:8px 16px;border-radius:var(--rs);font-size:12px;font-weight:600;opacity:0;transition:opacity .3s;z-index:1000}
+.saved-indicator.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hdr">
+    <h1>Books IQ</h1>
+    <p>New User Registration</p>
+  </div>
+
+  <div class="content">
+    <!-- Step Navigation -->
+    <div class="step-nav" id="stepNav">
+      <button class="step-nav-arrow" id="prevArrow" onclick="goToPrevStep()" title="Back">&#8592;</button>
+      <div class="step-nav-info">
+        <div class="step-nav-title" id="stepTitle">Your Details</div>
+        <div class="step-nav-subtitle">Step <span id="stepNum">1</span> of 4</div>
+      </div>
+      <button class="step-nav-arrow" id="nextArrow" onclick="goToNextStep()">&#8594;</button>
+    </div>
+
+    <!-- Progress Bar (clickable) -->
+    <div class="progress" id="progress">
+      <div class="progress-step active" data-step="1" onclick="goToStep(1)"></div>
+      <div class="progress-step" data-step="2" onclick="goToStep(2)"></div>
+      <div class="progress-step" data-step="3" onclick="goToStep(3)"></div>
+      <div class="progress-step" data-step="4" onclick="goToStep(4)"></div>
+    </div>
+
+    <div class="error-box" id="errorBox">
+      <div class="error-text" id="errorText"></div>
+    </div>
+
+    <!-- Step 1: Personal Details -->
+    <div id="step1" class="step">
+      <div class="info-box" style="margin-bottom:16px">
+        <p><strong>Welcome to Books IQ!</strong> This form will set up your invoice management account. You'll need:</p>
+        <ul style="margin:8px 0 0 16px;font-size:13px;color:var(--pri-dk);line-height:1.6">
+          <li>Your personal/business contact details</li>
+          <li>Bank details for receiving payments</li>
+          <li>Info about dental practices where you work (optional - can add later)</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="icon">&#128100;</span> Your Details</div>
+        <div class="section-desc">Tell us about yourself so we can set up your account.</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name <span class="req">*</span></label>
+            <input type="text" class="form-input" id="userFirstName" placeholder="e.g. Taylor" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Surname <span class="req">*</span></label>
+            <input type="text" class="form-input" id="userSurname" placeholder="e.g. Muir" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Middle Name(s)</label>
+          <input type="text" class="form-input" id="userMiddleNames" placeholder="Optional">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="req">*</span></label>
+          <input type="email" class="form-input" id="userEmail" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phone Number <span class="req">*</span></label>
+          <div class="phone-group">
+            <select class="form-select country-code" id="userCountryCode">
+              <option value="+44" selected>+44</option>
+              <option value="+1">+1</option>
+              <option value="+353">+353</option>
+              <option value="+49">+49</option>
+              <option value="+33">+33</option>
+              <option value="+34">+34</option>
+              <option value="+39">+39</option>
+              <option value="+31">+31</option>
+              <option value="+61">+61</option>
+              <option value="+64">+64</option>
+            </select>
+            <input type="tel" class="form-input phone-number" id="userPhone" placeholder="7XXX XXXXXX" required>
+          </div>
+          <div class="field-hint">UK (+44), Ireland (+353), US/Canada (+1), Germany (+49), France (+33), Spain (+34), Italy (+39), Netherlands (+31), Australia (+61), New Zealand (+64)</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Address <span class="req">*</span></label>
+          <input type="text" class="form-input" id="userAddressLine1" placeholder="Street name" required style="margin-bottom:8px">
+          <input type="text" class="form-input" id="userCity" placeholder="Town/City" required style="margin-bottom:8px">
+          <div class="form-row" style="margin-bottom:0">
+            <input type="text" class="form-input" id="userCounty" placeholder="County" required>
+            <input type="text" class="form-input" id="userPostcode" placeholder="Postcode" required style="text-transform:uppercase">
+          </div>
+          <div class="field-hint">This will appear on your invoices</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="icon">&#127970;</span> Business Type</div>
+        <div class="section-desc">Select how you operate. You can choose both if applicable.</div>
+
+        <div class="checkbox-group">
+          <div class="checkbox-item" id="chkSelf">
+            <input type="checkbox" id="isSelfEmployed">
+            <span class="checkbox-icon">&#10003;</span>
+            <span>Self-Employed</span>
+          </div>
+          <div class="checkbox-item" id="chkLtd">
+            <input type="checkbox" id="isLtdCompany">
+            <span class="checkbox-icon">&#10003;</span>
+            <span>Ltd Company</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="nextStep(1)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Entity Details -->
+    <div id="step2" class="step hidden">
+      <!-- Self-Employed Section -->
+      <div class="section" id="selfSection">
+        <div class="section-title"><span class="icon">&#128188;</span> Self-Employed Details</div>
+        <div class="section-desc">Your trading details for self-employed work. These appear on your invoices.</div>
+
+        <div class="form-group">
+          <label class="form-label">Trading Name (optional)</label>
+          <input type="text" class="form-input" id="selfTradingName" placeholder="Leave blank to use your name">
+          <div class="field-hint">If you trade under a different name (e.g., "Smith Dental Hygiene")</div>
+        </div>
+
+        <div class="info-box" style="margin-bottom:16px">
+          <p><strong>Bank Details</strong> - Where practices will pay your invoices</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bank Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="selfBankName" placeholder="e.g. Lloyds Bank, Barclays, NatWest">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Holder Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="selfAccName" placeholder="Name as shown on your bank account">
+          <div class="field-hint">Exactly as it appears on your bank statement</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfSort" placeholder="00-00-00" maxlength="8" inputmode="numeric">
+            <div class="field-hint">6 digits (e.g., 12-34-56)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Number <span class="req">*</span></label>
+            <input type="text" class="form-input" id="selfAccNum" placeholder="12345678" maxlength="8" inputmode="numeric">
+            <div class="field-hint">8 digits</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ltd Company Section -->
+      <div class="section" id="ltdSection">
+        <div class="section-title"><span class="icon">&#127970;</span> Ltd Company Details</div>
+        <div class="section-desc">Your registered company information from Companies House.</div>
+
+        <div class="form-group">
+          <label class="form-label">Company Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdCompanyName" placeholder="e.g. Smith Dental Services Ltd">
+          <div class="field-hint">Exactly as registered with Companies House</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Company Number <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdCompanyNo" placeholder="12345678" maxlength="8" inputmode="numeric">
+          <div class="field-hint">8-digit number from Companies House</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Registered Address <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdAddressLine1" placeholder="Street name" required style="margin-bottom:8px">
+          <input type="text" class="form-input" id="ltdCity" placeholder="Town/City" required style="margin-bottom:8px">
+          <div class="form-row" style="margin-bottom:0">
+            <input type="text" class="form-input" id="ltdCounty" placeholder="County" required>
+            <input type="text" class="form-input" id="ltdPostcode" placeholder="Postcode" required style="text-transform:uppercase">
+          </div>
+          <div class="field-hint">Must match your Companies House registration</div>
+        </div>
+
+        <div class="info-box" style="margin-bottom:16px">
+          <p><strong>Bank Details</strong> - Where practices will pay your company invoices</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Bank Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdBankName" placeholder="e.g. Lloyds Bank, Barclays, NatWest">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Account Holder Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="ltdAccName" placeholder="Company or personal account name">
+          <div class="field-hint">Exactly as it appears on your bank statement</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Sort Code <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdSort" placeholder="00-00-00" maxlength="8" inputmode="numeric">
+            <div class="field-hint">6 digits (e.g., 12-34-56)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Number <span class="req">*</span></label>
+            <input type="text" class="form-input" id="ltdAccNum" placeholder="12345678" maxlength="8" inputmode="numeric">
+            <div class="field-hint">8 digits</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(2)">Back</button>
+        <button class="btn btn-primary" onclick="nextStep(2)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Practices -->
+    <div id="step3" class="step hidden">
+      <div class="section">
+        <div class="section-title"><span class="icon">&#127973;</span> Your Practices</div>
+        <div class="section-desc">Add the dental practices where you work. You can add more later.</div>
+
+        <div id="practicesList"></div>
+
+        <button class="add-btn" onclick="addPractice()">
+          <span>+</span> Add Practice
+        </button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(3)">Back</button>
+        <button class="btn btn-primary" onclick="nextStep(3)">Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Review & Submit -->
+    <div id="step4" class="step hidden">
+      <div class="section">
+        <div class="section-title"><span class="icon">&#9989;</span> Review & Submit</div>
+        <div class="section-desc">Please review your information before submitting.</div>
+
+        <div id="reviewContent"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title"><span class="icon">&#128274;</span> Terms & Conditions</div>
+
+        <div class="checkbox-group" style="flex-direction:column;gap:12px">
+          <div class="checkbox-item" id="chkDataConsent" style="align-items:flex-start">
+            <input type="checkbox" id="acceptDataConsent">
+            <span class="checkbox-icon" style="margin-top:2px">&#10003;</span>
+            <span style="line-height:1.5">I consent to Books IQ storing and processing my business data (invoices, patient counts, financials) to deliver invoice management services.</span>
+          </div>
+          <div class="checkbox-item" id="chkTerms" style="align-items:flex-start">
+            <input type="checkbox" id="acceptTerms">
+            <span class="checkbox-icon" style="margin-top:2px">&#10003;</span>
+            <span style="line-height:1.5">I agree to the Terms of Service &amp; Privacy Policy.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="prevStep(4)">Back</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitApplication()">Submit Application</button>
+      </div>
+    </div>
+
+    <!-- Success State -->
+    <div id="successState" class="step hidden">
+      <div class="success-box">
+        <div class="success-icon">&#127881;</div>
+        <div class="success-title">Application Submitted!</div>
+        <div class="success-desc">
+          Thank you for registering with Books IQ.<br><br>
+          We're setting up your account now. You'll receive an email at <strong id="successEmail"></strong> with your login link shortly.
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='/login'">Go to Login</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 Books IQ. All rights reserved.</p>
+  </div>
+</div>
+
+<!-- Saved indicator -->
+<div class="saved-indicator" id="savedIndicator">Saved</div>
+
+<script>
+// localStorage key for saving progress
+const STORAGE_KEY = 'booksiq_onboarding';
+
+// Step titles for navigation
+const stepTitles = {
+  1: 'Your Details',
+  2: 'Entity Details',
+  3: 'Your Practices',
+  4: 'Review & Submit'
+};
+
+// State - will be loaded from localStorage if available
+let formData = {
+  user: { firstName: '', middleNames: '', surname: '', name: '', email: '', phone: '', address: '', countryCode: '+44' },
+  entityType: { self: false, ltd: false },
+  selfEmployed: { tradingName: '', bankName: '', accName: '', sort: '', accNum: '' },
+  ltdCompany: { companyName: '', companyNo: '', address: '', bankName: '', accName: '', sort: '', accNum: '' },
+  practices: [],
+  _meta: { currentStep: 1, lastSaved: null }
+};
+
+let currentStep = 1;
+let practiceCount = 0;
+let saveTimeout = null;
+
+// ========== LOCAL STORAGE FUNCTIONS ==========
+
+// Load saved data from localStorage
+function loadSavedData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      formData = { ...formData, ...parsed };
+      currentStep = formData._meta?.currentStep || 1;
+      return true;
+    }
+  } catch (e) {
+    console.error('Error loading saved data:', e);
+  }
+  return false;
+}
+
+// Save current data to localStorage
+function saveToStorage() {
+  try {
+    formData._meta.currentStep = currentStep;
+    formData._meta.lastSaved = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+    showSavedIndicator();
+  } catch (e) {
+    console.error('Error saving data:', e);
+  }
+}
+
+// Debounced save (waits 500ms after last change)
+function debouncedSave() {
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveToStorage, 500);
+}
+
+// Show saved indicator
+function showSavedIndicator() {
+  const indicator = document.getElementById('savedIndicator');
+  indicator.classList.add('show');
+  setTimeout(() => indicator.classList.remove('show'), 1500);
+}
+
+// Clear saved data (call after successful submission)
+function clearSavedData() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// Auto-format sort codes (XX-XX-XX)
+function formatSortCode(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 6) value = value.slice(0, 6);
+  if (value.length >= 4) {
+    value = value.slice(0, 2) + '-' + value.slice(2, 4) + '-' + value.slice(4);
+  } else if (value.length >= 2) {
+    value = value.slice(0, 2) + '-' + value.slice(2);
+  }
+  input.value = value;
+}
+
+// Auto-format account numbers (digits only, max 8)
+function formatAccountNumber(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 8) value = value.slice(0, 8);
+  input.value = value;
+}
+
+// Auto-format company number (digits only, max 8)
+function formatCompanyNumber(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  if (value.length > 8) value = value.slice(0, 8);
+  input.value = value;
+}
+
+// Auto-format phone number (digits only, strip leading zero for country code format)
+function formatPhoneNumber(input) {
+  let value = input.value.replace(/[^0-9]/g, '');
+  // If user types leading 0, strip it (country code handles the prefix)
+  if (value.startsWith('0')) {
+    value = value.substring(1);
+  }
+  input.value = value;
+}
+
+// Auto-format postcode (uppercase)
+function formatPostcode(input) {
+  input.value = input.value.toUpperCase();
+}
+
+// Setup input formatters and restore saved data
+document.addEventListener('DOMContentLoaded', function() {
+  // Load any saved progress
+  const hasSavedData = loadSavedData();
+
+  // Sort codes
+  document.getElementById('selfSort').addEventListener('input', function() { formatSortCode(this); debouncedSave(); });
+  document.getElementById('ltdSort').addEventListener('input', function() { formatSortCode(this); debouncedSave(); });
+
+  // Account numbers
+  document.getElementById('selfAccNum').addEventListener('input', function() { formatAccountNumber(this); debouncedSave(); });
+  document.getElementById('ltdAccNum').addEventListener('input', function() { formatAccountNumber(this); debouncedSave(); });
+
+  // Company number
+  document.getElementById('ltdCompanyNo').addEventListener('input', function() { formatCompanyNumber(this); debouncedSave(); });
+
+  // Phone number
+  document.getElementById('userPhone').addEventListener('input', function() { formatPhoneNumber(this); debouncedSave(); });
+
+  // Postcodes
+  document.getElementById('userPostcode').addEventListener('input', function() { formatPostcode(this); debouncedSave(); });
+  document.getElementById('ltdPostcode').addEventListener('input', function() { formatPostcode(this); debouncedSave(); });
+
+  // Add auto-save to all form inputs
+  document.querySelectorAll('.form-input, .form-select, .form-textarea').forEach(input => {
+    input.addEventListener('input', debouncedSave);
+    input.addEventListener('change', debouncedSave);
+  });
+
+  // Initialize checkboxes - handle both label clicks and direct checkbox clicks
+  document.querySelectorAll('.checkbox-item').forEach(item => {
+    const checkbox = item.querySelector('input');
+
+    // Handle clicks on the label wrapper (but not on the checkbox itself)
+    item.addEventListener('click', function(e) {
+      if (e.target.tagName === 'INPUT') return;
+      checkbox.checked = !checkbox.checked;
+      item.classList.toggle('checked', checkbox.checked);
+      debouncedSave();
+    });
+
+    // Handle direct checkbox clicks and programmatic changes
+    checkbox.addEventListener('change', function() {
+      item.classList.toggle('checked', checkbox.checked);
+      debouncedSave();
+    });
+  });
+
+  // Restore saved data if available
+  if (hasSavedData) {
+    restoreFormFields();
+    showStep(currentStep);
+    updateStepNav();
+  }
+});
+
+// ========== STEP NAVIGATION ==========
+
+// Update progress bar
+function updateProgress() {
+  document.querySelectorAll('.progress-step').forEach((step, i) => {
+    step.classList.remove('done', 'active');
+    if (i + 1 < currentStep) step.classList.add('done');
+    if (i + 1 === currentStep) step.classList.add('active');
+  });
+}
+
+// Update step navigation header
+function updateStepNav() {
+  document.getElementById('stepTitle').textContent = stepTitles[currentStep] || '';
+  document.getElementById('stepNum').textContent = currentStep;
+  // Prev arrow is always enabled — on step 1 it goes back to /login
+  document.getElementById('prevArrow').disabled = false;
+  document.getElementById('prevArrow').title = currentStep === 1 ? 'Back to login' : 'Previous step';
+  document.getElementById('nextArrow').disabled = currentStep === 4;
+
+  // Hide nav on success screen
+  const stepNav = document.getElementById('stepNav');
+  const progress = document.getElementById('progress');
+  if (currentStep > 4) {
+    stepNav.style.display = 'none';
+    progress.style.display = 'none';
+  } else {
+    stepNav.style.display = 'flex';
+    progress.style.display = 'flex';
+  }
+}
+
+function showStep(step) {
+  document.querySelectorAll('.step').forEach(s => s.classList.add('hidden'));
+  document.getElementById('step' + step).classList.remove('hidden');
+  updateProgress();
+  updateStepNav();
+  window.scrollTo(0, 0);
+}
+
+// Arrow navigation functions
+function goToPrevStep() {
+  if (currentStep > 1) {
+    saveCurrentStepData();
+    currentStep--;
+    showStep(currentStep);
+    saveToStorage();
+  } else {
+    // Already on step 1 — leave onboarding and go back to the login page
+    saveCurrentStepData();
+    saveToStorage();
+    window.location.href = '/login';
+  }
+}
+
+function goToNextStep() {
+  hideError();
+  if (!validateStep(currentStep)) return;
+  saveCurrentStepData();
+
+  if (currentStep < 4) {
+    if (currentStep === 3) buildReview();
+    currentStep++;
+    showStep(currentStep);
+    saveToStorage();
+  }
+}
+
+// Go to specific step (from progress bar click)
+function goToStep(targetStep) {
+  // Can always go back, but can only go forward if current step is valid
+  if (targetStep < currentStep) {
+    saveCurrentStepData();
+    currentStep = targetStep;
+    showStep(currentStep);
+    saveToStorage();
+  } else if (targetStep > currentStep) {
+    // Validate current step before moving forward
+    hideError();
+    if (!validateStep(currentStep)) return;
+    saveCurrentStepData();
+
+    // Validate all steps up to target
+    for (let s = currentStep; s < targetStep; s++) {
+      currentStep = s + 1;
+      if (currentStep === 4) buildReview();
+    }
+    showStep(currentStep);
+    saveToStorage();
+  }
+}
+
+// Save data from current step fields to formData
+function saveCurrentStepData() {
+  saveStepData(currentStep);
+}
+
+// Restore form fields from formData (called on page load if saved data exists)
+function restoreFormFields() {
+  // Step 1 fields
+  if (formData.user.firstName) document.getElementById('userFirstName').value = formData.user.firstName;
+  if (formData.user.middleNames) document.getElementById('userMiddleNames').value = formData.user.middleNames;
+  if (formData.user.surname) document.getElementById('userSurname').value = formData.user.surname;
+  if (formData.user.email) document.getElementById('userEmail').value = formData.user.email;
+  if (formData.user.countryCode) document.getElementById('userCountryCode').value = formData.user.countryCode;
+  if (formData.user.phone) {
+    // Extract just the number part (without country code)
+    const phoneNum = formData.user.phone.replace(/^\+\d+\s*/, '');
+    document.getElementById('userPhone').value = phoneNum;
+  }
+
+  // Address fields - need to parse from combined address
+  if (formData.user.address) {
+    const parts = formData.user.address.split(', ');
+    if (parts[0]) document.getElementById('userAddressLine1').value = parts[0];
+    if (parts[1]) document.getElementById('userCity').value = parts[1];
+    if (parts[2]) document.getElementById('userCounty').value = parts[2];
+    if (parts[3]) document.getElementById('userPostcode').value = parts[3];
+  }
+
+  // Entity type checkboxes
+  if (formData.entityType.self) {
+    document.getElementById('isSelfEmployed').checked = true;
+    document.getElementById('chkSelf').classList.add('checked');
+  }
+  if (formData.entityType.ltd) {
+    document.getElementById('isLtdCompany').checked = true;
+    document.getElementById('chkLtd').classList.add('checked');
+  }
+
+  // Step 2 - Self-employed fields
+  if (formData.selfEmployed.tradingName) document.getElementById('selfTradingName').value = formData.selfEmployed.tradingName;
+  if (formData.selfEmployed.bankName) document.getElementById('selfBankName').value = formData.selfEmployed.bankName;
+  if (formData.selfEmployed.accName) document.getElementById('selfAccName').value = formData.selfEmployed.accName;
+  if (formData.selfEmployed.sort) document.getElementById('selfSort').value = formData.selfEmployed.sort;
+  if (formData.selfEmployed.accNum) document.getElementById('selfAccNum').value = formData.selfEmployed.accNum;
+
+  // Step 2 - Ltd company fields
+  if (formData.ltdCompany.companyName) document.getElementById('ltdCompanyName').value = formData.ltdCompany.companyName;
+  if (formData.ltdCompany.companyNo) document.getElementById('ltdCompanyNo').value = formData.ltdCompany.companyNo;
+  if (formData.ltdCompany.address) {
+    const ltdParts = formData.ltdCompany.address.split(', ');
+    if (ltdParts[0]) document.getElementById('ltdAddressLine1').value = ltdParts[0];
+    if (ltdParts[1]) document.getElementById('ltdCity').value = ltdParts[1];
+    if (ltdParts[2]) document.getElementById('ltdCounty').value = ltdParts[2];
+    if (ltdParts[3]) document.getElementById('ltdPostcode').value = ltdParts[3];
+  }
+  if (formData.ltdCompany.bankName) document.getElementById('ltdBankName').value = formData.ltdCompany.bankName;
+  if (formData.ltdCompany.accName) document.getElementById('ltdAccName').value = formData.ltdCompany.accName;
+  if (formData.ltdCompany.sort) document.getElementById('ltdSort').value = formData.ltdCompany.sort;
+  if (formData.ltdCompany.accNum) document.getElementById('ltdAccNum').value = formData.ltdCompany.accNum;
+
+  // Show/hide entity sections based on selection
+  document.getElementById('selfSection').classList.toggle('hidden', !formData.entityType.self);
+  document.getElementById('ltdSection').classList.toggle('hidden', !formData.entityType.ltd);
+
+  // Note: Practices will be rebuilt dynamically, not restored from saved data for now
+  // This keeps the logic simpler - practices can be re-added
+}
+
+function nextStep(from) {
+  hideError();
+  if (!validateStep(from)) return;
+  saveStepData(from);
+
+  if (from === 3) {
+    buildReview();
+  }
+
+  currentStep = from + 1;
+  showStep(currentStep);
+  saveToStorage();
+}
+
+function prevStep(from) {
+  saveStepData(from);
+  currentStep = from - 1;
+  showStep(currentStep);
+  saveToStorage();
+}
+
+function validateStep(step) {
+  if (step === 1) {
+    const firstName = document.getElementById('userFirstName').value.trim();
+    const surname = document.getElementById('userSurname').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const phone = document.getElementById('userPhone').value.trim();
+    const addressLine1 = document.getElementById('userAddressLine1').value.trim();
+    const city = document.getElementById('userCity').value.trim();
+    const county = document.getElementById('userCounty').value.trim();
+    const postcode = document.getElementById('userPostcode').value.trim();
+    const isSelf = document.getElementById('isSelfEmployed').checked;
+    const isLtd = document.getElementById('isLtdCompany').checked;
+
+    if (!firstName) return showError('Please enter your first name');
+    if (!surname) return showError('Please enter your surname');
+    if (!email || !email.includes('@')) return showError('Please enter a valid email address');
+    if (!phone) return showError('Please enter your phone number');
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 9 || phoneDigits.length > 11) return showError('Please enter a valid phone number (9-11 digits)');
+    if (!addressLine1) return showError('Please enter your street address');
+    if (!city) return showError('Please enter your town/city');
+    if (!county) return showError('Please enter your county');
+    if (!postcode) return showError('Please enter your postcode');
+    if (!isSelf && !isLtd) return showError('Please select at least one business type');
+
+    // Show/hide entity sections based on selection
+    document.getElementById('selfSection').classList.toggle('hidden', !isSelf);
+    document.getElementById('ltdSection').classList.toggle('hidden', !isLtd);
+
+    return true;
+  }
+
+  if (step === 2) {
+    const isSelf = document.getElementById('isSelfEmployed').checked;
+    const isLtd = document.getElementById('isLtdCompany').checked;
+
+    if (isSelf) {
+      if (!document.getElementById('selfBankName').value.trim()) return showError('Please enter your bank name for self-employed');
+      if (!document.getElementById('selfAccName').value.trim()) return showError('Please enter account holder name for self-employed');
+      const selfSort = document.getElementById('selfSort').value.replace(/[^0-9]/g, '');
+      if (selfSort.length !== 6) return showError('Sort code must be 6 digits (e.g., 12-34-56)');
+      const selfAcc = document.getElementById('selfAccNum').value.replace(/[^0-9]/g, '');
+      if (selfAcc.length !== 8) return showError('Account number must be 8 digits');
+    }
+
+    if (isLtd) {
+      if (!document.getElementById('ltdCompanyName').value.trim()) return showError('Please enter your company name');
+      const companyNo = document.getElementById('ltdCompanyNo').value.replace(/[^0-9]/g, '');
+      if (companyNo.length !== 8) return showError('Company number must be 8 digits');
+      if (!document.getElementById('ltdAddressLine1').value.trim()) return showError('Please enter company registered address');
+      if (!document.getElementById('ltdCity').value.trim()) return showError('Please enter company town/city');
+      if (!document.getElementById('ltdCounty').value.trim()) return showError('Please enter company county');
+      if (!document.getElementById('ltdPostcode').value.trim()) return showError('Please enter company postcode');
+      if (!document.getElementById('ltdBankName').value.trim()) return showError('Please enter bank name for Ltd company');
+      if (!document.getElementById('ltdAccName').value.trim()) return showError('Please enter account holder name for Ltd company');
+      const ltdSort = document.getElementById('ltdSort').value.replace(/[^0-9]/g, '');
+      if (ltdSort.length !== 6) return showError('Sort code must be 6 digits (e.g., 12-34-56)');
+      const ltdAcc = document.getElementById('ltdAccNum').value.replace(/[^0-9]/g, '');
+      if (ltdAcc.length !== 8) return showError('Account number must be 8 digits');
+    }
+
+    return true;
+  }
+
+  if (step === 3) {
+    // At least one practice recommended but not required
+    return true;
+  }
+
+  return true;
+}
+
+function saveStepData(step) {
+  if (step === 1) {
+    // Store name components separately for mail merge etc
+    formData.user.firstName = document.getElementById('userFirstName').value.trim();
+    formData.user.middleNames = document.getElementById('userMiddleNames').value.trim();
+    formData.user.surname = document.getElementById('userSurname').value.trim();
+
+    // Build full name for display purposes
+    const nameParts = [formData.user.firstName];
+    if (formData.user.middleNames) nameParts.push(formData.user.middleNames);
+    nameParts.push(formData.user.surname);
+    formData.user.name = nameParts.join(' ');
+
+    formData.user.email = document.getElementById('userEmail').value.trim();
+
+    // Save country code separately for restoration, and combine for submission
+    const countryCode = document.getElementById('userCountryCode').value;
+    formData.user.countryCode = countryCode;
+    const phoneNum = document.getElementById('userPhone').value.trim().replace(/^0+/, ''); // Strip leading zeros
+    formData.user.phone = countryCode + ' ' + phoneNum;
+
+    // Build address from separate fields
+    const line1 = document.getElementById('userAddressLine1').value.trim();
+    const city = document.getElementById('userCity').value.trim();
+    const county = document.getElementById('userCounty').value.trim();
+    const postcode = document.getElementById('userPostcode').value.trim().toUpperCase();
+    formData.user.address = [line1, city, county, postcode].join(', ');
+
+    formData.entityType.self = document.getElementById('isSelfEmployed').checked;
+    formData.entityType.ltd = document.getElementById('isLtdCompany').checked;
+  }
+
+  if (step === 2) {
+    if (formData.entityType.self) {
+      formData.selfEmployed.tradingName = document.getElementById('selfTradingName').value.trim();
+      formData.selfEmployed.bankName = document.getElementById('selfBankName').value.trim();
+      formData.selfEmployed.accName = document.getElementById('selfAccName').value.trim();
+      formData.selfEmployed.sort = document.getElementById('selfSort').value.trim();
+      formData.selfEmployed.accNum = document.getElementById('selfAccNum').value.trim();
+    }
+
+    if (formData.entityType.ltd) {
+      formData.ltdCompany.companyName = document.getElementById('ltdCompanyName').value.trim();
+      formData.ltdCompany.companyNo = document.getElementById('ltdCompanyNo').value.trim();
+
+      // Build Ltd address from separate fields
+      const ltdLine1 = document.getElementById('ltdAddressLine1').value.trim();
+      const ltdCity = document.getElementById('ltdCity').value.trim();
+      const ltdCounty = document.getElementById('ltdCounty').value.trim();
+      const ltdPostcode = document.getElementById('ltdPostcode').value.trim().toUpperCase();
+      formData.ltdCompany.address = [ltdLine1, ltdCity, ltdCounty, ltdPostcode].filter(Boolean).join(', ');
+
+      formData.ltdCompany.bankName = document.getElementById('ltdBankName').value.trim();
+      formData.ltdCompany.accName = document.getElementById('ltdAccName').value.trim();
+      formData.ltdCompany.sort = document.getElementById('ltdSort').value.trim();
+      formData.ltdCompany.accNum = document.getElementById('ltdAccNum').value.trim();
+    }
+  }
+
+  if (step === 3) {
+    savePractices();
+  }
+}
+
+// Practice management
+function addPractice() {
+  practiceCount++;
+  const id = 'practice' + practiceCount;
+
+  const html = `
+    <div class="practice-card" id="${id}">
+      <button class="remove-btn" onclick="removePractice('${id}')">&times;</button>
+
+      <div class="form-group">
+        <label class="form-label">Practice Name <span class="req">*</span></label>
+        <input type="text" class="form-input practice-name" placeholder="e.g. Bupa Dental Care">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Short Name <span class="req">*</span></label>
+          <input type="text" class="form-input practice-short" placeholder="e.g. Bupa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Type <span class="req">*</span></label>
+          <select class="form-select practice-type">
+            <option value="contract-commission">Contract - Commission %</option>
+            <option value="contract-perpatient">Contract - Per Patient £</option>
+            <option value="adhoc-commission">Ad Hoc - Commission %</option>
+            <option value="adhoc-perpatient">Ad Hoc - Per Patient £</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Practice Address</label>
+        <input type="text" class="form-input practice-address-line1" placeholder="Street address" style="margin-bottom:8px">
+        <div class="form-row" style="margin-bottom:0">
+          <input type="text" class="form-input practice-city" placeholder="Town/City">
+          <input type="text" class="form-input practice-postcode" placeholder="Postcode" style="text-transform:uppercase">
+        </div>
+      </div>
+
+      <div class="form-group commission-fields">
+        <label class="form-label">Commission Rate (%)</label>
+        <input type="number" class="form-input practice-commission" placeholder="e.g. 35" min="0" max="100">
+      </div>
+
+      <div class="form-group perpatient-fields hidden">
+        <label class="form-label">Rate Per Patient (£)</label>
+        <input type="number" class="form-input practice-rate" placeholder="e.g. 25" step="0.01">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Working Days</label>
+        <div class="day-grid">
+          <div class="day-btn" data-day="1">Mon</div>
+          <div class="day-btn" data-day="2">Tue</div>
+          <div class="day-btn" data-day="3">Wed</div>
+          <div class="day-btn" data-day="4">Thu</div>
+          <div class="day-btn" data-day="5">Fri</div>
+          <div class="day-btn" data-day="6">Sat</div>
+          <div class="day-btn" data-day="0">Sun</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Services</label>
+        <div class="services-list"></div>
+        <button class="add-btn" onclick="addService('${id}')" style="margin-top:8px">
+          <span>+</span> Add Service
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('practicesList').insertAdjacentHTML('beforeend', html);
+
+  // Setup event listeners for the new practice card
+  const card = document.getElementById(id);
+
+  // Payment type toggle - show commission or per-patient fields
+  card.querySelector('.practice-type').addEventListener('change', function() {
+    const isCommission = this.value.includes('commission');
+    card.querySelector('.commission-fields').classList.toggle('hidden', !isCommission);
+    card.querySelector('.perpatient-fields').classList.toggle('hidden', isCommission);
+  });
+
+  // Day selection
+  card.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      this.classList.toggle('selected');
+    });
+  });
+
+  // Add default service
+  addService(id);
+}
+
+function removePractice(id) {
+  document.getElementById(id).remove();
+}
+
+function addService(practiceId) {
+  const servicesList = document.querySelector('#' + practiceId + ' .services-list');
+  const html = `
+    <div class="service-row">
+      <input type="text" class="form-input service-name" placeholder="Service name">
+      <input type="number" class="form-input price service-price" placeholder="£" step="0.01">
+      <button class="remove-svc" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+  `;
+  servicesList.insertAdjacentHTML('beforeend', html);
+}
+
+function savePractices() {
+  formData.practices = [];
+
+  document.querySelectorAll('.practice-card').forEach(card => {
+    const days = [];
+    card.querySelectorAll('.day-btn.selected').forEach(btn => {
+      days.push(parseInt(btn.dataset.day));
+    });
+
+    const services = {};
+    card.querySelectorAll('.service-row').forEach(row => {
+      const name = row.querySelector('.service-name').value.trim();
+      const price = parseFloat(row.querySelector('.service-price').value) || 0;
+      if (name) services[name] = { p: price, d: 'per patient' };
+    });
+
+    // Build practice address from fields
+    const pracLine1 = card.querySelector('.practice-address-line1').value.trim();
+    const pracCity = card.querySelector('.practice-city').value.trim();
+    const pracPostcode = card.querySelector('.practice-postcode').value.trim().toUpperCase();
+    const addressParts = [];
+    if (pracLine1) addressParts.push(pracLine1);
+    if (pracCity) addressParts.push(pracCity);
+    if (pracPostcode) addressParts.push(pracPostcode);
+
+    // Parse payment type (e.g., "contract-commission" -> type: "contract", paymentMethod: "commission")
+    const typeValue = card.querySelector('.practice-type').value;
+    const [practiceType, paymentMethod] = typeValue.split('-');
+
+    const practice = {
+      name: card.querySelector('.practice-name').value.trim(),
+      short: card.querySelector('.practice-short').value.trim(),
+      type: practiceType,                 // 'contract' or 'adhoc'
+      paymentMethod: paymentMethod,       // 'commission' or 'perpatient'
+      address: addressParts.join(', '),
+      commission: paymentMethod === 'commission' ? (parseFloat(card.querySelector('.practice-commission').value) / 100 || 0) : 0,
+      rate: paymentMethod === 'perpatient' ? (parseFloat(card.querySelector('.practice-rate').value) || 0) : 0,
+      days: days,
+      services: services
+    };
+
+    if (practice.name && practice.short) {
+      formData.practices.push(practice);
+    }
+  });
+}
+
+// Review
+function buildReview() {
+  let html = '<div style="font-size:14px;line-height:1.6">';
+
+  // Personal Details
+  html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+  html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Your Details</div>';
+  html += '<p><strong>Name:</strong> ' + escapeHtml(formData.user.name) + '</p>';
+  html += '<p><strong>Email:</strong> ' + escapeHtml(formData.user.email) + '</p>';
+  html += '<p><strong>Phone:</strong> ' + escapeHtml(formData.user.phone) + '</p>';
+  html += '<p><strong>Address:</strong> ' + escapeHtml(formData.user.address) + '</p>';
+  html += '</div>';
+
+  // Business Type
+  const types = [];
+  if (formData.entityType.self) types.push('Self-Employed');
+  if (formData.entityType.ltd) types.push('Ltd Company');
+  html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+  html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Business Type</div>';
+  html += '<p>' + types.join(' + ') + '</p>';
+  html += '</div>';
+
+  // Self-Employed Details
+  if (formData.entityType.self) {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Self-Employed Bank Details</div>';
+    if (formData.selfEmployed.tradingName) {
+      html += '<p><strong>Trading As:</strong> ' + escapeHtml(formData.selfEmployed.tradingName) + '</p>';
+    }
+    html += '<p><strong>Bank:</strong> ' + escapeHtml(formData.selfEmployed.bankName) + '</p>';
+    html += '<p><strong>Account:</strong> ' + escapeHtml(formData.selfEmployed.accName) + '</p>';
+    html += '<p><strong>Sort Code:</strong> ' + escapeHtml(formData.selfEmployed.sort) + '</p>';
+    html += '<p><strong>Account No:</strong> ****' + escapeHtml(formData.selfEmployed.accNum.slice(-4)) + '</p>';
+    html += '</div>';
+  }
+
+  // Ltd Company Details
+  if (formData.entityType.ltd) {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Ltd Company Details</div>';
+    html += '<p><strong>Company:</strong> ' + escapeHtml(formData.ltdCompany.companyName) + '</p>';
+    html += '<p><strong>Company No:</strong> ' + escapeHtml(formData.ltdCompany.companyNo) + '</p>';
+    html += '<p><strong>Address:</strong> ' + escapeHtml(formData.ltdCompany.address) + '</p>';
+    html += '<p><strong>Bank:</strong> ' + escapeHtml(formData.ltdCompany.bankName) + '</p>';
+    html += '<p><strong>Account:</strong> ' + escapeHtml(formData.ltdCompany.accName) + '</p>';
+    html += '<p><strong>Sort Code:</strong> ' + escapeHtml(formData.ltdCompany.sort) + '</p>';
+    html += '<p><strong>Account No:</strong> ****' + escapeHtml(formData.ltdCompany.accNum.slice(-4)) + '</p>';
+    html += '</div>';
+  }
+
+  // Practices
+  if (formData.practices.length > 0) {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--pri-dk);margin-bottom:8px">Your Practices (' + formData.practices.length + ')</div>';
+    formData.practices.forEach(p => {
+      html += '<p>• <strong>' + escapeHtml(p.name) + '</strong> (' + escapeHtml(p.short) + ') - ' + (p.type === 'contract' ? 'Contract' : 'Ad Hoc') + '</p>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="background:var(--bg);padding:12px;border-radius:var(--rs);margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--txt3);margin-bottom:8px">Practices</div>';
+    html += '<p style="color:var(--txt3);font-style:italic">No practices added yet (you can add them later)</p>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+
+  document.getElementById('reviewContent').innerHTML = html;
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Submit
+async function submitApplication() {
+  hideError();
+
+  if (!document.getElementById('acceptDataConsent').checked) {
+    return showError('Please consent to data processing to continue');
+  }
+
+  if (!document.getElementById('acceptTerms').checked) {
+    return showError('Please accept the terms and conditions');
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    // Add consent timestamp
+    formData.consentedAt = new Date().toISOString();
+
+    const response = await fetch('/api/onboarding/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Clear saved data on successful submission
+      clearSavedData();
+
+      document.getElementById('successEmail').textContent = formData.user.email;
+      document.querySelectorAll('.step').forEach(s => s.classList.add('hidden'));
+      document.getElementById('successState').classList.remove('hidden');
+      document.querySelector('.progress').style.display = 'none';
+      document.getElementById('stepNav').style.display = 'none';
+    } else {
+      showError(result.error || 'Failed to submit application. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
+    }
+  } catch (e) {
+    console.error('Submit error:', e);
+    showError('Network error. Please check your connection and try again.');
+    btn.disabled = false;
+    btn.textContent = 'Submit Application';
+  }
+}
+
+// Error handling
+function showError(msg) {
+  document.getElementById('errorText').textContent = msg;
+  document.getElementById('errorBox').classList.add('show');
+  window.scrollTo(0, 0);
+  return false;
+}
+
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+// Initialize - show step 1 by default (DOMContentLoaded will override if saved data exists)
+showStep(1);
+updateStepNav();
+</script>
+</body>
+</html>
