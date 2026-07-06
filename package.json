@@ -1,0 +1,37 @@
+{
+  "name": "taylor-invoices",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js",
+    "vercel-dev": "vercel dev",
+    "build": "npm run db:build",
+    "vercel-build": "npm run db:build",
+    "db:build": "tsc -p db/tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:check": "drizzle-kit check",
+    "test:e2e:drive": "node scripts/e2e-drive-sync.js"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "express": "^4.21.2",
+    "googleapis": "^118.0.0",
+    "jspdf": "^2.5.1",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vercel": "^37.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
