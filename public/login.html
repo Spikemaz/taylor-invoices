@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Books IQ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<title>Sign In - Books IQ</title>
+<style>
+:root{--bg:#f7f6f3;--card:#fff;--pri:#009E60;--pri-lt:#2bc47d;--pri-dk:#006d42;--pri-bg:#e6f7ef;--acc:#00b36b;--txt:#0f0f0f;--txt2:#4b5563;--txt3:#6b7280;--bdr:#e5e7eb;--ok:#22c55e;--ok-bg:#dcfce7;--err:#ef4444;--err-bg:#fef2f2;--r:14px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.06);--shm:0 4px 12px rgba(0,0,0,.08);--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--f:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{font-family:var(--f);background:var(--pri-dk);color:var(--txt);height:100%;overflow:hidden;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.container{height:100%;display:flex;flex-direction:column;padding-bottom:var(--sb);max-width:430px;margin:0 auto;background:var(--bg);box-shadow:0 0 20px rgba(0,0,0,.1)}
+@media(min-width:431px){html,body{background:#e5e5e5}}
+.hdr{background:var(--pri-dk);color:#fff;padding:calc(16px + var(--st)) 16px 16px;text-align:center;min-height:calc(56px + var(--st));flex-shrink:0}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:-.5px}
+.hdr p{font-size:11px;opacity:.8;margin-top:4px}
+.content{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px 20px;overflow-y:auto}
+.logo-box{text-align:center;margin-bottom:32px}
+.logo-icon{width:80px;height:80px;background:linear-gradient(135deg,var(--pri-dk),var(--pri));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:36px;color:#fff;font-weight:700;box-shadow:var(--shm)}
+.logo-text{font-size:28px;font-weight:800;color:var(--pri-dk);letter-spacing:-1px}
+.logo-sub{font-size:13px;color:var(--txt2);margin-top:4px}
+.form-box{background:var(--card);border-radius:var(--r);padding:24px 20px;box-shadow:var(--sh);border:1px solid var(--bdr)}
+.form-title{font-size:18px;font-weight:700;color:var(--txt);margin-bottom:8px;text-align:center}
+.form-desc{font-size:13px;color:var(--txt2);margin-bottom:20px;text-align:center;line-height:1.5}
+.input-group{margin-bottom:16px}
+.input-label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.input-field{width:100%;padding:14px 16px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:16px;font-family:var(--f);color:var(--txt);background:var(--bg);outline:none;transition:all .2s}
+.input-field:focus{border-color:var(--pri);background:var(--card)}
+.input-field::placeholder{color:var(--txt3)}
+.btn{width:100%;padding:16px;border:none;border-radius:var(--rs);font-size:16px;font-weight:700;font-family:var(--f);cursor:pointer;transition:all .15s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover{background:var(--pri-dk)}
+.btn-primary:disabled{background:var(--txt3);cursor:not-allowed;transform:none}
+.error-box{background:var(--err-bg);border:1px solid var(--err);border-radius:var(--rs);padding:12px 16px;margin-bottom:16px;display:none}
+.error-box.show{display:block}
+.error-text{color:var(--err);font-size:13px;font-weight:500}
+.success-box{background:var(--ok-bg);border:1px solid var(--ok);border-radius:var(--rs);padding:20px;text-align:center;display:none}
+.success-box.show{display:block}
+.success-icon{font-size:48px;margin-bottom:12px}
+.success-title{font-size:18px;font-weight:700;color:var(--txt);margin-bottom:8px}
+.success-desc{font-size:14px;color:var(--txt2);line-height:1.5}
+.success-desc strong{color:var(--txt)}
+.back-link{text-align:center;margin-top:20px}
+.back-link a{color:var(--pri);font-size:14px;font-weight:600;text-decoration:none}
+.code-input-group{display:flex;gap:8px;justify-content:center;margin:16px 0}
+.code-digit{width:44px;height:56px;border:2px solid var(--bdr);border-radius:var(--rs);font-size:24px;font-weight:700;text-align:center;font-family:var(--f);color:var(--txt);background:var(--bg);outline:none;transition:all .2s}
+.code-digit:focus{border-color:var(--pri);background:var(--card)}
+.or-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--txt3);font-size:13px}
+.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.btn-secondary{background:var(--card);color:var(--pri);border:2px solid var(--pri)}
+.btn-secondary:hover{background:var(--pri-bg)}
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-radius:50%;border-top-color:#fff;animation:spin 1s ease-in-out infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{padding:16px;text-align:center}
+.footer p{font-size:11px;color:var(--txt3)}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hdr">
+    <h1>Books IQ</h1>
+    <p>Invoice Management for Healthcare Professionals</p>
+  </div>
+
+  <div class="content">
+    <div class="logo-box">
+      <div class="logo-icon">IQ</div>
+      <div class="logo-text">Books IQ</div>
+      <div class="logo-sub">Sign in to continue</div>
+    </div>
+
+    <div class="form-box" id="loginForm">
+      <div class="form-title">Welcome Back</div>
+      <div class="form-desc">Enter your email address and we'll send you a magic link to sign in.</div>
+
+      <div class="error-box" id="errorBox">
+        <div class="error-text" id="errorText"></div>
+      </div>
+
+      <form id="emailForm">
+        <div class="input-group">
+          <label class="input-label" for="email">Email Address</label>
+          <input type="email" id="email" class="input-field" placeholder="you@example.com" required autocomplete="email" autocapitalize="off" list="savedEmails">
+          <datalist id="savedEmails"></datalist>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">
+          Send Magic Link
+        </button>
+      </form>
+
+      <div class="back-link">
+        <a href="/onboarding">New user? Get started</a>
+      </div>
+    </div>
+
+    <div class="success-box" id="successBox">
+      <div class="success-icon">📧</div>
+      <div class="success-title">Check Your Email</div>
+      <div class="success-desc">
+        We've sent a login code to<br>
+        <strong id="sentEmail"></strong>
+      </div>
+
+      <div class="or-divider">Enter your 6-digit code</div>
+
+      <form id="codeForm">
+        <div class="code-input-group">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="0" autocomplete="one-time-code">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="1">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="2">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="3">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="4">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-digit" data-idx="5">
+        </div>
+        <div class="error-box" id="codeErrorBox">
+          <div class="error-text" id="codeErrorText"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="verifyBtn">
+          Verify Code
+        </button>
+      </form>
+
+      <div class="or-divider">or click the link in your email</div>
+
+      <div class="back-link" style="margin-top:12px">
+        <a href="#" onclick="showLoginForm()">Use a different email</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 Books IQ. All rights reserved.</p>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Check if already logged in
+  const session = getSession();
+  if (session) {
+    window.location.href = '/';
+    return;
+  }
+
+  // Load saved emails into datalist
+  loadSavedEmails();
+
+  // Check for error in URL
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get('error');
+  if (error) {
+    showError(decodeURIComponent(error));
+  }
+
+  // Helper to load saved emails
+  function loadSavedEmails() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('booksiq_saved_emails') || '[]');
+      const datalist = document.getElementById('savedEmails');
+      datalist.innerHTML = saved.map(e => '<option value="' + e + '">').join('');
+      // Pre-fill with most recent email if available
+      if (saved.length > 0) {
+        document.getElementById('email').value = saved[0];
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // Helper to save email after successful login request
+  function saveEmail(email) {
+    try {
+      let saved = JSON.parse(localStorage.getItem('booksiq_saved_emails') || '[]');
+      // Remove if exists, add to front (most recent first)
+      saved = saved.filter(e => e.toLowerCase() !== email.toLowerCase());
+      saved.unshift(email.toLowerCase());
+      // Keep max 5 emails
+      saved = saved.slice(0, 5);
+      localStorage.setItem('booksiq_saved_emails', JSON.stringify(saved));
+    } catch (e) { /* ignore */ }
+  }
+
+  // Form submission
+  document.getElementById('emailForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value.trim();
+    const btn = document.getElementById('submitBtn');
+
+    if (!email) return;
+
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending...';
+    hideError();
+
+    try {
+      const response = await fetch('/api/auth/request-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Save email for future auto-fill
+        saveEmail(email);
+        // Show success state
+        storedEmail = email;
+        document.getElementById('sentEmail').textContent = email;
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('successBox').classList.add('show');
+        // Focus first code input
+        setTimeout(() => codeInputs[0].focus(), 100);
+      } else {
+        showError(data.error || 'Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Send Magic Link';
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      showError('Network error. Please check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Send Magic Link';
+    }
+  });
+
+  function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    document.getElementById('errorBox').classList.add('show');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('show');
+  }
+
+  window.showLoginForm = function() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('successBox').classList.remove('show');
+    document.getElementById('email').value = '';
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = 'Send Magic Link';
+    // Clear code inputs
+    document.querySelectorAll('.code-digit').forEach(input => input.value = '');
+  };
+
+  // Code input handling
+  const codeInputs = document.querySelectorAll('.code-digit');
+  let storedEmail = '';
+
+  codeInputs.forEach((input, idx) => {
+    input.addEventListener('input', function(e) {
+      const val = e.target.value;
+      // Only allow digits
+      if (!/^\d*$/.test(val)) {
+        e.target.value = '';
+        return;
+      }
+      // Auto-advance to next input
+      if (val && idx < codeInputs.length - 1) {
+        codeInputs[idx + 1].focus();
+      }
+      // Auto-submit when all filled
+      if (getFullCode().length === 6) {
+        document.getElementById('codeForm').dispatchEvent(new Event('submit'));
+      }
+    });
+
+    input.addEventListener('keydown', function(e) {
+      // Handle backspace
+      if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+        codeInputs[idx - 1].focus();
+      }
+    });
+
+    input.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = paste.replace(/\D/g, '').split('').slice(0, 6);
+      digits.forEach((d, i) => {
+        if (codeInputs[i]) codeInputs[i].value = d;
+      });
+      if (digits.length === 6) {
+        document.getElementById('codeForm').dispatchEvent(new Event('submit'));
+      }
+    });
+  });
+
+  function getFullCode() {
+    return Array.from(codeInputs).map(i => i.value).join('');
+  }
+
+  // Code form submission
+  document.getElementById('codeForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const code = getFullCode();
+    if (code.length !== 6) return;
+
+    const btn = document.getElementById('verifyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verifying...';
+    document.getElementById('codeErrorBox').classList.remove('show');
+
+    try {
+      const response = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: storedEmail, code })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.session) {
+        localStorage.setItem('booksiq_session', JSON.stringify(data.session));
+        window.location.href = '/';
+      } else {
+        document.getElementById('codeErrorText').textContent = data.error || 'Invalid code';
+        document.getElementById('codeErrorBox').classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Verify Code';
+        // Clear inputs on error
+        codeInputs.forEach(i => i.value = '');
+        codeInputs[0].focus();
+      }
+    } catch (err) {
+      console.error('Code verification error:', err);
+      document.getElementById('codeErrorText').textContent = 'Network error. Please try again.';
+      document.getElementById('codeErrorBox').classList.add('show');
+      btn.disabled = false;
+      btn.textContent = 'Verify Code';
+    }
+  });
+
+  function getSession() {
+    try {
+      const data = localStorage.getItem('booksiq_session');
+      if (!data) return null;
+      const session = JSON.parse(data);
+      if (session.exp < Date.now()) {
+        localStorage.removeItem('booksiq_session');
+        return null;
+      }
+      return session;
+    } catch (e) {
+      return null;
+    }
+  }
+})();
+</script>
+</body>
+</html>
